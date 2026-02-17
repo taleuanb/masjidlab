@@ -16,6 +16,7 @@ import ParkingPage from "./pages/Parking";
 import MaintenancePage from "./pages/Maintenance";
 import MonAgendaPage from "./pages/MonAgenda";
 import MesMissionsPage from "./pages/MesMissions";
+import ApprobationsPage from "./pages/Approbations";
 import LoginPage from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -53,6 +54,7 @@ const AppLayout = () => {
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/mon-agenda" element={<MonAgendaPage />} />
           <Route path="/missions" element={<MesMissionsPage />} />
+          <Route path="/approbations" element={<ApprobationsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
