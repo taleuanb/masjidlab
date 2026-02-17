@@ -1,3 +1,4 @@
+import React from "react";
 import { useLocation } from "react-router-dom";
 import {
   Building2,
@@ -9,6 +10,9 @@ import {
   Calendar,
   Car,
   Wrench,
+  Shield,
+  ClipboardList,
+  UserCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -23,20 +27,46 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useRole, type UserRole } from "@/contexts/RoleContext";
 
-const navItems = [
-  { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
-  { title: "Planning", url: "/planning", icon: CalendarDays },
-  { title: "Événements", url: "/evenements", icon: Calendar },
-  { title: "Inventaire", url: "/inventaire", icon: Package },
-  { title: "Parking", url: "/parking", icon: Car },
-  { title: "Maintenance", url: "/maintenance", icon: Wrench },
-  { title: "Récoltes", url: "/recoltes", icon: HandCoins },
-  { title: "Pôles", url: "/poles", icon: Users },
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ElementType;
+  roles: UserRole[];
+}
+
+const navItems: NavItem[] = [
+  { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin", "Imam/Chef de Pôle", "Bénévole"] },
+  { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin", "Imam/Chef de Pôle"] },
+  { title: "Mon Agenda", url: "/planning", icon: CalendarDays, roles: ["Bénévole"] },
+  { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin", "Imam/Chef de Pôle"] },
+  { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin", "Imam/Chef de Pôle"] },
+  { title: "Parking", url: "/parking", icon: Car, roles: ["Admin"] },
+  { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin"] },
+  { title: "Récoltes", url: "/recoltes", icon: HandCoins, roles: ["Admin"] },
+  { title: "Pôles", url: "/poles", icon: Users, roles: ["Admin", "Imam/Chef de Pôle"] },
+  { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
 ];
+
+const roleIcons: Record<UserRole, React.ElementType> = {
+  "Admin": Shield,
+  "Imam/Chef de Pôle": UserCheck,
+  "Bénévole": Users,
+};
 
 export function AppSidebar() {
   const location = useLocation();
+  const { role, setRole } = useRole();
+
+  const visibleItems = navItems.filter((item) => item.roles.includes(role));
 
   return (
     <Sidebar className="border-r-0">
@@ -63,7 +93,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -83,7 +113,25 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-4 space-y-3">
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">
+            Rôle actif
+          </label>
+          <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
+            <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
+              <div className="flex items-center gap-2">
+                {React.createElement(roleIcons[role], { className: "h-3.5 w-3.5 text-sidebar-foreground/60" })}
+                <SelectValue />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Admin">Admin</SelectItem>
+              <SelectItem value="Imam/Chef de Pôle">Imam / Chef de Pôle</SelectItem>
+              <SelectItem value="Bénévole">Bénévole</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="rounded-lg bg-sidebar-accent/50 p-3">
           <p className="text-xs text-sidebar-foreground/50">
             Complexe AMM — Bâtiment R+4
