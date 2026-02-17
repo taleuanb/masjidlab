@@ -60,6 +60,7 @@ const navItems: NavItem[] = [
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin"] },
   { title: "Récoltes", url: "/recoltes", icon: HandCoins, roles: ["Admin"] },
   { title: "Pôles", url: "/poles", icon: Users, roles: ["Admin", "Imam/Chef de Pôle"] },
+  { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Imam/Chef de Pôle"] },
   { title: "Membres", url: "/membres", icon: UsersRound, roles: ["Admin"] },
   { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
 ];
