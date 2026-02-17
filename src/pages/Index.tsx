@@ -8,6 +8,7 @@ import { RecolteSummary } from "@/components/RecolteSummary";
 import { QuickActions } from "@/components/QuickActions";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificationBell } from "@/components/NotificationBell";
+import { WeatherPrayerWidget } from "@/components/WeatherPrayerWidget";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface DashboardProps {
@@ -25,7 +26,8 @@ export default function Dashboard({ selectedEtage }: DashboardProps) {
             Bienvenue sur AMM Ops — Vue d'ensemble du complexe
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <WeatherPrayerWidget />
           <CommandPalette />
           <NotificationBell />
         </div>
