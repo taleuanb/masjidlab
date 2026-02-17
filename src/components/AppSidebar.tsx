@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Building2,
@@ -7,14 +6,11 @@ import {
   CalendarDays,
   HandCoins,
   Users,
-  ChevronDown,
   Calendar,
   Car,
   Wrench,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { ETAGES } from "@/data/mock-data";
-import { Etage } from "@/types/amm";
 import {
   Sidebar,
   SidebarContent,
@@ -39,13 +35,7 @@ const navItems = [
   { title: "Pôles", url: "/poles", icon: Users },
 ];
 
-interface AppSidebarProps {
-  selectedEtage: Etage;
-  onEtageChange: (etage: Etage) => void;
-}
-
-export function AppSidebar({ selectedEtage, onEtageChange }: AppSidebarProps) {
-  const [etageOpen, setEtageOpen] = useState(false);
+export function AppSidebar() {
   const location = useLocation();
 
   return (
@@ -67,40 +57,6 @@ export function AppSidebar({ selectedEtage, onEtageChange }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent className="px-3">
-        {/* Floor Selector */}
-        <div className="mb-4">
-          <button
-            onClick={() => setEtageOpen(!etageOpen)}
-            className="flex w-full items-center justify-between rounded-lg bg-sidebar-accent px-3 py-2.5 text-sm font-medium text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/80"
-          >
-            <span className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-sidebar-primary" />
-              {ETAGES.find(e => e.value === selectedEtage)?.label}
-            </span>
-            <ChevronDown className={`h-4 w-4 transition-transform ${etageOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {etageOpen && (
-            <div className="mt-1 space-y-0.5 rounded-lg bg-sidebar-accent/50 p-1">
-              {ETAGES.map((etage) => (
-                <button
-                  key={etage.value}
-                  onClick={() => {
-                    onEtageChange(etage.value);
-                    setEtageOpen(false);
-                  }}
-                  className={`w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
-                    selectedEtage === etage.value
-                      ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent'
-                  }`}
-                >
-                  {etage.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/40 text-xs uppercase tracking-wider">
             Navigation

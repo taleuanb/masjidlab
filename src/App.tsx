@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { Etage } from "@/types/amm";
 import Index from "./pages/Index";
 import PlanningPage from "./pages/Planning";
 import EvenementsPage from "./pages/Evenements";
@@ -17,14 +15,12 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const AppLayout = () => {
-  const [selectedEtage, setSelectedEtage] = useState<Etage>('RDC');
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar selectedEtage={selectedEtage} onEtageChange={setSelectedEtage} />
+        <AppSidebar />
         <Routes>
-          <Route path="/" element={<Index selectedEtage={selectedEtage} />} />
+          <Route path="/" element={<Index />} />
           <Route path="/planning" element={<PlanningPage />} />
           <Route path="/evenements" element={<EvenementsPage />} />
           <Route path="/parking" element={<ParkingPage />} />
