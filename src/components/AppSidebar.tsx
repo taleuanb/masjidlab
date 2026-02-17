@@ -13,6 +13,7 @@ import {
   Shield,
   ClipboardList,
   UserCheck,
+  Settings2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -52,6 +53,7 @@ const navItems: NavItem[] = [
   { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays, roles: ["Bénévole"] },
   { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin", "Imam/Chef de Pôle"] },
   { title: "Approbations", url: "/approbations", icon: UserCheck, roles: ["Admin", "Imam/Chef de Pôle"] },
+  { title: "Opérations", url: "/operations", icon: Settings2, roles: ["Admin", "Imam/Chef de Pôle"] },
   { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin", "Imam/Chef de Pôle"] },
   { title: "Parking", url: "/parking", icon: Car, roles: ["Admin"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin"] },
