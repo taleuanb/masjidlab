@@ -20,6 +20,7 @@ import ApprobationsPage from "./pages/Approbations";
 import GestionOperationsPage from "./pages/GestionOperations";
 import GestionMembresPage from "./pages/GestionMembres";
 import MonEquipePage from "./pages/MonEquipe";
+import OrganisationPage from "./pages/Organisation";
 import LoginPage from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -61,6 +62,7 @@ const AppLayout = () => {
           <Route path="/operations" element={<GestionOperationsPage />} />
           <Route path="/membres" element={<GestionMembresPage />} />
           <Route path="/mon-equipe" element={<MonEquipePage />} />
+          <Route path="/organisation" element={<OrganisationPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

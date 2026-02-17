@@ -59,9 +59,8 @@ const navItems: NavItem[] = [
   { title: "Parking", url: "/parking", icon: Car, roles: ["Admin"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin"] },
   { title: "Récoltes", url: "/recoltes", icon: HandCoins, roles: ["Admin"] },
-  { title: "Pôles", url: "/poles", icon: Users, roles: ["Admin", "Imam/Chef de Pôle"] },
+  { title: "Organisation", url: "/organisation", icon: Building2, roles: ["Admin"] },
   { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Imam/Chef de Pôle"] },
-  { title: "Membres", url: "/membres", icon: UsersRound, roles: ["Admin"] },
   { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
 ];
 
