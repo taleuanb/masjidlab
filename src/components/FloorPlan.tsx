@@ -1,16 +1,17 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Wifi, Mic, Snowflake, Monitor, Speaker } from "lucide-react";
+import { Wifi, Mic, Snowflake, Monitor, Speaker, Eye } from "lucide-react";
 import { sallesMock } from "@/data/mock-data";
 import { Etage, Equipement, StatutSalle } from "@/types/amm";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface FloorPlanProps {
   selectedEtage: Etage;
 }
 
 const statutColors: Record<StatutSalle, string> = {
-  disponible: "bg-primary/15 border-primary/30 hover:bg-primary/25",
-  occupée: "bg-destructive/10 border-destructive/25 hover:bg-destructive/15",
-  réservée: "bg-accent/15 border-accent/30 hover:bg-accent/25",
+  disponible: "bg-primary/15 border-primary/30",
+  occupée: "bg-destructive/10 border-destructive/25",
+  réservée: "bg-accent/15 border-accent/30",
   maintenance: "bg-muted border-muted-foreground/20",
 };
 
@@ -28,12 +29,12 @@ const statutDots: Record<StatutSalle, string> = {
   maintenance: "bg-muted-foreground/50",
 };
 
-const equipementIcons: Record<Equipement, { icon: typeof Wifi; label: string }> = {
-  wifi: { icon: Wifi, label: "Wifi" },
-  micro: { icon: Mic, label: "Micro" },
-  clim: { icon: Snowflake, label: "Clim" },
-  vidéoprojecteur: { icon: Monitor, label: "Vidéo" },
-  sono: { icon: Speaker, label: "Sono" },
+const equipementInfo: Record<Equipement, { icon: typeof Wifi; label: string; tooltip: string }> = {
+  wifi: { icon: Wifi, label: "Wifi", tooltip: "Wifi — Connecté" },
+  micro: { icon: Mic, label: "Micro", tooltip: "Micro sans fil — Disponible" },
+  clim: { icon: Snowflake, label: "Clim", tooltip: "Climatisation — En marche" },
+  vidéoprojecteur: { icon: Monitor, label: "Vidéo", tooltip: "Vidéoprojecteur — Opérationnel" },
+  sono: { icon: Speaker, label: "Sono", tooltip: "Sonorisation — Active" },
 };
 
 export function FloorPlan({ selectedEtage }: FloorPlanProps) {
@@ -46,7 +47,7 @@ export function FloorPlan({ selectedEtage }: FloorPlanProps) {
           <h3 className="text-base font-semibold">Plan de l'étage</h3>
           <p className="text-sm text-muted-foreground">
             {salles.length} salle{salles.length > 1 ? 's' : ''} ·{' '}
-            {selectedEtage === 'RDC' ? 'Rez-de-chaussée' : `${selectedEtage}${selectedEtage === '1' ? 'er' : 'ème'} étage`}
+            {selectedEtage === 'RDC' ? 'Rez-de-chaussée' : selectedEtage === 'EXT' ? 'Extérieur' : `${selectedEtage}${selectedEtage === '1' ? 'er' : 'ème'} étage`}
           </p>
         </div>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -74,25 +75,28 @@ export function FloorPlan({ selectedEtage }: FloorPlanProps) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.05, duration: 0.25 }}
-              className={`relative rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${statutColors[salle.statut]}`}
+              className={`group relative rounded-xl border-2 p-4 text-left transition-all duration-200 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 ${statutColors[salle.statut]}`}
             >
               <p className="text-sm font-medium truncate">{salle.nom}</p>
               <p className="text-xs text-muted-foreground mt-1">{salle.type}</p>
 
-              {/* Equipment badges */}
+              {/* Equipment badges with tooltips */}
               {salle.equipements && salle.equipements.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {salle.equipements.map((eq) => {
-                    const { icon: Icon, label } = equipementIcons[eq];
+                    const { icon: Icon, label, tooltip } = equipementInfo[eq];
                     return (
-                      <span
-                        key={eq}
-                        title={label}
-                        className="inline-flex items-center gap-1 rounded-md bg-muted/80 px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                      >
-                        <Icon className="h-3 w-3" />
-                        {label}
-                      </span>
+                      <Tooltip key={eq}>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex items-center gap-1 rounded-md bg-muted/80 px-1.5 py-0.5 text-[10px] text-muted-foreground cursor-help">
+                            <Icon className="h-3 w-3" />
+                            {label}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          {tooltip}
+                        </TooltipContent>
+                      </Tooltip>
                     );
                   })}
                 </div>
@@ -108,14 +112,26 @@ export function FloorPlan({ selectedEtage }: FloorPlanProps) {
                   </span>
                 )}
               </div>
+
+              {/* Hover "Détails" button */}
+              <div className="absolute inset-x-0 bottom-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pb-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full bg-foreground/80 text-background px-3 py-1 text-[10px] font-medium shadow-md">
+                  <Eye className="h-3 w-3" />
+                  Détails
+                </span>
+              </div>
             </motion.button>
           ))}
         </motion.div>
       </AnimatePresence>
 
       {salles.length === 0 && (
-        <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-          Aucune salle configurée pour cet étage
+        <div className="flex flex-col items-center justify-center py-14 text-muted-foreground">
+          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+            <Monitor className="h-5 w-5" />
+          </div>
+          <p className="text-sm font-medium">Aucune salle configurée</p>
+          <p className="text-xs mt-1">Cet étage n'a pas encore de salles enregistrées</p>
         </div>
       )}
     </div>
