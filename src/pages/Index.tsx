@@ -15,9 +15,13 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { NotificationBell } from "@/components/NotificationBell";
 import { WeatherPrayerWidget } from "@/components/WeatherPrayerWidget";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useRole } from "@/contexts/RoleContext";
 
 export default function Dashboard() {
   const [selectedEtage, setSelectedEtage] = useState<Etage>('RDC');
+  const { role, pole } = useRole();
+  const isAdmin = role === "Admin";
+  const isChef = role === "Imam/Chef de Pôle";
 
   return (
     <div className="flex-1 overflow-auto">
@@ -26,7 +30,9 @@ export default function Dashboard() {
         <div className="flex-1">
           <h2 className="text-lg font-semibold tracking-tight">Tableau de bord</h2>
           <p className="text-sm text-muted-foreground">
-            Bienvenue sur AMM Ops — Vue d'ensemble du complexe
+            {isChef
+              ? `Vue Pôle ${pole} — Mes activités`
+              : "Bienvenue sur AMM Ops — Vue d'ensemble du complexe"}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -56,16 +62,18 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <ParkingFluxModule />
+        {isAdmin && <ParkingFluxModule />}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <InventaireSummary />
-          <MaintenanceWidget />
+          {isAdmin && <MaintenanceWidget />}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <RecolteSummary />
-        </div>
+        {isAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <RecolteSummary />
+          </div>
+        )}
       </main>
 
       <QuickActions />

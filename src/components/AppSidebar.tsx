@@ -35,6 +35,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRole, type UserRole } from "@/contexts/RoleContext";
+import type { Pole } from "@/types/amm";
+
+const POLES: Pole[] = ["Imam", "École (Avenir)", "Social (ABD)", "Accueil", "Récolte", "Digital", "Com", "Parking"];
 
 interface NavItem {
   title: string;
@@ -64,7 +67,7 @@ const roleIcons: Record<UserRole, React.ElementType> = {
 
 export function AppSidebar() {
   const location = useLocation();
-  const { role, setRole } = useRole();
+  const { role, setRole, pole, setPole } = useRole();
 
   const visibleItems = navItems.filter((item) => item.roles.includes(role));
 
@@ -132,6 +135,23 @@ export function AppSidebar() {
             </SelectContent>
           </Select>
         </div>
+        {role === "Imam/Chef de Pôle" && (
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">
+              Mon Pôle
+            </label>
+            <Select value={pole} onValueChange={(v) => setPole(v as Pole)}>
+              <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {POLES.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="rounded-lg bg-sidebar-accent/50 p-3">
           <p className="text-xs text-sidebar-foreground/50">
             Complexe AMM — Bâtiment R+4
