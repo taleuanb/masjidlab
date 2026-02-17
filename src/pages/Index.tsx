@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Etage } from "@/types/amm";
 import { DashboardStats } from "@/components/DashboardStats";
 import { FloorPlan } from "@/components/FloorPlan";
+import { FloorContextHeader } from "@/components/FloorContextHeader";
+import { FloorMiniStats } from "@/components/FloorMiniStats";
 import { ReservationsToday } from "@/components/ReservationsToday";
 import { InventaireSummary } from "@/components/InventaireSummary";
 import { RecolteSummary } from "@/components/RecolteSummary";
@@ -11,11 +14,9 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { WeatherPrayerWidget } from "@/components/WeatherPrayerWidget";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
-interface DashboardProps {
-  selectedEtage: Etage;
-}
+export default function Dashboard() {
+  const [selectedEtage, setSelectedEtage] = useState<Etage>('RDC');
 
-export default function Dashboard({ selectedEtage }: DashboardProps) {
   return (
     <div className="flex-1 overflow-auto">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/80 backdrop-blur-sm px-6 py-4">
@@ -43,8 +44,10 @@ export default function Dashboard({ selectedEtage }: DashboardProps) {
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-4">
+            <FloorContextHeader selectedEtage={selectedEtage} onEtageChange={setSelectedEtage} />
             <FloorPlan selectedEtage={selectedEtage} />
+            <FloorMiniStats selectedEtage={selectedEtage} />
           </div>
           <div>
             <ReservationsToday />

@@ -6,6 +6,7 @@ export const ETAGES: { value: Etage; label: string }[] = [
   { value: '2', label: '2ème Étage' },
   { value: '3', label: '3ème Étage' },
   { value: '4', label: '4ème Étage' },
+  { value: 'EXT', label: 'Extérieur' },
 ];
 
 export const sallesMock: Salle[] = [

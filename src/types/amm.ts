@@ -1,4 +1,4 @@
-export type Etage = 'RDC' | '1' | '2' | '3' | '4';
+export type Etage = 'RDC' | '1' | '2' | '3' | '4' | 'EXT';
 
 export type TypeSalle = 'Prière Homme' | 'Prière Femme' | 'Classe' | 'Cuisine' | 'Bureau' | 'Parking';
 
