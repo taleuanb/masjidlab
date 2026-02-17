@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      assets: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          nom: string
+          pole_id: string | null
+          statut: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          nom: string
+          pole_id?: string | null
+          statut?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          nom?: string
+          pole_id?: string | null
+          statut?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_pole_id_fkey"
+            columns: ["pole_id"]
+            isOneToOne: false
+            referencedRelation: "poles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           budget: number | null
@@ -59,6 +100,38 @@ export type Database = {
         }
         Relationships: []
       }
+      poles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          nom: string
+          responsable_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          nom: string
+          responsable_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          nom?: string
+          responsable_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poles_responsable_id_fkey"
+            columns: ["responsable_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           competences: string[] | null
@@ -66,6 +139,7 @@ export type Database = {
           display_name: string
           email: string | null
           id: string
+          pole_id: string | null
           updated_at: string
           user_id: string
         }
@@ -75,6 +149,7 @@ export type Database = {
           display_name: string
           email?: string | null
           id?: string
+          pole_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -84,10 +159,19 @@ export type Database = {
           display_name?: string
           email?: string | null
           id?: string
+          pole_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_pole_id_fkey"
+            columns: ["pole_id"]
+            isOneToOne: false
+            referencedRelation: "poles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       replacement_requests: {
         Row: {
