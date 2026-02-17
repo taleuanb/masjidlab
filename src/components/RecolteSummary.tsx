@@ -1,10 +1,21 @@
 import { motion } from "framer-motion";
 import { recoltesMock } from "@/data/mock-data";
-import { HandCoins, TrendingUp } from "lucide-react";
+import { HandCoins, TrendingUp, Inbox } from "lucide-react";
 
 export function RecolteSummary() {
   const total = recoltesMock.reduce((sum, r) => sum + r.montant, 0);
-  const derniere = recoltesMock[0];
+
+  if (recoltesMock.length === 0) {
+    return (
+      <div className="bento-card gradient-emerald-subtle flex flex-col items-center justify-center py-14">
+        <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+          <Inbox className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium text-muted-foreground">Aucune activité financière</p>
+        <p className="text-xs text-muted-foreground/70 mt-1">Aucune récolte saisie pour le moment</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bento-card gradient-emerald-subtle">
