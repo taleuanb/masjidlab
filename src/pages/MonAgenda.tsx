@@ -9,6 +9,8 @@ import {
   Package,
   Ban,
   CalendarDays,
+  AlertTriangle,
+  UserX,
 } from "lucide-react";
 import {
   addDays,
@@ -21,6 +23,8 @@ import {
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { reservationsMock, sallesMock } from "@/data/mock-data";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +33,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,13 +50,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRole } from "@/contexts/RoleContext";
-import { Pole } from "@/types/amm";
+import { useToast } from "@/hooks/use-toast";
+import { Pole, Reservation } from "@/types/amm";
 
-const HEURES = Array.from({ length: 17 }, (_, i) => i + 6); // 6h-22h
+const HEURES = Array.from({ length: 17 }, (_, i) => i + 6);
 
 interface Indisponibilite {
   id: string;
-  jour: string; // ISO date string
+  jour: string;
   heure: number;
 }
 
@@ -67,10 +74,16 @@ const POLE_COLORS: Record<string, string> = {
 
 export default function MonAgendaPage() {
   const { pole } = useRole();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date(2026, 1, 17));
   const [reservations, setReservations] = useState(reservationsMock);
   const [indisponibilites, setIndisponibilites] = useState<Indisponibilite[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [absenceDialogOpen, setAbsenceDialogOpen] = useState(false);
+  const [absenceTarget, setAbsenceTarget] = useState<Reservation | null>(null);
+  const [absenceLoading, setAbsenceLoading] = useState(false);
+  const [absenceMarked, setAbsenceMarked] = useState<Set<string>>(new Set());
   const [newRes, setNewRes] = useState({
     titre: "",
     salleId: "",
@@ -151,6 +164,42 @@ export default function MonAgendaPage() {
     setDialogOpen(false);
   };
 
+  const openAbsenceDialog = (res: Reservation) => {
+    setAbsenceTarget(res);
+    setAbsenceDialogOpen(true);
+  };
+
+  const handleConfirmAbsence = async () => {
+    if (!absenceTarget || !user) return;
+    setAbsenceLoading(true);
+
+    try {
+      const { error } = await supabase.from("user_availability").insert({
+        user_id: user.id,
+        start_time: absenceTarget.debut,
+        end_time: absenceTarget.fin,
+        type: "Indisponibilité",
+      });
+
+      if (error) throw error;
+
+      setAbsenceMarked((prev) => new Set(prev).add(absenceTarget.id));
+      toast({
+        title: "Absence signalée",
+        description: `Votre absence pour "${absenceTarget.titre}" a été enregistrée. Un remplaçant sera recherché.`,
+      });
+      setAbsenceDialogOpen(false);
+    } catch (err: any) {
+      toast({
+        title: "Erreur",
+        description: err.message || "Impossible de signaler l'absence.",
+        variant: "destructive",
+      });
+    } finally {
+      setAbsenceLoading(false);
+    }
+  };
+
   const now = new Date();
 
   return (
@@ -196,7 +245,10 @@ export default function MonAgendaPage() {
               <span>Indisponible</span>
             </div>
             <span className="text-border">·</span>
-            <span>Cliquer sur un créneau vide pour le bloquer</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-orange-500/20 border border-orange-500/30" />
+              <span>Besoin remplaçant</span>
+            </div>
           </div>
         </div>
 
@@ -240,14 +292,12 @@ export default function MonAgendaPage() {
                   key={hour}
                   className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/30 last:border-0"
                 >
-                  {/* Hour label */}
                   <div className="p-2 text-right pr-3 border-r border-border/50">
                     <span className="text-[11px] text-muted-foreground tabular-nums font-medium">
                       {hour.toString().padStart(2, "0")}:00
                     </span>
                   </div>
 
-                  {/* Day cells */}
                   {weekDays.map((day) => {
                     const cellRes = getResForDayHour(day, hour);
                     const unavailable = isIndisponible(day, hour);
@@ -297,7 +347,10 @@ export default function MonAgendaPage() {
                         {cellRes.map((r) => {
                           const salle = sallesMock.find((s) => s.id === r.salleId);
                           const hasMateriel = r.materiel && r.materiel.length > 0;
-                          const colorClass = POLE_COLORS[r.pole] || "bg-muted border-border text-foreground";
+                          const needsReplacement = absenceMarked.has(r.id);
+                          const colorClass = needsReplacement
+                            ? "bg-orange-500/15 border-orange-500/30 text-orange-700"
+                            : POLE_COLORS[r.pole] || "bg-muted border-border text-foreground";
 
                           return (
                             <motion.div
@@ -324,30 +377,53 @@ export default function MonAgendaPage() {
                                   </span>
                                 </div>
                               )}
-                              <div className="mt-1">
-                                {hasMateriel ? (
+                              <div className="mt-1 flex items-center gap-1 flex-wrap">
+                                {needsReplacement ? (
                                   <Badge
                                     variant="outline"
-                                    className="text-[9px] h-4 px-1.5 bg-primary/10 border-primary/20 text-primary"
+                                    className="text-[9px] h-4 px-1.5 bg-orange-500/10 border-orange-500/20 text-orange-600"
                                   >
-                                    <Package className="h-2 w-2 mr-0.5" />
-                                    Confirmé
+                                    <AlertTriangle className="h-2 w-2 mr-0.5" />
+                                    Besoin de remplaçant
                                   </Badge>
                                 ) : (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] h-4 px-1.5 bg-amber-500/10 border-amber-500/20 text-amber-600"
-                                  >
-                                    <Package className="h-2 w-2 mr-0.5" />
-                                    En attente
-                                  </Badge>
+                                  <>
+                                    {hasMateriel ? (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[9px] h-4 px-1.5 bg-primary/10 border-primary/20 text-primary"
+                                      >
+                                        <Package className="h-2 w-2 mr-0.5" />
+                                        Confirmé
+                                      </Badge>
+                                    ) : (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[9px] h-4 px-1.5 bg-amber-500/10 border-amber-500/20 text-amber-600"
+                                      >
+                                        <Package className="h-2 w-2 mr-0.5" />
+                                        En attente
+                                      </Badge>
+                                    )}
+                                    {!isPast && r.pole === pole && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openAbsenceDialog(r);
+                                        }}
+                                        className="inline-flex items-center gap-0.5 text-[9px] h-4 px-1.5 rounded-full border border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors"
+                                      >
+                                        <UserX className="h-2 w-2" />
+                                        Absence
+                                      </button>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </motion.div>
                           );
                         })}
 
-                        {/* Add button on hover */}
                         {cellRes.length === 0 && !unavailable && !isPast && (
                           <button
                             onClick={(e) => {
@@ -411,27 +487,19 @@ export default function MonAgendaPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">
-                  Début
-                </label>
+                <label className="text-xs text-muted-foreground mb-1 block">Début</label>
                 <Input
                   type="time"
                   value={newRes.heureDebut}
-                  onChange={(e) =>
-                    setNewRes({ ...newRes, heureDebut: e.target.value })
-                  }
+                  onChange={(e) => setNewRes({ ...newRes, heureDebut: e.target.value })}
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">
-                  Fin
-                </label>
+                <label className="text-xs text-muted-foreground mb-1 block">Fin</label>
                 <Input
                   type="time"
                   value={newRes.heureFin}
-                  onChange={(e) =>
-                    setNewRes({ ...newRes, heureFin: e.target.value })
-                  }
+                  onChange={(e) => setNewRes({ ...newRes, heureFin: e.target.value })}
                 />
               </div>
             </div>
@@ -448,6 +516,67 @@ export default function MonAgendaPage() {
               Réserver
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Absence Confirmation Dialog */}
+      <Dialog open={absenceDialogOpen} onOpenChange={setAbsenceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <UserX className="h-5 w-5" />
+              Signaler une absence
+            </DialogTitle>
+            <DialogDescription>
+              Confirmez votre indisponibilité pour cet événement. Un remplaçant sera recherché automatiquement.
+            </DialogDescription>
+          </DialogHeader>
+          {absenceTarget && (
+            <div className="space-y-3 mt-2">
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                <p className="text-sm font-semibold">{absenceTarget.titre}</p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  {format(parseISO(absenceTarget.debut), "EEEE d MMMM yyyy — HH:mm", { locale: fr })}
+                  {" → "}
+                  {format(parseISO(absenceTarget.fin), "HH:mm")}
+                </div>
+                {(() => {
+                  const salle = sallesMock.find(s => s.id === absenceTarget.salleId);
+                  return salle ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {salle.nom}
+                    </div>
+                  ) : null;
+                })()}
+                <Badge variant="outline" className="text-[10px]">
+                  Pôle {absenceTarget.pole}
+                </Badge>
+              </div>
+
+              <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    L'événement sera marqué <strong className="text-orange-600">"Besoin de remplaçant"</strong> et visible par les responsables de pôle.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setAbsenceDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmAbsence}
+              disabled={absenceLoading}
+            >
+              {absenceLoading ? "Enregistrement…" : "Confirmer l'absence"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
