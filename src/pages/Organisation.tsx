@@ -13,6 +13,7 @@ import {
   UserCheck,
   Tag,
   Trash2,
+  Mail,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -102,6 +103,14 @@ export default function OrganisationPage() {
   const [editMember, setEditMember] = useState<MemberRow | null>(null);
   const [memberForm, setMemberForm] = useState({ name: "", role: "benevole" as AppRole, pole_id: "none", competences: "" });
   const [memberSaving, setMemberSaving] = useState(false);
+
+  // Invite dialog
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<AppRole>("benevole");
+  const [invitePole, setInvitePole] = useState("none");
+  const [inviting, setInviting] = useState(false);
 
   // ─── Fetch ─────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -252,6 +261,36 @@ export default function OrganisationPage() {
     }
   };
 
+  // ─── Invite handler ─────────────────────────────────────────────────
+  const handleInvite = async () => {
+    if (!inviteName.trim() || !inviteEmail.trim()) return;
+    setInviting(true);
+    try {
+      const res = await supabase.functions.invoke("invite-member", {
+        body: {
+          email: inviteEmail.trim(),
+          display_name: inviteName.trim(),
+          role: inviteRole,
+          pole_id: invitePole === "none" ? null : invitePole,
+        },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      toast({ title: "Invitation envoyée", description: `Invitation envoyée avec succès à ${inviteEmail.trim()}` });
+      setInviteOpen(false);
+      setInviteName("");
+      setInviteEmail("");
+      setInviteRole("benevole");
+      setInvitePole("none");
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setInviting(false);
+    }
+  };
+
   // ─── Filter ────────────────────────────────────────────────────────
   const filtered = members.filter((m) => {
     const q = search.toLowerCase();
@@ -356,6 +395,10 @@ export default function OrganisationPage() {
                   )}
                 </div>
                 <Badge variant="outline" className="text-xs">{filtered.length} résultat{filtered.length !== 1 ? "s" : ""}</Badge>
+                <Button size="sm" onClick={() => setInviteOpen(true)}>
+                  <Mail className="h-4 w-4 mr-1" />
+                  Inviter un membre
+                </Button>
               </div>
 
               <Card>
@@ -539,6 +582,58 @@ export default function OrganisationPage() {
             <Button onClick={handleSaveMember} disabled={memberSaving || !memberForm.name.trim()}>
               {memberSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
               Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Invite Dialog ─────────────────────────────────────────── */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Inviter un nouveau membre</DialogTitle>
+            <DialogDescription>
+              Un email de bienvenue sera envoyé avec un lien pour configurer le mot de passe.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="org-inv-name" className="text-xs">Nom complet</Label>
+              <Input id="org-inv-name" placeholder="Ahmed Ben Ali" value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="org-inv-email" className="text-xs">Adresse email</Label>
+              <Input id="org-inv-email" type="email" placeholder="ahmed@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Rôle</Label>
+              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="imam_chef">Responsable</SelectItem>
+                  <SelectItem value="benevole">Bénévole</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Pôle</Label>
+              <Select value={invitePole} onValueChange={setInvitePole}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun pôle</SelectItem>
+                  {polesRaw.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>Annuler</Button>
+            <Button onClick={handleInvite} disabled={inviting || !inviteName.trim() || !inviteEmail.trim()}>
+              {inviting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
+              Envoyer l'invitation
             </Button>
           </DialogFooter>
         </DialogContent>
