@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Etage } from "@/types/amm";
 import { DashboardStats } from "@/components/DashboardStats";
@@ -7,6 +6,8 @@ import { ReservationsToday } from "@/components/ReservationsToday";
 import { InventaireSummary } from "@/components/InventaireSummary";
 import { RecolteSummary } from "@/components/RecolteSummary";
 import { QuickActions } from "@/components/QuickActions";
+import { CommandPalette } from "@/components/CommandPalette";
+import { NotificationBell } from "@/components/NotificationBell";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface DashboardProps {
@@ -18,11 +19,15 @@ export default function Dashboard({ selectedEtage }: DashboardProps) {
     <div className="flex-1 overflow-auto">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/80 backdrop-blur-sm px-6 py-4">
         <SidebarTrigger />
-        <div>
+        <div className="flex-1">
           <h2 className="text-lg font-semibold tracking-tight">Tableau de bord</h2>
           <p className="text-sm text-muted-foreground">
             Bienvenue sur AMM Ops — Vue d'ensemble du complexe
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <CommandPalette />
+          <NotificationBell />
         </div>
       </header>
 

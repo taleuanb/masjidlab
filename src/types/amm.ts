@@ -6,6 +6,8 @@ export type Pole = 'Social (ABD)' | 'Accueil' | 'Récolte' | 'Digital' | 'Com' |
 
 export type StatutSalle = 'disponible' | 'occupée' | 'réservée' | 'maintenance';
 
+export type Equipement = 'wifi' | 'micro' | 'clim' | 'vidéoprojecteur' | 'sono';
+
 export interface Salle {
   id: string;
   nom: string;
@@ -14,6 +16,16 @@ export interface Salle {
   capacite: number;
   statut: StatutSalle;
   pole?: Pole;
+  equipements?: Equipement[];
+}
+
+export interface Notification {
+  id: string;
+  type: 'stock' | 'message';
+  titre: string;
+  description: string;
+  date: string;
+  lu: boolean;
 }
 
 export interface Materiel {
