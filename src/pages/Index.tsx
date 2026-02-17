@@ -9,6 +9,7 @@ import { ReservationsToday } from "@/components/ReservationsToday";
 import { InventaireSummary } from "@/components/InventaireSummary";
 import { RecolteSummary } from "@/components/RecolteSummary";
 import { QuickActions } from "@/components/QuickActions";
+import { ParkingFluxModule } from "@/components/ParkingFluxModule";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificationBell } from "@/components/NotificationBell";
 import { WeatherPrayerWidget } from "@/components/WeatherPrayerWidget";
@@ -49,8 +50,9 @@ export default function Dashboard() {
             <FloorPlan selectedEtage={selectedEtage} />
             <FloorMiniStats selectedEtage={selectedEtage} />
           </div>
-          <div>
+          <div className="space-y-6">
             <ReservationsToday />
+            <ParkingFluxModule />
           </div>
         </div>
 
