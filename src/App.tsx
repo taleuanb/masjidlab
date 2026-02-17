@@ -12,6 +12,7 @@ import EvenementsPage from "./pages/Evenements";
 import ParkingPage from "./pages/Parking";
 import MaintenancePage from "./pages/Maintenance";
 import MonAgendaPage from "./pages/MonAgenda";
+import MesMissionsPage from "./pages/MesMissions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const AppLayout = () => {
           <Route path="/parking" element={<ParkingPage />} />
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/mon-agenda" element={<MonAgendaPage />} />
+          <Route path="/missions" element={<MesMissionsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
