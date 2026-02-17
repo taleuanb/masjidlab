@@ -1,6 +1,7 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { Wifi, Mic, Snowflake, Monitor, Speaker } from "lucide-react";
 import { sallesMock } from "@/data/mock-data";
-import { Etage, StatutSalle } from "@/types/amm";
+import { Etage, Equipement, StatutSalle } from "@/types/amm";
 
 interface FloorPlanProps {
   selectedEtage: Etage;
@@ -27,6 +28,14 @@ const statutDots: Record<StatutSalle, string> = {
   maintenance: "bg-muted-foreground/50",
 };
 
+const equipementIcons: Record<Equipement, { icon: typeof Wifi; label: string }> = {
+  wifi: { icon: Wifi, label: "Wifi" },
+  micro: { icon: Mic, label: "Micro" },
+  clim: { icon: Snowflake, label: "Clim" },
+  vidéoprojecteur: { icon: Monitor, label: "Vidéo" },
+  sono: { icon: Speaker, label: "Sono" },
+};
+
 export function FloorPlan({ selectedEtage }: FloorPlanProps) {
   const salles = sallesMock.filter(s => s.etage === selectedEtage);
 
@@ -50,30 +59,59 @@ export function FloorPlan({ selectedEtage }: FloorPlanProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {salles.map((salle, i) => (
-          <motion.button
-            key={salle.id}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.05, duration: 0.25 }}
-            className={`relative rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${statutColors[salle.statut]}`}
-          >
-            <p className="text-sm font-medium truncate">{salle.nom}</p>
-            <p className="text-xs text-muted-foreground mt-1">{salle.type}</p>
-            <div className="flex items-center justify-between mt-3">
-              <span className="text-xs text-muted-foreground">
-                {salle.capacite} places
-              </span>
-              {salle.pole && (
-                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-                  {salle.pole}
-                </span>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={selectedEtage}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="grid grid-cols-2 md:grid-cols-3 gap-3"
+        >
+          {salles.map((salle, i) => (
+            <motion.button
+              key={salle.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05, duration: 0.25 }}
+              className={`relative rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${statutColors[salle.statut]}`}
+            >
+              <p className="text-sm font-medium truncate">{salle.nom}</p>
+              <p className="text-xs text-muted-foreground mt-1">{salle.type}</p>
+
+              {/* Equipment badges */}
+              {salle.equipements && salle.equipements.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {salle.equipements.map((eq) => {
+                    const { icon: Icon, label } = equipementIcons[eq];
+                    return (
+                      <span
+                        key={eq}
+                        title={label}
+                        className="inline-flex items-center gap-1 rounded-md bg-muted/80 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                      >
+                        <Icon className="h-3 w-3" />
+                        {label}
+                      </span>
+                    );
+                  })}
+                </div>
               )}
-            </div>
-          </motion.button>
-        ))}
-      </div>
+
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-xs text-muted-foreground">
+                  {salle.capacite} places
+                </span>
+                {salle.pole && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                    {salle.pole}
+                  </span>
+                )}
+              </div>
+            </motion.button>
+          ))}
+        </motion.div>
+      </AnimatePresence>
 
       {salles.length === 0 && (
         <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
