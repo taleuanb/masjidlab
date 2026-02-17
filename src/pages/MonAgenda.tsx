@@ -11,6 +11,9 @@ import {
   CalendarDays,
   AlertTriangle,
   UserX,
+  Users,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import {
   addDays,
@@ -84,6 +87,10 @@ export default function MonAgendaPage() {
   const [absenceTarget, setAbsenceTarget] = useState<Reservation | null>(null);
   const [absenceLoading, setAbsenceLoading] = useState(false);
   const [absenceMarked, setAbsenceMarked] = useState<Set<string>>(new Set());
+  const [absenceStep, setAbsenceStep] = useState<"confirm" | "matching">("confirm");
+  const [matchResults, setMatchResults] = useState<{ user_id: string; display_name: string; competences: string[] }[]>([]);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [selectedReplacement, setSelectedReplacement] = useState<string | null>(null);
   const [newRes, setNewRes] = useState({
     titre: "",
     salleId: "",
@@ -166,6 +173,9 @@ export default function MonAgendaPage() {
 
   const openAbsenceDialog = (res: Reservation) => {
     setAbsenceTarget(res);
+    setAbsenceStep("confirm");
+    setMatchResults([]);
+    setSelectedReplacement(null);
     setAbsenceDialogOpen(true);
   };
 
@@ -186,9 +196,33 @@ export default function MonAgendaPage() {
       setAbsenceMarked((prev) => new Set(prev).add(absenceTarget.id));
       toast({
         title: "Absence signalée",
-        description: `Votre absence pour "${absenceTarget.titre}" a été enregistrée. Un remplaçant sera recherché.`,
+        description: "Recherche de remplaçants en cours…",
       });
-      setAbsenceDialogOpen(false);
+
+      // Move to matching step
+      setAbsenceStep("matching");
+      setMatchLoading(true);
+
+      // Determine required_skill from the event pole
+      const skillMap: Record<string, string> = {
+        Imam: "Imam",
+        "École (Avenir)": "Enseignant",
+        Parking: "Parking",
+        "Social (ABD)": "Gestion Sociale",
+      };
+      const requiredSkill = skillMap[absenceTarget.pole] || absenceTarget.pole;
+
+      const { data, error: fnError } = await supabase.functions.invoke("find-replacements", {
+        body: {
+          required_skill: requiredSkill,
+          start_time: absenceTarget.debut,
+          end_time: absenceTarget.fin,
+          exclude_user_id: user.id,
+        },
+      });
+
+      if (fnError) throw fnError;
+      setMatchResults(data?.replacements || []);
     } catch (err: any) {
       toast({
         title: "Erreur",
@@ -197,6 +231,49 @@ export default function MonAgendaPage() {
       });
     } finally {
       setAbsenceLoading(false);
+      setMatchLoading(false);
+    }
+  };
+
+  const handleSelectReplacement = async (replacementUserId: string) => {
+    if (!absenceTarget || !user) return;
+    setSelectedReplacement(replacementUserId);
+
+    try {
+      // We need an event_id in Supabase. Since current events are mock, we'll create a replacement_request
+      // by first finding or using the event title as reference
+      const { data: matchingEvents } = await supabase
+        .from("events")
+        .select("id")
+        .eq("titre", absenceTarget.titre)
+        .limit(1);
+
+      const eventId = matchingEvents?.[0]?.id;
+
+      if (eventId) {
+        const { error } = await supabase.from("replacement_requests").insert({
+          event_id: eventId,
+          requester_id: user.id,
+          replacement_id: replacementUserId,
+          status: "En attente",
+          note: `Demande automatique pour "${absenceTarget.titre}"`,
+        });
+        if (error) throw error;
+      }
+
+      const selected = matchResults.find((r) => r.user_id === replacementUserId);
+      toast({
+        title: "Remplaçant sélectionné",
+        description: `${selected?.display_name || "Utilisateur"} a été proposé comme remplaçant. En attente de validation.`,
+      });
+      setAbsenceDialogOpen(false);
+    } catch (err: any) {
+      toast({
+        title: "Erreur",
+        description: err.message || "Impossible de sélectionner le remplaçant.",
+        variant: "destructive",
+      });
+      setSelectedReplacement(null);
     }
   };
 
@@ -519,19 +596,31 @@ export default function MonAgendaPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Absence Confirmation Dialog */}
+      {/* Absence + Matching Dialog */}
       <Dialog open={absenceDialogOpen} onOpenChange={setAbsenceDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <UserX className="h-5 w-5" />
-              Signaler une absence
+            <DialogTitle className="flex items-center gap-2">
+              {absenceStep === "confirm" ? (
+                <>
+                  <UserX className="h-5 w-5 text-destructive" />
+                  <span className="text-destructive">Signaler une absence</span>
+                </>
+              ) : (
+                <>
+                  <Users className="h-5 w-5 text-primary" />
+                  Collègues disponibles
+                </>
+              )}
             </DialogTitle>
             <DialogDescription>
-              Confirmez votre indisponibilité pour cet événement. Un remplaçant sera recherché automatiquement.
+              {absenceStep === "confirm"
+                ? "Confirmez votre indisponibilité. Un remplaçant sera recherché automatiquement."
+                : "Sélectionnez un remplaçant parmi les profils disponibles ayant la compétence requise."}
             </DialogDescription>
           </DialogHeader>
-          {absenceTarget && (
+
+          {absenceTarget && absenceStep === "confirm" && (
             <div className="space-y-3 mt-2">
               <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
                 <p className="text-sm font-semibold">{absenceTarget.titre}</p>
@@ -565,17 +654,107 @@ export default function MonAgendaPage() {
               </div>
             </div>
           )}
+
+          {absenceStep === "matching" && (
+            <div className="space-y-3 mt-2">
+              {/* Event summary compact */}
+              {absenceTarget && (
+                <div className="rounded-lg border bg-muted/30 px-3 py-2 flex items-center gap-3">
+                  <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium">{absenceTarget.titre}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Absence enregistrée — Recherche de remplaçants
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {matchLoading ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Recherche en cours…</p>
+                </div>
+              ) : matchResults.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {matchResults.length} remplaçant{matchResults.length > 1 ? "s" : ""} disponible{matchResults.length > 1 ? "s" : ""}
+                  </p>
+                  {matchResults.map((candidate) => (
+                    <motion.div
+                      key={candidate.user_id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center justify-between rounded-lg border bg-card p-3 hover:shadow-sm transition-shadow"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="text-sm font-bold text-primary">
+                            {candidate.display_name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{candidate.display_name}</p>
+                          <div className="flex gap-1 mt-0.5 flex-wrap">
+                            {candidate.competences?.map((c) => (
+                              <Badge key={c} variant="secondary" className="text-[9px] h-4 px-1.5">
+                                {c}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={selectedReplacement === candidate.user_id ? "default" : "outline"}
+                        onClick={() => handleSelectReplacement(candidate.user_id)}
+                        disabled={selectedReplacement !== null}
+                        className="shrink-0"
+                      >
+                        {selectedReplacement === candidate.user_id ? (
+                          <>
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                            Sélectionné
+                          </>
+                        ) : (
+                          "Sélectionner"
+                        )}
+                      </Button>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <Users className="h-8 w-8 opacity-40" />
+                  <p className="text-sm font-medium">Aucun remplaçant disponible</p>
+                  <p className="text-xs text-center">
+                    Aucun profil avec la compétence requise n'est disponible sur ce créneau.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setAbsenceDialogOpen(false)}>
-              Annuler
+              {absenceStep === "matching" ? "Fermer" : "Annuler"}
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmAbsence}
-              disabled={absenceLoading}
-            >
-              {absenceLoading ? "Enregistrement…" : "Confirmer l'absence"}
-            </Button>
+            {absenceStep === "confirm" && (
+              <Button
+                variant="destructive"
+                onClick={handleConfirmAbsence}
+                disabled={absenceLoading}
+              >
+                {absenceLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Enregistrement…
+                  </>
+                ) : (
+                  "Confirmer l'absence"
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
