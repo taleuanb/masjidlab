@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ticketsMock, sallesMock } from "@/data/mock-data";
 import { PrioriteTicket } from "@/types/amm";
 import { toast } from "@/hooks/use-toast";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const prioriteConfig: Record<PrioriteTicket, { label: string; class: string }> = {
   basse: { label: "Basse", class: "bg-muted text-muted-foreground" },
@@ -29,6 +30,7 @@ export function MaintenanceWidget() {
   const [type, setType] = useState("");
   const [priorite, setPriorite] = useState("");
   const [desc, setDesc] = useState("");
+  const { push } = useNotifications();
 
   const lastTickets = [...ticketsMock]
     .filter(t => t.statut !== "résolu")
@@ -37,9 +39,16 @@ export function MaintenanceWidget() {
 
   const handleSubmit = () => {
     if (!salle || !type || !priorite) return;
+    const salleName = sallesMock.find(s => s.id === salle)?.nom ?? salle;
     toast({
       title: "Incident signalé",
-      description: `${type} — ${sallesMock.find(s => s.id === salle)?.nom ?? salle}`,
+      description: `${type} — ${salleName}`,
+    });
+    push({
+      type: "panne",
+      titre: `Panne signalée : ${type}`,
+      description: `${type} en ${salleName}. Priorité : ${prioriteConfig[priorite as PrioriteTicket]?.label ?? priorite}.`,
+      destinataire: "Admin",
     });
     setSalle(""); setType(""); setPriorite(""); setDesc("");
     setOpen(false);

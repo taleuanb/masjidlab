@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useRole } from "@/contexts/RoleContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface Mission {
   id: string;
@@ -104,6 +105,7 @@ const TYPE_STYLES: Record<string, { icon: typeof Check; badge: string }> = {
 function MissionCard({ mission }: { mission: Mission }) {
   const [confirmed, setConfirmed] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const { push } = useNotifications();
 
   const typeStyle = TYPE_STYLES[mission.type] || TYPE_STYLES.accueil;
   const TypeIcon = typeStyle.icon;
@@ -156,7 +158,19 @@ function MissionCard({ mission }: { mission: Mission }) {
 
         {/* Confirm button */}
         <Button
-          onClick={() => setConfirmed(!confirmed)}
+          onClick={() => {
+            const next = !confirmed;
+            setConfirmed(next);
+            if (next) {
+              push({
+                type: "presence",
+                titre: `Présence confirmée : ${mission.titre}`,
+                description: `Un bénévole a confirmé sa présence pour "${mission.titre}" le ${format(parseISO(mission.date), "d MMM", { locale: fr })}.`,
+                destinataire: "Imam/Chef de Pôle",
+                pole: mission.pole,
+              });
+            }
+          }}
           disabled={isPast}
           className={`w-full h-11 text-sm font-semibold transition-all ${
             confirmed
