@@ -1,38 +1,52 @@
 import { motion } from "framer-motion";
 import {
-  DoorOpen,
   Package,
   HandCoins,
-  CalendarCheck,
   TrendingUp,
   AlertTriangle,
   BarChart3,
   Users,
+  Calendar,
+  Box,
 } from "lucide-react";
-import { sallesMock, materielMock, recoltesMock, reservationsMock } from "@/data/mock-data";
-import { Etage } from "@/types/amm";
+import { sallesMock, materielMock, recoltesMock, reservationsMock, evenementsMock } from "@/data/mock-data";
+import { Etage, Pole } from "@/types/amm";
+import { useRole } from "@/contexts/RoleContext";
 
 interface DashboardStatsProps {
   selectedEtage: Etage;
 }
 
 export function DashboardStats({ selectedEtage }: DashboardStatsProps) {
+  const { role, pole } = useRole();
+  const isChef = role === "Imam/Chef de Pôle";
+
+  // ---------- Admin / default stats ----------
   const sallesEtage = sallesMock.filter(s => s.etage === selectedEtage);
   const sallesOccupees = sallesEtage.filter(s => s.statut === 'occupée' || s.statut === 'réservée').length;
   const sallesTotal = sallesEtage.length;
   const tauxOccupation = sallesTotal > 0 ? Math.round((sallesOccupees / sallesTotal) * 100) : 0;
 
   const totalRecolte = recoltesMock.reduce((sum, r) => sum + r.montant, 0);
-  const reservationsJour = reservationsMock.length;
 
   const materielAlerte = materielMock.filter(m => m.quantiteDisponible / m.quantiteTotal < 0.3).length;
 
-  // Mock staffing data
   const benevolesConfirmes = 12;
   const benevolesRequis = 18;
   const staffingRatio = Math.round((benevolesConfirmes / benevolesRequis) * 100);
 
-  const stats = [
+  // ---------- Chef de Pôle stats ----------
+  const poleEvenements = evenementsMock.filter(e => e.pole === pole);
+  const poleReservations = reservationsMock.filter(r => r.pole === pole);
+
+  const poleBenevolesTotal = poleEvenements.reduce((sum, e) => sum + e.benevoles.length, 0);
+  const poleBenevolesConfirmes = poleEvenements.reduce((sum, e) => sum + e.benevoles.filter(b => b.confirme).length, 0);
+  const poleStaffing = poleBenevolesTotal > 0 ? Math.round((poleBenevolesConfirmes / poleBenevolesTotal) * 100) : 0;
+
+  const poleMaterielReserve = poleReservations.reduce((sum, r) => sum + (r.materiel?.reduce((s, m) => s + m.quantite, 0) ?? 0), 0)
+    + poleEvenements.reduce((sum, e) => sum + e.materiel.reduce((s, m) => s + m.quantite, 0), 0);
+
+  const adminStats = [
     {
       label: "Taux d'occupation",
       value: `${tauxOccupation}%`,
@@ -64,6 +78,40 @@ export function DashboardStats({ selectedEtage }: DashboardStatsProps) {
       variant: materielAlerte > 0 ? ("warning" as const) : ("default" as const),
     },
   ];
+
+  const chefStats = [
+    {
+      label: "Mes Événements",
+      value: poleEvenements.length.toString(),
+      sub: `Sessions prévues · Pôle ${pole}`,
+      icon: Calendar,
+      variant: "highlight" as const,
+    },
+    {
+      label: "Taux de Staffing",
+      value: `${poleBenevolesConfirmes}/${poleBenevolesTotal}`,
+      sub: `${poleStaffing}% confirmés`,
+      icon: Users,
+      variant: poleStaffing < 70 ? "warning" as const : "highlight" as const,
+      progress: poleStaffing,
+    },
+    {
+      label: "Ressources Réservées",
+      value: poleMaterielReserve.toString(),
+      sub: "Assets bloqués pour mon pôle",
+      icon: Box,
+      variant: "default" as const,
+    },
+    {
+      label: "Réservations",
+      value: poleReservations.length.toString(),
+      sub: "Créneaux réservés ce mois",
+      icon: BarChart3,
+      variant: "default" as const,
+    },
+  ];
+
+  const stats = isChef ? chefStats : adminStats;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -106,7 +154,6 @@ export function DashboardStats({ selectedEtage }: DashboardStatsProps) {
               }`} />
             </div>
           </div>
-          {/* Mini progress bar for occupation & staffing */}
           {'progress' in stat && stat.progress !== undefined && (
             <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
               <motion.div
@@ -114,7 +161,7 @@ export function DashboardStats({ selectedEtage }: DashboardStatsProps) {
                 animate={{ width: `${stat.progress}%` }}
                 transition={{ delay: 0.4 + i * 0.08, duration: 0.6 }}
                 className={`h-full rounded-full ${
-                  stat.progress < 50 ? 'bg-destructive' : stat.progress < 80 ? 'bg-primary' : 'bg-primary'
+                  stat.progress < 50 ? 'bg-destructive' : 'bg-primary'
                 }`}
               />
             </div>
