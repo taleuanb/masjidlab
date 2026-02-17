@@ -14,6 +14,8 @@ import {
   Users,
   CheckCircle2,
   Loader2,
+  RefreshCw,
+  ShieldAlert,
 } from "lucide-react";
 import {
   addDays,
@@ -53,6 +55,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRole } from "@/contexts/RoleContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { useToast } from "@/hooks/use-toast";
 import { Pole, Reservation } from "@/types/amm";
 
@@ -79,6 +82,7 @@ export default function MonAgendaPage() {
   const { pole } = useRole();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { push: pushNotification } = useNotifications();
   const [currentDate, setCurrentDate] = useState(new Date(2026, 1, 17));
   const [reservations, setReservations] = useState(reservationsMock);
   const [indisponibilites, setIndisponibilites] = useState<Indisponibilite[]>([]);
@@ -86,11 +90,12 @@ export default function MonAgendaPage() {
   const [absenceDialogOpen, setAbsenceDialogOpen] = useState(false);
   const [absenceTarget, setAbsenceTarget] = useState<Reservation | null>(null);
   const [absenceLoading, setAbsenceLoading] = useState(false);
-  const [absenceMarked, setAbsenceMarked] = useState<Set<string>>(new Set());
+  const [absenceMarked, setAbsenceMarked] = useState<Map<string, "replacement" | "uncovered">>(new Map());
   const [absenceStep, setAbsenceStep] = useState<"confirm" | "matching">("confirm");
   const [matchResults, setMatchResults] = useState<{ user_id: string; display_name: string; competences: string[] }[]>([]);
   const [matchLoading, setMatchLoading] = useState(false);
   const [selectedReplacement, setSelectedReplacement] = useState<string | null>(null);
+  const [skipLoading, setSkipLoading] = useState(false);
   const [newRes, setNewRes] = useState({
     titre: "",
     salleId: "",
@@ -193,7 +198,7 @@ export default function MonAgendaPage() {
 
       if (error) throw error;
 
-      setAbsenceMarked((prev) => new Set(prev).add(absenceTarget.id));
+      setAbsenceMarked((prev) => new Map(prev).set(absenceTarget.id, "replacement"));
       toast({
         title: "Absence signalée",
         description: "Recherche de remplaçants en cours…",
@@ -240,8 +245,6 @@ export default function MonAgendaPage() {
     setSelectedReplacement(replacementUserId);
 
     try {
-      // We need an event_id in Supabase. Since current events are mock, we'll create a replacement_request
-      // by first finding or using the event title as reference
       const { data: matchingEvents } = await supabase
         .from("events")
         .select("id")
@@ -262,9 +265,22 @@ export default function MonAgendaPage() {
       }
 
       const selected = matchResults.find((r) => r.user_id === replacementUserId);
+
+      // Mark as "replacement in progress"
+      setAbsenceMarked((prev) => new Map(prev).set(absenceTarget.id, "replacement"));
+
+      // Notify Chef de Pôle
+      pushNotification({
+        type: "changement",
+        titre: `🔄 Demande de remplacement`,
+        description: `${user.email?.split("@")[0] || "Utilisateur"} demande ${selected?.display_name || "un remplaçant"} pour "${absenceTarget.titre}"`,
+        destinataire: "Imam/Chef de Pôle",
+        pole: absenceTarget.pole,
+      });
+
       toast({
         title: "Remplaçant sélectionné",
-        description: `${selected?.display_name || "Utilisateur"} a été proposé comme remplaçant. En attente de validation.`,
+        description: `${selected?.display_name || "Utilisateur"} proposé. Notification envoyée au responsable de pôle.`,
       });
       setAbsenceDialogOpen(false);
     } catch (err: any) {
@@ -274,6 +290,65 @@ export default function MonAgendaPage() {
         variant: "destructive",
       });
       setSelectedReplacement(null);
+    }
+  };
+
+  const handleSkipReplacement = async () => {
+    if (!absenceTarget || !user) return;
+    setSkipLoading(true);
+
+    try {
+      // Find event in Supabase
+      const { data: matchingEvents } = await supabase
+        .from("events")
+        .select("id")
+        .eq("titre", absenceTarget.titre)
+        .limit(1);
+
+      const eventId = matchingEvents?.[0]?.id;
+
+      // Create urgent alert
+      await supabase.from("urgent_alerts").insert({
+        event_id: eventId || null,
+        event_titre: absenceTarget.titre,
+        requester_id: user.id,
+        requester_name: user.email?.split("@")[0] || "Utilisateur",
+        pole: absenceTarget.pole,
+        message: `ABSENCE NON COUVERTE : ${user.email?.split("@")[0] || "Utilisateur"} est absent(e) pour "${absenceTarget.titre}" et aucun remplaçant n'a été assigné.`,
+      });
+
+      // Mark as uncovered (red)
+      setAbsenceMarked((prev) => new Map(prev).set(absenceTarget.id, "uncovered"));
+
+      // Notify Admin + Chef de Pôle
+      pushNotification({
+        type: "panne",
+        titre: `⚠️ ALERTE : Absence non couverte`,
+        description: `${user.email?.split("@")[0] || "Utilisateur"} est absent(e) pour "${absenceTarget.titre}" — Aucun remplaçant assigné !`,
+        destinataire: "Admin",
+      });
+      pushNotification({
+        type: "panne",
+        titre: `⚠️ Absence non couverte — ${absenceTarget.pole}`,
+        description: `"${absenceTarget.titre}" n'a pas de remplaçant. Action urgente requise.`,
+        destinataire: "Imam/Chef de Pôle",
+        pole: absenceTarget.pole,
+      });
+
+      toast({
+        title: "Alerte créée",
+        description: "L'absence non couverte a été signalée aux responsables.",
+        variant: "destructive",
+      });
+      setAbsenceDialogOpen(false);
+    } catch (err: any) {
+      toast({
+        title: "Erreur",
+        description: err.message || "Impossible de créer l'alerte.",
+        variant: "destructive",
+      });
+    } finally {
+      setSkipLoading(false);
     }
   };
 
@@ -324,7 +399,12 @@ export default function MonAgendaPage() {
             <span className="text-border">·</span>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded bg-orange-500/20 border border-orange-500/30" />
-              <span>Besoin remplaçant</span>
+              <span>Remplacement en cours</span>
+            </div>
+            <span className="text-border">·</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded bg-destructive/20 border border-destructive/30" />
+              <span>Absence non couverte</span>
             </div>
           </div>
         </div>
@@ -424,8 +504,12 @@ export default function MonAgendaPage() {
                         {cellRes.map((r) => {
                           const salle = sallesMock.find((s) => s.id === r.salleId);
                           const hasMateriel = r.materiel && r.materiel.length > 0;
-                          const needsReplacement = absenceMarked.has(r.id);
-                          const colorClass = needsReplacement
+                          const absenceStatus = absenceMarked.get(r.id);
+                          const isReplacing = absenceStatus === "replacement";
+                          const isUncovered = absenceStatus === "uncovered";
+                          const colorClass = isUncovered
+                            ? "bg-destructive/10 border-destructive/30 text-destructive"
+                            : isReplacing
                             ? "bg-orange-500/15 border-orange-500/30 text-orange-700"
                             : POLE_COLORS[r.pole] || "bg-muted border-border text-foreground";
 
@@ -455,13 +539,21 @@ export default function MonAgendaPage() {
                                 </div>
                               )}
                               <div className="mt-1 flex items-center gap-1 flex-wrap">
-                                {needsReplacement ? (
+                                {isUncovered ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] h-4 px-1.5 bg-destructive/10 border-destructive/20 text-destructive"
+                                  >
+                                    <ShieldAlert className="h-2 w-2 mr-0.5" />
+                                    ⚠️ ABSENCE NON COUVERTE
+                                  </Badge>
+                                ) : isReplacing ? (
                                   <Badge
                                     variant="outline"
                                     className="text-[9px] h-4 px-1.5 bg-orange-500/10 border-orange-500/20 text-orange-600"
                                   >
-                                    <AlertTriangle className="h-2 w-2 mr-0.5" />
-                                    Besoin de remplaçant
+                                    <RefreshCw className="h-2 w-2 mr-0.5" />
+                                    🔄 Remplacement en cours
                                   </Badge>
                                 ) : (
                                   <>
@@ -736,24 +828,58 @@ export default function MonAgendaPage() {
           )}
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setAbsenceDialogOpen(false)}>
-              {absenceStep === "matching" ? "Fermer" : "Annuler"}
-            </Button>
-            {absenceStep === "confirm" && (
-              <Button
-                variant="destructive"
-                onClick={handleConfirmAbsence}
-                disabled={absenceLoading}
-              >
-                {absenceLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    Enregistrement…
-                  </>
-                ) : (
-                  "Confirmer l'absence"
-                )}
-              </Button>
+            {absenceStep === "matching" && !matchLoading && matchResults.length === 0 ? (
+              <>
+                <Button variant="outline" onClick={() => setAbsenceDialogOpen(false)}>
+                  Fermer
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleSkipReplacement}
+                  disabled={skipLoading}
+                >
+                  {skipLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Envoi…
+                    </>
+                  ) : (
+                    <>
+                      <ShieldAlert className="h-4 w-4 mr-1" />
+                      Signaler sans remplaçant
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : absenceStep === "matching" ? (
+              <>
+                <Button variant="outline" onClick={handleSkipReplacement} disabled={skipLoading || selectedReplacement !== null}>
+                  {skipLoading ? "Envoi…" : "Aucun remplaçant"}
+                </Button>
+                <Button variant="outline" onClick={() => setAbsenceDialogOpen(false)}>
+                  Fermer
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setAbsenceDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleConfirmAbsence}
+                  disabled={absenceLoading}
+                >
+                  {absenceLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Enregistrement…
+                    </>
+                  ) : (
+                    "Confirmer l'absence"
+                  )}
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>
