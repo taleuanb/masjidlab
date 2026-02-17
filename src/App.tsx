@@ -2,10 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
 import PlanningPage from "./pages/Planning";
@@ -14,9 +15,29 @@ import ParkingPage from "./pages/Parking";
 import MaintenancePage from "./pages/Maintenance";
 import MonAgendaPage from "./pages/MonAgenda";
 import MesMissionsPage from "./pages/MesMissions";
+import LoginPage from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 const AppLayout = () => {
   return (
@@ -41,15 +62,27 @@ const AppLayout = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <RoleProvider>
-        <NotificationProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppLayout />
-          </BrowserRouter>
-        </NotificationProvider>
-      </RoleProvider>
+      <AuthProvider>
+        <RoleProvider>
+          <NotificationProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route
+                  path="/*"
+                  element={
+                    <RequireAuth>
+                      <AppLayout />
+                    </RequireAuth>
+                  }
+                />
+              </Routes>
+            </BrowserRouter>
+          </NotificationProvider>
+        </RoleProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
