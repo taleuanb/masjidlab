@@ -9,6 +9,7 @@ import { ReservationsToday } from "@/components/ReservationsToday";
 import { InventaireSummary } from "@/components/InventaireSummary";
 import { RecolteSummary } from "@/components/RecolteSummary";
 import { QuickActions } from "@/components/QuickActions";
+import { MaintenanceWidget } from "@/components/MaintenanceWidget";
 import { ParkingFluxModule } from "@/components/ParkingFluxModule";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -59,6 +60,10 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <InventaireSummary />
+          <MaintenanceWidget />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <RecolteSummary />
         </div>
       </main>
