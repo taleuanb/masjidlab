@@ -1,14 +1,56 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Etage } from "@/types/amm";
+import { DashboardStats } from "@/components/DashboardStats";
+import { FloorPlan } from "@/components/FloorPlan";
+import { ReservationsToday } from "@/components/ReservationsToday";
+import { InventaireSummary } from "@/components/InventaireSummary";
+import { RecolteSummary } from "@/components/RecolteSummary";
+import { QuickActions } from "@/components/QuickActions";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
-const Index = () => {
+interface DashboardProps {
+  selectedEtage: Etage;
+}
+
+export default function Dashboard({ selectedEtage }: DashboardProps) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="flex-1 overflow-auto">
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/80 backdrop-blur-sm px-6 py-4">
+        <SidebarTrigger />
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Tableau de bord</h2>
+          <p className="text-sm text-muted-foreground">
+            Bienvenue sur AMM Ops — Vue d'ensemble du complexe
+          </p>
+        </div>
+      </header>
+
+      <main className="p-6 space-y-6">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <DashboardStats selectedEtage={selectedEtage} />
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <FloorPlan selectedEtage={selectedEtage} />
+          </div>
+          <div>
+            <ReservationsToday />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InventaireSummary />
+          <RecolteSummary />
+        </div>
+      </main>
+
+      <QuickActions />
     </div>
   );
-};
-
-export default Index;
+}
