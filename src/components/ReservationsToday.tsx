@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { reservationsMock, sallesMock } from "@/data/mock-data";
+import { supabase } from "@/integrations/supabase/client";
+import { sallesMock } from "@/data/mock-data";
 import { Clock, MapPin, ChevronUp, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+
+interface EventRow {
+  id: string;
+  titre: string;
+  description: string | null;
+  date: string;
+  salle_id: string | null;
+  pole: string | null;
+  required_skill: string | null;
+}
 
 const poleBadgeColors: Record<string, string> = {
   "Imam": "bg-primary/15 text-primary border-primary/20",
@@ -15,7 +26,7 @@ const poleBadgeColors: Record<string, string> = {
   "Parking": "bg-slate-500/15 text-slate-700 border-slate-500/20",
 };
 
-const HOUR_HEIGHT = 80; // px per hour
+const HOUR_HEIGHT = 80;
 const START_HOUR = 6;
 const END_HOUR = 23;
 const TOTAL_HOURS = END_HOUR - START_HOUR;
@@ -28,12 +39,25 @@ function timeToY(date: Date): number {
 
 export function ReservationsToday() {
   const [now, setNow] = useState(new Date());
+  const [events, setEvents] = useState<EventRow[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasScrolled = useRef(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Fetch events from Supabase for today
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    supabase
+      .from("events")
+      .select("id, titre, description, date, salle_id, pole, required_skill")
+      .eq("date", today)
+      .then(({ data }) => {
+        if (data) setEvents(data);
+      });
   }, []);
 
   // Scroll to "now" on mount
@@ -45,19 +69,20 @@ export function ReservationsToday() {
     }
   }, [now]);
 
-  const today = now.toISOString().slice(0, 10);
-  const todayRes = reservationsMock
-    .filter(r => r.debut.startsWith(today))
-    .sort((a, b) => new Date(a.debut).getTime() - new Date(b.debut).getTime());
-
   const nowY = timeToY(now);
 
   const scrollBy = (delta: number) => {
     scrollRef.current?.scrollBy({ top: delta, behavior: "smooth" });
   };
 
-  // Hour labels
   const hours = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => START_HOUR + i);
+
+  // Map events to timeline slots (events only have a date, so show them at 9:00 for 2h by default)
+  const todaySlots = events.map((ev) => {
+    const debut = new Date(`${ev.date}T09:00`);
+    const fin = new Date(`${ev.date}T11:00`);
+    return { ...ev, debut, fin };
+  });
 
   return (
     <div className="bento-card flex flex-col">
@@ -70,22 +95,15 @@ export function ReservationsToday() {
           </p>
         </div>
         <div className="flex flex-col gap-0.5">
-          <button
-            onClick={() => scrollBy(-HOUR_HEIGHT * 2)}
-            className="rounded-md p-1 hover:bg-muted transition-colors"
-          >
+          <button onClick={() => scrollBy(-HOUR_HEIGHT * 2)} className="rounded-md p-1 hover:bg-muted transition-colors">
             <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
-          <button
-            onClick={() => scrollBy(HOUR_HEIGHT * 2)}
-            className="rounded-md p-1 hover:bg-muted transition-colors"
-          >
+          <button onClick={() => scrollBy(HOUR_HEIGHT * 2)} className="rounded-md p-1 hover:bg-muted transition-colors">
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         </div>
       </div>
 
-      {/* Scrollable timeline */}
       <div
         ref={scrollRef}
         className="relative overflow-y-auto overscroll-contain flex-1"
@@ -96,20 +114,13 @@ export function ReservationsToday() {
           el.style.cursor = "grabbing";
           const startY = e.clientY;
           const startScroll = el.scrollTop;
-          const onMove = (ev: MouseEvent) => {
-            el.scrollTop = startScroll - (ev.clientY - startY);
-          };
-          const onUp = () => {
-            el.style.cursor = "grab";
-            window.removeEventListener("mousemove", onMove);
-            window.removeEventListener("mouseup", onUp);
-          };
+          const onMove = (ev: MouseEvent) => { el.scrollTop = startScroll - (ev.clientY - startY); };
+          const onUp = () => { el.style.cursor = "grab"; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
           window.addEventListener("mousemove", onMove);
           window.addEventListener("mouseup", onUp);
         }}
       >
         <div className="relative" style={{ height: TIMELINE_HEIGHT }}>
-          {/* Hour grid lines */}
           {hours.map((h) => {
             const y = (h - START_HOUR) * HOUR_HEIGHT;
             return (
@@ -124,7 +135,6 @@ export function ReservationsToday() {
             );
           })}
 
-          {/* NOW marker */}
           {nowY >= 0 && nowY <= TIMELINE_HEIGHT && (
             <motion.div
               className="absolute left-0 right-0 z-20 pointer-events-none flex items-center gap-1"
@@ -144,37 +154,34 @@ export function ReservationsToday() {
             </motion.div>
           )}
 
-          {/* Events */}
-          {todayRes.map((res, i) => {
-            const salle = sallesMock.find(s => s.id === res.salleId);
-            const debut = new Date(res.debut);
-            const fin = new Date(res.fin);
-            const isPast = fin < now;
-            const isCurrent = debut <= now && fin >= now;
-            const top = timeToY(debut);
-            const height = Math.max(timeToY(fin) - top, 36);
-            const heureDebut = debut.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-            const heureFin = fin.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-            const badgeClass = poleBadgeColors[res.pole] || "bg-muted text-muted-foreground border-border";
+          {todaySlots.map((ev, i) => {
+            const salle = sallesMock.find(s => s.id === ev.salle_id);
+            const isPast = ev.fin < now;
+            const isCurrent = ev.debut <= now && ev.fin >= now;
+            const top = timeToY(ev.debut);
+            const height = Math.max(timeToY(ev.fin) - top, 36);
+            const heureDebut = ev.debut.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+            const heureFin = ev.fin.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+            const badgeClass = poleBadgeColors[ev.pole || ""] || "bg-muted text-muted-foreground border-border";
 
             return (
               <motion.div
-                key={res.id}
+                key={ev.id}
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06 }}
                 className={`absolute left-14 right-1 rounded-lg border p-2.5 transition-colors hover:shadow-md cursor-pointer select-none ${
-                  isCurrent
-                    ? "bg-primary/5 border-primary/20 shadow-sm"
-                    : "bg-card border-border hover:bg-muted/50"
+                  isCurrent ? "bg-primary/5 border-primary/20 shadow-sm" : "bg-card border-border hover:bg-muted/50"
                 } ${isPast ? "opacity-50" : ""}`}
                 style={{ top, minHeight: height }}
               >
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="text-xs font-medium truncate">{res.titre}</p>
-                  <Badge variant="outline" className={`text-[9px] px-1.5 py-0 leading-4 ${badgeClass}`}>
-                    {res.pole}
-                  </Badge>
+                  <p className="text-xs font-medium truncate">{ev.titre}</p>
+                  {ev.pole && (
+                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 leading-4 ${badgeClass}`}>
+                      {ev.pole}
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
                   <span className="flex items-center gap-0.5">
@@ -192,9 +199,9 @@ export function ReservationsToday() {
             );
           })}
 
-          {todayRes.length === 0 && (
+          {todaySlots.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">Aucune réservation aujourd'hui</p>
+              <p className="text-sm text-muted-foreground">Aucun événement aujourd'hui</p>
             </div>
           )}
         </div>
