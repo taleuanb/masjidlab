@@ -11,6 +11,7 @@ import PlanningPage from "./pages/Planning";
 import EvenementsPage from "./pages/Evenements";
 import ParkingPage from "./pages/Parking";
 import MaintenancePage from "./pages/Maintenance";
+import MonAgendaPage from "./pages/MonAgenda";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const AppLayout = () => {
           <Route path="/evenements" element={<EvenementsPage />} />
           <Route path="/parking" element={<ParkingPage />} />
           <Route path="/maintenance" element={<MaintenancePage />} />
+          <Route path="/mon-agenda" element={<MonAgendaPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
