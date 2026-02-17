@@ -18,6 +18,7 @@ import MonAgendaPage from "./pages/MonAgenda";
 import MesMissionsPage from "./pages/MesMissions";
 import ApprobationsPage from "./pages/Approbations";
 import GestionOperationsPage from "./pages/GestionOperations";
+import GestionMembresPage from "./pages/GestionMembres";
 import LoginPage from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -57,6 +58,7 @@ const AppLayout = () => {
           <Route path="/missions" element={<MesMissionsPage />} />
           <Route path="/approbations" element={<ApprobationsPage />} />
           <Route path="/operations" element={<GestionOperationsPage />} />
+          <Route path="/membres" element={<GestionMembresPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
