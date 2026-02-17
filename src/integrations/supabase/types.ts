@@ -130,6 +130,53 @@ export type Database = {
           },
         ]
       }
+      urgent_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          event_id: string | null
+          event_titre: string
+          id: string
+          message: string
+          pole: string | null
+          requester_id: string
+          requester_name: string
+          resolved: boolean
+        }
+        Insert: {
+          alert_type?: string
+          created_at?: string
+          event_id?: string | null
+          event_titre: string
+          id?: string
+          message: string
+          pole?: string | null
+          requester_id: string
+          requester_name: string
+          resolved?: boolean
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          event_id?: string | null
+          event_titre?: string
+          id?: string
+          message?: string
+          pole?: string | null
+          requester_id?: string
+          requester_name?: string
+          resolved?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "urgent_alerts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_availability: {
         Row: {
           created_at: string
