@@ -8,6 +8,9 @@ import {
   HandCoins,
   Users,
   ChevronDown,
+  Calendar,
+  Car,
+  Wrench,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { ETAGES } from "@/data/mock-data";
@@ -27,8 +30,11 @@ import {
 
 const navItems = [
   { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
-  { title: "Inventaire", url: "/inventaire", icon: Package },
   { title: "Planning", url: "/planning", icon: CalendarDays },
+  { title: "Événements", url: "/evenements", icon: Calendar },
+  { title: "Inventaire", url: "/inventaire", icon: Package },
+  { title: "Parking", url: "/parking", icon: Car },
+  { title: "Maintenance", url: "/maintenance", icon: Wrench },
   { title: "Récoltes", url: "/recoltes", icon: HandCoins },
   { title: "Pôles", url: "/poles", icon: Users },
 ];

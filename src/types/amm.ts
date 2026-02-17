@@ -55,3 +55,53 @@ export interface Recolte {
   description?: string;
   pole?: Pole;
 }
+
+export type PrioriteTicket = 'basse' | 'moyenne' | 'haute' | 'urgente';
+export type StatutTicket = 'ouvert' | 'en_cours' | 'résolu';
+
+export interface TicketMaintenance {
+  id: string;
+  titre: string;
+  description: string;
+  localisation: string;
+  priorite: PrioriteTicket;
+  statut: StatutTicket;
+  signalePar: Pole;
+  dateCreation: string;
+}
+
+export interface Evenement {
+  id: string;
+  titre: string;
+  description: string;
+  date: string;
+  salleId: string;
+  budget: number;
+  budgetDepense: number;
+  benevoles: { nom: string; confirme: boolean }[];
+  materiel: { materielId: string; quantite: number }[];
+  pole: Pole;
+}
+
+export interface PlaceParking {
+  id: string;
+  numero: number;
+  zone: 'A' | 'B' | 'C';
+  occupee: boolean;
+}
+
+export interface BenevoleParkingPoste {
+  id: string;
+  nom: string;
+  poste: 'Entrée principale' | 'Entrée secondaire' | 'Sortie' | 'Guidage';
+  present: boolean;
+}
+
+export interface Recolte {
+  id: string;
+  date: string;
+  montant: number;
+  type: 'Joumou\'a' | 'Campagne' | 'Don' | 'Autre';
+  description?: string;
+  pole?: Pole;
+}

@@ -8,6 +8,10 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Etage } from "@/types/amm";
 import Index from "./pages/Index";
+import PlanningPage from "./pages/Planning";
+import EvenementsPage from "./pages/Evenements";
+import ParkingPage from "./pages/Parking";
+import MaintenancePage from "./pages/Maintenance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +25,10 @@ const AppLayout = () => {
         <AppSidebar selectedEtage={selectedEtage} onEtageChange={setSelectedEtage} />
         <Routes>
           <Route path="/" element={<Index selectedEtage={selectedEtage} />} />
+          <Route path="/planning" element={<PlanningPage />} />
+          <Route path="/evenements" element={<EvenementsPage />} />
+          <Route path="/parking" element={<ParkingPage />} />
+          <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
