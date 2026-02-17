@@ -1,6 +1,15 @@
 import { motion } from "framer-motion";
 import { reservationsMock, sallesMock } from "@/data/mock-data";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, MapPin, Users } from "lucide-react";
+
+type Affluence = 'Faible' | 'Moyenne' | 'Forte';
+
+function estimerAffluence(capacite: number, pole: string): { level: Affluence; color: string } {
+  // Heuristic: prayer rooms + large events = Forte, small classes = Faible
+  if (pole === 'Imam' || capacite >= 200) return { level: 'Forte', color: 'bg-destructive/10 text-destructive' };
+  if (capacite >= 50 || pole === 'Social (ABD)') return { level: 'Moyenne', color: 'bg-amber-500/10 text-amber-600' };
+  return { level: 'Faible', color: 'bg-primary/10 text-primary' };
+}
 
 export function ReservationsToday() {
   return (
@@ -13,6 +22,7 @@ export function ReservationsToday() {
           const salle = sallesMock.find(s => s.id === res.salleId);
           const heureDebut = new Date(res.debut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
           const heureFin = new Date(res.fin).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          const affluence = estimerAffluence(salle?.capacite ?? 0, res.pole);
 
           return (
             <motion.div
@@ -24,7 +34,13 @@ export function ReservationsToday() {
             >
               <div className="mt-0.5 h-2 w-2 rounded-full bg-primary shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{res.titre}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium truncate">{res.titre}</p>
+                  <span className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5 ${affluence.color}`}>
+                    <Users className="h-3 w-3" />
+                    {affluence.level}
+                  </span>
+                </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
