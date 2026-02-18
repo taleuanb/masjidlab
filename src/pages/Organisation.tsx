@@ -272,6 +272,7 @@ export default function OrganisationPage() {
           display_name: inviteName.trim(),
           role: inviteRole,
           pole_id: invitePole === "none" ? null : invitePole,
+          redirect_to: `${window.location.origin}/set-password`,
         },
       });
       if (res.error) throw new Error(res.error.message);
