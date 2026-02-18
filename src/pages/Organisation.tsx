@@ -20,6 +20,8 @@ import {
   Phone,
   PhoneCall,
   UserPlus,
+  ExternalLink,
+  UserCog,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +36,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -86,11 +89,15 @@ interface PoleRow {
   description: string | null;
   responsable_id: string | null;
   responsable_name: string | null;
+  manager_id: string | null;
+  manager_name: string | null;
+  target_staff: number;
   member_count: number;
 }
 
 interface MemberRow {
   user_id: string;
+  profile_id: string; // profiles.id (PK)
   display_name: string;
   email: string | null;
   phone: string | null;
@@ -118,7 +125,7 @@ export default function OrganisationPage() {
   // Pole dialog
   const [poleDialogOpen, setPoleDialogOpen] = useState(false);
   const [editingPole, setEditingPole] = useState<PoleRow | null>(null);
-  const [poleForm, setPoleForm] = useState({ nom: "", description: "" });
+  const [poleForm, setPoleForm] = useState({ nom: "", description: "", manager_id: "none", target_staff: 0 });
   const [poleSaving, setPoleSaving] = useState(false);
 
   // Member edit dialog
@@ -148,7 +155,7 @@ export default function OrganisationPage() {
     setLoading(true);
     try {
       // Poles
-      const { data: polesData } = await supabase.from("poles").select("id, nom, description, responsable_id").order("nom");
+      const { data: polesData } = await supabase.from("poles").select("id, nom, description, responsable_id, manager_id, target_staff").order("nom");
       
       // All profiles
       const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, phone, competences, pole_id, id, is_active, has_account").order("display_name");
@@ -158,27 +165,31 @@ export default function OrganisationPage() {
 
       const roleMap = new Map((roles || []).map((r) => [r.user_id, { role: r.role as AppRole, id: r.id }]));
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-      const profileByUserId = new Map((profiles || []).map((p: any) => [p.user_id, p]));
 
-      // Build poles with counts & responsable name
-      const enrichedPoles: PoleRow[] = (polesData || []).map((p) => {
+      // Build poles with counts, responsable name, manager name
+      const enrichedPoles: PoleRow[] = (polesData || []).map((p: any) => {
         const memberCount = (profiles || []).filter((pr: any) => pr.pole_id === p.id).length;
         const resp = p.responsable_id ? profileMap.get(p.responsable_id) : null;
+        const mgr = p.manager_id ? profileMap.get(p.manager_id) : null;
         return {
           id: p.id,
           nom: p.nom,
           description: p.description,
           responsable_id: p.responsable_id,
           responsable_name: resp?.display_name || null,
+          manager_id: p.manager_id || null,
+          manager_name: mgr?.display_name || null,
+          target_staff: p.target_staff ?? 0,
           member_count: memberCount,
         };
       });
       setPoles(enrichedPoles);
-      setPolesRaw((polesData || []).map((p) => ({ id: p.id, nom: p.nom })));
+      setPolesRaw((polesData || []).map((p: any) => ({ id: p.id, nom: p.nom })));
 
       // Build members
       const enrichedMembers: MemberRow[] = (profiles || []).map((p: any) => ({
         user_id: p.user_id,
+        profile_id: p.id,
         display_name: p.display_name,
         email: p.email,
         phone: p.phone || null,
@@ -202,23 +213,42 @@ export default function OrganisationPage() {
   // ─── Pole CRUD ─────────────────────────────────────────────────────
   const openAddPole = () => {
     setEditingPole(null);
-    setPoleForm({ nom: "", description: "" });
+    setPoleForm({ nom: "", description: "", manager_id: "none", target_staff: 0 });
     setPoleDialogOpen(true);
   };
   const openEditPole = (p: PoleRow) => {
     setEditingPole(p);
-    setPoleForm({ nom: p.nom, description: p.description || "" });
+    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff });
     setPoleDialogOpen(true);
+  };
+  const handleDeletePole = async (p: PoleRow) => {
+    if (p.member_count > 0) {
+      toast({ title: "Suppression impossible", description: `${p.member_count} membre(s) sont encore rattachés à ce pôle. Réaffectez-les d'abord.`, variant: "destructive" });
+      return;
+    }
+    try {
+      await supabase.from("poles").delete().eq("id", p.id);
+      toast({ title: "Pôle supprimé", description: `"${p.nom}" a été supprimé.` });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
   };
   const handleSavePole = async () => {
     if (!poleForm.nom.trim()) return;
     setPoleSaving(true);
     try {
+      const payload: any = {
+        nom: poleForm.nom,
+        description: poleForm.description || null,
+        manager_id: poleForm.manager_id === "none" ? null : poleForm.manager_id,
+        target_staff: poleForm.target_staff,
+      };
       if (editingPole) {
-        await supabase.from("poles").update({ nom: poleForm.nom, description: poleForm.description || null }).eq("id", editingPole.id);
+        await supabase.from("poles").update(payload).eq("id", editingPole.id);
         toast({ title: "Pôle mis à jour" });
       } else {
-        await supabase.from("poles").insert({ nom: poleForm.nom, description: poleForm.description || null });
+        await supabase.from("poles").insert(payload);
         toast({ title: "Pôle créé", description: `"${poleForm.nom}" ajouté.` });
       }
       setPoleDialogOpen(false);
@@ -493,35 +523,97 @@ export default function OrganisationPage() {
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <AnimatePresence>
-                    {poles.map((p) => (
-                      <motion.div key={p.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-                        <Card className="h-full">
-                          <CardContent className="p-4 space-y-3">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <p className="text-base font-semibold text-foreground">{p.nom}</p>
-                                {p.description && (
-                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
+                    {poles.map((p) => {
+                      const ratio = p.target_staff > 0 ? Math.min((p.member_count / p.target_staff) * 100, 100) : 0;
+                      const isComplete = p.target_staff > 0 && p.member_count >= p.target_staff;
+                      return (
+                        <motion.div key={p.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+                          <Card className="h-full">
+                            <CardContent className="p-4 space-y-3">
+                              {/* Header: nom + actions */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-base font-semibold text-foreground leading-tight">{p.nom}</p>
+                                  {p.description && (
+                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
+                                  )}
+                                </div>
+                                {isAdmin && (
+                                  <div className="flex items-center gap-0.5 shrink-0">
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditPole(p)} title="Modifier">
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost" size="sm"
+                                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                      title="Voir les membres"
+                                      onClick={() => {
+                                        const tabTrigger = document.querySelector<HTMLButtonElement>('[data-radix-tabs-trigger][value="members"]') ||
+                                          document.querySelector<HTMLButtonElement>('[role="tab"][data-value="members"]');
+                                        if (tabTrigger) tabTrigger.click();
+                                      }}
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost" size="sm"
+                                      className={`h-7 w-7 p-0 ${p.member_count > 0 ? "text-muted-foreground/40 cursor-not-allowed" : "text-destructive/70 hover:text-destructive"}`}
+                                      title={p.member_count > 0 ? `${p.member_count} membre(s) rattaché(s)` : "Supprimer"}
+                                      onClick={() => handleDeletePole(p)}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
                                 )}
                               </div>
-                              <Button variant="ghost" size="sm" onClick={() => openEditPole(p)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1.5">
-                                <UserCheck className="h-3.5 w-3.5 text-primary" />
-                                <span>{p.responsable_name || <span className="italic">Non assigné</span>}</span>
+
+                              {/* Manager */}
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6 shrink-0">
+                                  <AvatarFallback className="text-[9px] font-semibold bg-primary/10 text-primary">
+                                    {p.manager_name ? p.manager_name.split(" ").map((n) => n[0]).join("").slice(0,2).toUpperCase() : "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {p.manager_name ? (
+                                  <span className="text-xs text-foreground font-medium truncate">{p.manager_name}</span>
+                                ) : isAdmin ? (
+                                  <button onClick={() => openEditPole(p)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                                    <Plus className="h-3 w-3" />
+                                    <span>Assigner un responsable</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground italic">Non assigné</span>
+                                )}
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                <Users className="h-3.5 w-3.5" />
-                                <span>{p.member_count} membre{p.member_count !== 1 ? "s" : ""}</span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    ))}
+
+                              {/* Staff ratio */}
+                              {p.target_staff > 0 ? (
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Users className="h-3 w-3" />
+                                      <span>{p.member_count}/{p.target_staff} membres</span>
+                                    </div>
+                                    <Badge variant="outline" className={`text-[9px] h-4 px-1.5 ${isComplete ? "bg-green-500/10 text-green-700 border-green-500/30" : "bg-orange-500/10 text-orange-700 border-orange-500/30"}`}>
+                                      {isComplete ? "Complet" : "Sous-effectif"}
+                                    </Badge>
+                                  </div>
+                                  <Progress
+                                    value={ratio}
+                                    className={`h-1.5 ${isComplete ? "[&>div]:bg-green-500" : "[&>div]:bg-orange-400"}`}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <Users className="h-3.5 w-3.5" />
+                                  <span>{p.member_count} membre{p.member_count !== 1 ? "s" : ""}</span>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
                   </AnimatePresence>
                 </div>
               )}
@@ -728,6 +820,37 @@ export default function OrganisationPage() {
             <div className="space-y-1.5">
               <Label className="text-xs">Description</Label>
               <Textarea value={poleForm.description} onChange={(e) => setPoleForm((f) => ({ ...f, description: e.target.value }))} className="min-h-[60px]" placeholder="Description du pôle…" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1.5"><UserCog className="h-3 w-3" />Responsable du pôle</Label>
+              <Select value={poleForm.manager_id} onValueChange={(v) => setPoleForm((f) => ({ ...f, manager_id: v }))}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Sélectionner un responsable…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun responsable</SelectItem>
+                  {members
+                    .filter((m) => m.is_active)
+                    .map((m) => (
+                      <SelectItem key={m.profile_id} value={m.profile_id}>
+                        {m.display_name}
+                        {m.role !== "benevole" && <span className="ml-1 text-muted-foreground text-[10px]">({ROLE_LABELS[m.role]})</span>}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1.5"><Users className="h-3 w-3" />Besoin global en effectif</Label>
+              <Input
+                type="number"
+                min={0}
+                value={poleForm.target_staff}
+                onChange={(e) => setPoleForm((f) => ({ ...f, target_staff: parseInt(e.target.value) || 0 }))}
+                className="h-9"
+                placeholder="0"
+              />
+              <p className="text-[10px] text-muted-foreground">Nombre de membres nécessaires pour ce pôle</p>
             </div>
           </div>
           <DialogFooter>
