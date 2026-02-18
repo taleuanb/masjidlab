@@ -17,18 +17,32 @@ export default function SetPasswordPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Supabase recovery/invite sessions are set via hash fragment automatically
+    // 1. Check immediately for access_token in URL hash (invite/recovery links)
+    const hash = window.location.hash;
+    const params = new URLSearchParams(hash.substring(1));
+    const accessToken = params.get("access_token");
+    if (accessToken) {
+      setReady(true);
+      return;
+    }
+
+    // 2. Listen for auth state changes (token consumed by Supabase SDK)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-          if (session) setReady(true);
+        if (
+          (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") &&
+          session
+        ) {
+          setReady(true);
         }
       }
     );
-    // Also check if already in session (token already consumed)
+
+    // 3. Also check if session already exists (page refresh after token consumed)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setReady(true);
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
