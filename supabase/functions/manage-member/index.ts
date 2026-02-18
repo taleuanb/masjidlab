@@ -110,9 +110,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === "delete") {
-      // Hard delete: remove from Supabase Auth (cascade will handle profile via trigger)
+      // First, delete related data manually (no cascade trigger exists)
+      await adminClient.from("user_roles").delete().eq("user_id", target_user_id);
+      await adminClient.from("user_availability").delete().eq("user_id", target_user_id);
+      await adminClient.from("profiles").delete().eq("user_id", target_user_id);
+
+      // Then delete from Supabase Auth — ignore 404 if already gone
       const { error: deleteErr } = await adminClient.auth.admin.deleteUser(target_user_id);
-      if (deleteErr) throw deleteErr;
+      if (deleteErr && deleteErr.status !== 404) throw deleteErr;
 
       return new Response(JSON.stringify({ success: true, action: "deleted" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
