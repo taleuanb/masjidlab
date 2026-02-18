@@ -15,6 +15,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { NotificationBell } from "@/components/NotificationBell";
 import { WeatherPrayerWidget } from "@/components/WeatherPrayerWidget";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 import { useRole } from "@/contexts/RoleContext";
 
 export default function Dashboard() {
@@ -25,21 +26,48 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/80 backdrop-blur-sm px-6 py-4">
-        <SidebarTrigger />
-        <div className="flex-1">
-          <h2 className="text-lg font-semibold tracking-tight">Tableau de bord</h2>
-          <p className="text-sm text-muted-foreground">
-            {isChef
-              ? `Vue Pôle ${pole} — Mes activités`
-              : "Bienvenue sur AMM Ops — Vue d'ensemble du complexe"}
-          </p>
+      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
+        {/* Barre principale */}
+        <div className="flex items-center gap-3 px-6 py-4">
+          <SidebarTrigger />
+          <div className="flex-1">
+            <h2 className="text-xl font-semibold tracking-tight">Tableau de bord</h2>
+            <p className="text-sm text-muted-foreground">
+              {isChef
+                ? `Vue Pôle ${pole} — Mes activités`
+                : "Bienvenue au service de la Maison d'Allah"}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <WeatherPrayerWidget />
+            <CommandPalette />
+            <NotificationBell />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <WeatherPrayerWidget />
-          <CommandPalette />
-          <NotificationBell />
-        </div>
+
+        {/* Bloc spirituel — Verset At-Tawba: 18 */}
+        {!isChef && (
+          <div className="px-6 pb-4 text-center space-y-1 mb-2">
+            <p
+              className="leading-relaxed"
+              dir="rtl"
+              style={{
+                fontFamily: "'Amiri', 'Traditional Arabic', serif",
+                fontSize: "1.35rem",
+                color: "hsl(var(--primary))",
+                lineHeight: "2",
+              }}
+            >
+              إِنَّمَا يَعْمُرُ مَسَاجِدَ اللَّهِ مَنْ آمَنَ بِاللَّهِ وَالْيَوْمِ الْآخِرِ وَأَقَامَ الصَّلَاةَ وَآتَى الزَّكَاةَ وَلَمْ يَخْشَ إِلَّا اللَّهَ ۖ فَعَسَىٰ أُولَٰئِكَ أَن يَكُونُوا مِنَ الْمُهْتَدِينَ
+            </p>
+            <p className="text-sm text-muted-foreground italic max-w-2xl mx-auto">
+              "Ne peupleront les mosquées d'Allah que ceux qui croient en Allah et au Jour dernier,
+              accomplissent la Salât, acquittent la Zakât et ne craignent qu'Allah.
+              Il se peut que ceux-là soient du nombre des bien-guidés." — <span className="not-italic font-medium">At-Tawba : 18</span>
+            </p>
+            <Separator className="mt-4" />
+          </div>
+        )}
       </header>
 
       <main className="p-6 space-y-6">
