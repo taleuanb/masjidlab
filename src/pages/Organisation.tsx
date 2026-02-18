@@ -90,11 +90,13 @@ interface MemberRow {
   user_id: string;
   display_name: string;
   email: string | null;
+  phone: string | null;
   competences: string[] | null;
   pole_id: string | null;
   role: AppRole;
   role_row_id: string | null;
   is_active: boolean;
+  has_account: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -126,14 +128,14 @@ export default function OrganisationPage() {
   const [deleteTarget, setDeleteTarget] = useState<MemberRow | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-
-  // Invite dialog
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteName, setInviteName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<AppRole>("benevole");
-  const [invitePole, setInvitePole] = useState("none");
-  const [inviting, setInviting] = useState(false);
+  // Add member dialog (dual-mode)
+  const [addOpen, setAddOpen] = useState(false);
+  const [addMode, setAddMode] = useState<"simple" | "invite">("simple");
+  const [addForm, setAddForm] = useState({
+    name: "", phone: "", email: "", role: "benevole" as AppRole,
+    pole_id: "none", competences: "", sendInvite: false,
+  });
+  const [addSaving, setAddSaving] = useState(false);
 
   // ─── Fetch ─────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -143,7 +145,7 @@ export default function OrganisationPage() {
       const { data: polesData } = await supabase.from("poles").select("id, nom, description, responsable_id").order("nom");
       
       // All profiles
-      const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, competences, pole_id, id, is_active").order("display_name");
+      const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, phone, competences, pole_id, id, is_active, has_account").order("display_name");
       
       // All roles
       const { data: roles } = await supabase.from("user_roles").select("id, user_id, role");
@@ -173,11 +175,13 @@ export default function OrganisationPage() {
         user_id: p.user_id,
         display_name: p.display_name,
         email: p.email,
+        phone: p.phone || null,
         competences: p.competences,
         pole_id: p.pole_id,
         role: roleMap.get(p.user_id)?.role || "benevole",
         role_row_id: roleMap.get(p.user_id)?.id || null,
         is_active: p.is_active !== false,
+        has_account: p.has_account === true,
       }));
       setMembers(enrichedMembers);
     } catch (err: any) {
@@ -285,34 +289,58 @@ export default function OrganisationPage() {
     }
   };
 
-  // ─── Invite handler ─────────────────────────────────────────────────
-  const handleInvite = async () => {
-    if (!inviteName.trim() || !inviteEmail.trim()) return;
-    setInviting(true);
-    try {
-      const res = await supabase.functions.invoke("invite-member", {
-        body: {
-          email: inviteEmail.trim(),
-          display_name: inviteName.trim(),
-          role: inviteRole,
-          pole_id: invitePole === "none" ? null : invitePole,
-          redirect_to: `${window.location.origin}/set-password`,
-        },
-      });
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
+  // ─── Add member (dual-mode) ─────────────────────────────────────────
+  const openAddMember = () => {
+    setAddForm({ name: "", phone: "", email: "", role: "benevole", pole_id: "none", competences: "", sendInvite: false });
+    setAddMode("simple");
+    setAddOpen(true);
+  };
 
-      toast({ title: "Invitation envoyée", description: `Invitation envoyée avec succès à ${inviteEmail.trim()}` });
-      setInviteOpen(false);
-      setInviteName("");
-      setInviteEmail("");
-      setInviteRole("benevole");
-      setInvitePole("none");
+  const handleAddMember = async () => {
+    if (!addForm.name.trim()) return;
+    setAddSaving(true);
+    try {
+      if (addMode === "invite" && addForm.sendInvite && addForm.email.trim()) {
+        // ── Invitation mode: use Supabase Auth invite ──
+        const res = await supabase.functions.invoke("invite-member", {
+          body: {
+            email: addForm.email.trim(),
+            display_name: addForm.name.trim(),
+            role: addForm.role,
+            pole_id: addForm.pole_id === "none" ? null : addForm.pole_id,
+            redirect_to: `${window.location.origin}/set-password`,
+          },
+        });
+        if (res.error) throw new Error(res.error.message);
+        if (res.data?.error) throw new Error(res.data.error);
+        toast({ title: "Invitation envoyée", description: `Un email a été envoyé à ${addForm.email.trim()}.` });
+      } else {
+        // ── Simple mode: insert profile directly ──
+        const competencesArr = addForm.competences.split(",").map((c) => c.trim()).filter(Boolean);
+        // We use a dummy UUID for user_id since this member has no Auth account
+        const fakeUserId = crypto.randomUUID();
+        const { error: insertErr } = await supabase.from("profiles").insert({
+          user_id: fakeUserId,
+          display_name: addForm.name.trim(),
+          email: addForm.email.trim() || null,
+          phone: addForm.phone.trim() || null,
+          pole_id: addForm.pole_id === "none" ? null : addForm.pole_id,
+          competences: competencesArr,
+          has_account: false,
+          is_active: true,
+        } as any);
+        if (insertErr) throw insertErr;
+
+        // Insert role for this member
+        await supabase.from("user_roles").insert({ user_id: fakeUserId, role: addForm.role });
+        toast({ title: "Membre ajouté", description: `${addForm.name.trim()} a été ajouté à l'annuaire.` });
+      }
+      setAddOpen(false);
       fetchAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
-      setInviting(false);
+      setAddSaving(false);
     }
   };
 
@@ -475,9 +503,9 @@ export default function OrganisationPage() {
                   )}
                 </div>
                 <Badge variant="outline" className="text-xs">{filtered.length} résultat{filtered.length !== 1 ? "s" : ""}</Badge>
-                <Button size="sm" onClick={() => setInviteOpen(true)}>
-                  <Mail className="h-4 w-4 mr-1" />
-                  Inviter un membre
+                <Button size="sm" onClick={openAddMember}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Ajouter un membre
                 </Button>
               </div>
 
@@ -509,16 +537,22 @@ export default function OrganisationPage() {
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <p className="text-sm font-medium text-foreground leading-tight">{m.display_name}</p>
                                     {!m.is_active && (
                                       <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-destructive/10 text-destructive border-destructive/20">Inactif</Badge>
+                                    )}
+                                    {m.is_active && m.has_account && (
+                                      <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-primary/10 text-primary border-primary/20">Actif</Badge>
+                                    )}
+                                    {m.is_active && !m.has_account && (
+                                      <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-muted text-muted-foreground border-border">Hors-ligne</Badge>
                                     )}
                                     {isSelf(m) && (
                                       <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-secondary/50">Vous</Badge>
                                     )}
                                   </div>
-                                  <p className="text-[11px] text-muted-foreground">{m.email || "—"}</p>
+                                  <p className="text-[11px] text-muted-foreground">{m.email || m.phone || "—"}</p>
                                 </div>
                               </div>
                             </TableCell>
@@ -714,57 +748,129 @@ export default function OrganisationPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Invite Dialog ─────────────────────────────────────────── */}
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-        <DialogContent className="max-w-md">
+      {/* ─── Add Member Dialog (dual-mode) ────────────────────────── */}
+      <Dialog open={addOpen} onOpenChange={(open) => { if (!open) setAddOpen(false); }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Inviter un nouveau membre</DialogTitle>
+            <DialogTitle>Ajouter un membre</DialogTitle>
             <DialogDescription>
-              Un email de bienvenue sera envoyé avec un lien pour configurer le mot de passe.
+              Choisissez le mode d'enregistrement pour ce nouveau membre.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="org-inv-name" className="text-xs">Nom complet</Label>
-              <Input id="org-inv-name" placeholder="Ahmed Ben Ali" value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="h-9" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="org-inv-email" className="text-xs">Adresse email</Label>
-              <Input id="org-inv-email" type="email" placeholder="ahmed@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="h-9" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Rôle</Label>
-              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="imam_chef">Responsable</SelectItem>
-                  <SelectItem value="benevole">Bénévole</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Pôle</Label>
-              <Select value={invitePole} onValueChange={setInvitePole}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Aucun pôle</SelectItem>
-                  {polesRaw.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
+          {/* Mode tabs */}
+          <div className="flex gap-2 p-1 bg-muted rounded-lg">
+            <button
+              onClick={() => setAddMode("simple")}
+              className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors ${addMode === "simple" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              📋 Enregistrement simple
+            </button>
+            <button
+              onClick={() => setAddMode("invite")}
+              className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-colors ${addMode === "invite" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              ✉️ Invitation numérique
+            </button>
           </div>
+
+          {addMode === "simple" && (
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+              Le membre sera ajouté à l'annuaire <strong>sans compte numérique</strong>. Il apparaîtra avec le badge <strong>Hors-ligne</strong>.
+            </p>
+          )}
+          {addMode === "invite" && (
+            <p className="text-xs text-muted-foreground bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+              Un email d'invitation sera envoyé. Une fois le mot de passe créé, le membre aura accès à MASJIDI et passera en badge <strong>Actif</strong>.
+            </p>
+          )}
+
+          <div className="space-y-3 py-1">
+            {/* Common fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nom complet *</Label>
+                <Input placeholder="Ahmed Ben Ali" value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Téléphone</Label>
+                <Input placeholder="06 12 34 56 78" value={addForm.phone} onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))} className="h-9" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">
+                Email {addMode === "invite" ? <span className="text-destructive">*</span> : <span className="text-muted-foreground">(optionnel)</span>}
+              </Label>
+              <Input
+                type="email"
+                placeholder="ahmed@example.com"
+                value={addForm.email}
+                onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
+                className="h-9"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Rôle</Label>
+                <Select value={addForm.role} onValueChange={(v) => setAddForm((f) => ({ ...f, role: v as AppRole }))}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="imam_chef">Responsable</SelectItem>
+                    <SelectItem value="benevole">Bénévole</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Pôle</Label>
+                <Select value={addForm.pole_id} onValueChange={(v) => setAddForm((f) => ({ ...f, pole_id: v }))}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Aucun pôle</SelectItem>
+                    {polesRaw.map((p) => (<SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Compétences <span className="text-muted-foreground">(séparées par virgules)</span></Label>
+              <Input
+                placeholder="enseignement, logistique, accueil…"
+                value={addForm.competences}
+                onChange={(e) => setAddForm((f) => ({ ...f, competences: e.target.value }))}
+                className="h-9"
+              />
+            </div>
+
+            {addMode === "invite" && (
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded accent-primary"
+                  checked={addForm.sendInvite}
+                  onChange={(e) => setAddForm((f) => ({ ...f, sendInvite: e.target.checked }))}
+                />
+                <span className="text-sm font-medium">Envoyer l'invitation par email maintenant</span>
+              </label>
+            )}
+          </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteOpen(false)}>Annuler</Button>
-            <Button onClick={handleInvite} disabled={inviting || !inviteName.trim() || !inviteEmail.trim()}>
-              {inviting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
-              Envoyer l'invitation
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Annuler</Button>
+            <Button
+              onClick={handleAddMember}
+              disabled={addSaving || !addForm.name.trim() || (addMode === "invite" && addForm.sendInvite && !addForm.email.trim())}
+            >
+              {addSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : (addMode === "invite" && addForm.sendInvite ? <Mail className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />)}
+              {addMode === "invite" && addForm.sendInvite ? "Envoyer l'invitation" : "Ajouter le membre"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* ─── Deactivate Confirm Dialog ─────────────────────────────── */}
       <Dialog open={!!deactivateTarget} onOpenChange={(open) => !open && setDeactivateTarget(null)}>
