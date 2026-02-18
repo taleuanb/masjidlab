@@ -24,6 +24,7 @@ import OrganisationPage from "./pages/Organisation";
 import LoginPage from "./pages/Login";
 import SetPasswordPage from "./pages/SetPassword";
 import OnboardingPage from "./pages/Onboarding";
+import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -65,6 +66,7 @@ const AppLayout = () => {
           <Route path="/membres" element={<GestionMembresPage />} />
           <Route path="/mon-equipe" element={<MonEquipePage />} />
           <Route path="/organisation" element={<OrganisationPage />} />
+          <Route path="/configuration" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
