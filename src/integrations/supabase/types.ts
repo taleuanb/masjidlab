@@ -138,8 +138,10 @@ export type Database = {
           created_at: string
           display_name: string
           email: string | null
+          has_account: boolean
           id: string
           is_active: boolean
+          phone: string | null
           pole_id: string | null
           updated_at: string
           user_id: string
@@ -149,8 +151,10 @@ export type Database = {
           created_at?: string
           display_name: string
           email?: string | null
+          has_account?: boolean
           id?: string
           is_active?: boolean
+          phone?: string | null
           pole_id?: string | null
           updated_at?: string
           user_id: string
@@ -160,8 +164,10 @@ export type Database = {
           created_at?: string
           display_name?: string
           email?: string | null
+          has_account?: boolean
           id?: string
           is_active?: boolean
+          phone?: string | null
           pole_id?: string | null
           updated_at?: string
           user_id?: string
