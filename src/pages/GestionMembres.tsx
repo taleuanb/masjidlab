@@ -12,8 +12,13 @@ import {
   UserCheck,
   Tag,
   Mail,
+  MoreHorizontal,
+  UserX,
+  Trash2,
+  UserCheck2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +42,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -75,11 +87,14 @@ interface MemberRow {
   pole_nom: string | null;
   role: AppRole;
   role_row_id: string | null;
+  is_active: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────────────
 export default function GestionMembresPage() {
   const { toast } = useToast();
+  const { user: currentUser, dbRole } = useAuth();
+  const isAdmin = dbRole === "admin";
 
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [poles, setPoles] = useState<PoleRow[]>([]);
@@ -102,24 +117,26 @@ export default function GestionMembresPage() {
   const [invitePole, setInvitePole] = useState("none");
   const [inviting, setInviting] = useState(false);
 
+  // Action modals
+  const [deactivateTarget, setDeactivateTarget] = useState<MemberRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MemberRow | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
   // ─── Fetch ─────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch poles
       const { data: polesData } = await supabase
         .from("poles")
         .select("id, nom")
         .order("nom");
       setPoles(polesData || []);
 
-      // Fetch profiles (pole_id might not be in generated types yet, but exists in DB)
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, email, competences, pole_id")
+        .select("user_id, display_name, email, competences, pole_id, is_active")
         .order("display_name");
 
-      // Fetch all roles
       const { data: roles } = await supabase
         .from("user_roles")
         .select("id, user_id, role");
@@ -140,6 +157,7 @@ export default function GestionMembresPage() {
         pole_nom: p.pole_id ? poleMap.get(p.pole_id) || null : null,
         role: roleMap.get(p.user_id)?.role || "benevole",
         role_row_id: roleMap.get(p.user_id)?.id || null,
+        is_active: p.is_active !== false, // default true if null
       }));
 
       setMembers(merged);
@@ -173,7 +191,6 @@ export default function GestionMembresPage() {
         .map((c) => c.trim())
         .filter(Boolean);
 
-      // 1. Update profile (name, competences, pole_id)
       const { error: profErr } = await supabase
         .from("profiles")
         .update({
@@ -184,7 +201,6 @@ export default function GestionMembresPage() {
         .eq("user_id", editTarget.user_id);
       if (profErr) throw profErr;
 
-      // 2. Update role
       if (editTarget.role !== formRole) {
         if (editTarget.role_row_id) {
           const { error: roleErr } = await supabase
@@ -215,13 +231,13 @@ export default function GestionMembresPage() {
     if (!inviteName.trim() || !inviteEmail.trim()) return;
     setInviting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("invite-member", {
         body: {
           email: inviteEmail.trim(),
           display_name: inviteName.trim(),
           role: inviteRole,
           pole_id: invitePole === "none" ? null : invitePole,
+          redirect_to: `${window.location.origin}/set-password`,
         },
       });
       if (res.error) throw new Error(res.error.message);
@@ -241,6 +257,72 @@ export default function GestionMembresPage() {
     }
   };
 
+  // ─── Deactivate / Reactivate ────────────────────────────────────────
+  const handleDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setActionLoading(true);
+    try {
+      const res = await supabase.functions.invoke("manage-member", {
+        body: { action: "deactivate", target_user_id: deactivateTarget.user_id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      toast({
+        title: "Compte désactivé",
+        description: `Le compte de ${deactivateTarget.display_name} a été désactivé avec succès.`,
+      });
+      setDeactivateTarget(null);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReactivate = async (m: MemberRow) => {
+    try {
+      const res = await supabase.functions.invoke("manage-member", {
+        body: { action: "reactivate", target_user_id: m.user_id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      toast({
+        title: "Compte réactivé",
+        description: `Le compte de ${m.display_name} a été réactivé.`,
+      });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // ─── Hard Delete ────────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setActionLoading(true);
+    try {
+      const res = await supabase.functions.invoke("manage-member", {
+        body: { action: "delete", target_user_id: deleteTarget.user_id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      toast({
+        title: "Utilisateur retiré",
+        description: `${deleteTarget.display_name} a été retiré du système.`,
+      });
+      setDeleteTarget(null);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // ─── Filter ────────────────────────────────────────────────────────
   const filtered = members.filter((m) => {
     const q = search.toLowerCase();
@@ -255,6 +337,8 @@ export default function GestionMembresPage() {
 
   const initials = (name: string) =>
     name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+
+  const isSelf = (m: MemberRow) => m.user_id === currentUser?.id;
 
   // ─── Render ────────────────────────────────────────────────────────
   return (
@@ -289,10 +373,12 @@ export default function GestionMembresPage() {
             <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
             </Button>
-            <Button size="sm" onClick={() => setInviteOpen(true)}>
-              <Mail className="h-4 w-4 mr-1" />
-              Inviter un membre
-            </Button>
+            {isAdmin && (
+              <Button size="sm" onClick={() => setInviteOpen(true)}>
+                <Mail className="h-4 w-4 mr-1" />
+                Inviter un membre
+              </Button>
+            )}
           </div>
         </div>
 
@@ -307,11 +393,11 @@ export default function GestionMembresPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[250px]">Membre</TableHead>
+                    <TableHead className="w-[260px]">Membre</TableHead>
                     <TableHead>Rôle</TableHead>
                     <TableHead>Pôle</TableHead>
                     <TableHead>Compétences</TableHead>
-                    <TableHead className="w-[80px] text-right">Actions</TableHead>
+                    <TableHead className="w-[100px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -328,17 +414,29 @@ export default function GestionMembresPage() {
                           key={m.user_id}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          className="border-b border-border"
+                          className={`border-b border-border ${!m.is_active ? "opacity-60 bg-muted/30" : ""}`}
                         >
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-8 w-8">
-                                <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
+                                <AvatarFallback className={`text-xs font-semibold ${m.is_active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                                   {initials(m.display_name)}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <p className="text-sm font-medium text-foreground">{m.display_name}</p>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-sm font-medium text-foreground">{m.display_name}</p>
+                                  {!m.is_active && (
+                                    <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-destructive/10 text-destructive border-destructive/20">
+                                      Inactif
+                                    </Badge>
+                                  )}
+                                  {isSelf(m) && (
+                                    <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-secondary/50">
+                                      Vous
+                                    </Badge>
+                                  )}
+                                </div>
                                 <p className="text-xs text-muted-foreground">{m.email || "—"}</p>
                               </div>
                             </div>
@@ -377,9 +475,47 @@ export default function GestionMembresPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(m)}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => openEdit(m)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              {isAdmin && !isSelf(m) && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      <MoreHorizontal className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-52 bg-popover border border-border shadow-md z-50">
+                                    {m.is_active ? (
+                                      <DropdownMenuItem
+                                        className="text-foreground focus:bg-muted cursor-pointer"
+                                        onClick={() => setDeactivateTarget(m)}
+                                      >
+                                        <UserX className="h-3.5 w-3.5 mr-2" />
+                                        Désactiver le compte
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem
+                                        className="text-primary focus:text-primary focus:bg-primary/5 cursor-pointer"
+                                        onClick={() => handleReactivate(m)}
+                                      >
+                                        <UserCheck2 className="h-3.5 w-3.5 mr-2" />
+                                        Réactiver le compte
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive focus:bg-destructive/5 cursor-pointer"
+                                      onClick={() => setDeleteTarget(m)}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                      Supprimer définitivement
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
                           </TableCell>
                         </motion.tr>
                       ))}
@@ -403,24 +539,15 @@ export default function GestionMembresPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Name */}
             <div className="space-y-1.5">
               <Label htmlFor="edit-name" className="text-xs">Nom d'affichage</Label>
-              <Input
-                id="edit-name"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                className="h-9"
-              />
+              <Input id="edit-name" value={formName} onChange={(e) => setFormName(e.target.value)} className="h-9" />
             </div>
 
-            {/* Role */}
             <div className="space-y-1.5">
               <Label className="text-xs">Rôle</Label>
               <Select value={formRole} onValueChange={(v) => setFormRole(v as AppRole)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="imam_chef">Imam / Chef de Pôle</SelectItem>
@@ -429,13 +556,10 @@ export default function GestionMembresPage() {
               </Select>
             </div>
 
-            {/* Pole */}
             <div className="space-y-1.5">
               <Label className="text-xs">Pôle</Label>
               <Select value={formPole} onValueChange={setFormPole}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Aucun pôle</SelectItem>
                   {poles.map((p) => (
@@ -445,7 +569,6 @@ export default function GestionMembresPage() {
               </Select>
             </div>
 
-            {/* Competences */}
             <div className="space-y-1.5">
               <Label htmlFor="edit-comp" className="text-xs">
                 Compétences <span className="text-muted-foreground">(séparées par des virgules)</span>
@@ -460,9 +583,7 @@ export default function GestionMembresPage() {
               {formCompetences && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {formCompetences.split(",").map((c) => c.trim()).filter(Boolean).map((c) => (
-                    <Badge key={c} variant="outline" className="text-[10px] h-5 px-1.5 bg-secondary/50">
-                      {c}
-                    </Badge>
+                    <Badge key={c} variant="outline" className="text-[10px] h-5 px-1.5 bg-secondary/50">{c}</Badge>
                   ))}
                 </div>
               )}
@@ -492,33 +613,16 @@ export default function GestionMembresPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label htmlFor="inv-name" className="text-xs">Nom complet</Label>
-              <Input
-                id="inv-name"
-                placeholder="Ahmed Ben Ali"
-                value={inviteName}
-                onChange={(e) => setInviteName(e.target.value)}
-                className="h-9"
-              />
+              <Input id="inv-name" placeholder="Ahmed Ben Ali" value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="h-9" />
             </div>
-
             <div className="space-y-1.5">
               <Label htmlFor="inv-email" className="text-xs">Adresse email</Label>
-              <Input
-                id="inv-email"
-                type="email"
-                placeholder="ahmed@example.com"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                className="h-9"
-              />
+              <Input id="inv-email" type="email" placeholder="ahmed@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="h-9" />
             </div>
-
             <div className="space-y-1.5">
               <Label className="text-xs">Rôle</Label>
               <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="imam_chef">Imam / Chef de Pôle</SelectItem>
@@ -526,13 +630,10 @@ export default function GestionMembresPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1.5">
               <Label className="text-xs">Pôle</Label>
               <Select value={invitePole} onValueChange={setInvitePole}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Aucun pôle</SelectItem>
                   {poles.map((p) => (
@@ -548,6 +649,82 @@ export default function GestionMembresPage() {
             <Button onClick={handleInvite} disabled={inviting || !inviteName.trim() || !inviteEmail.trim()}>
               {inviting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
               Envoyer l'invitation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Deactivate Confirm Dialog ─────────────────────────────── */}
+      <Dialog open={!!deactivateTarget} onOpenChange={(open) => !open && setDeactivateTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <UserX className="h-5 w-5" />
+              Désactiver le compte
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Vous êtes sur le point de désactiver le compte de{" "}
+              <strong>{deactivateTarget?.display_name}</strong>. Cette personne sera
+              immédiatement déconnectée et ne pourra plus accéder à MASJIDI.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm text-accent-foreground">
+            ℹ️ Le compte peut être réactivé à tout moment depuis l'annuaire. Les données de l'utilisateur (contributions, plannings) sont conservées.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeactivateTarget(null)}>Annuler</Button>
+            <Button
+              variant="outline"
+              className="border-accent/40 text-accent-foreground hover:bg-accent/10"
+              onClick={handleDeactivate}
+              disabled={actionLoading}
+            >
+              {actionLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <UserX className="h-4 w-4 mr-1" />}
+              Désactiver
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Hard Delete Confirm Dialog ────────────────────────────── */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Suppression définitive
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Vous êtes sur le point de supprimer définitivement le compte de{" "}
+              <strong>{deleteTarget?.display_name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 text-sm text-destructive space-y-2">
+            <p className="font-semibold">⚠️ Attention, cette action est irréversible.</p>
+            <p className="text-muted-foreground text-xs">
+              Souhaitez-vous plutôt <strong>désactiver le compte</strong> pour conserver
+              l'historique des activités (contributions, cours, plannings) ?
+            </p>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setDeleteTarget(null);
+                if (deleteTarget) setDeactivateTarget(deleteTarget);
+              }}
+            >
+              <UserX className="h-4 w-4 mr-1" />
+              Désactiver à la place
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={actionLoading}
+            >
+              {actionLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              Supprimer définitivement
             </Button>
           </DialogFooter>
         </DialogContent>
