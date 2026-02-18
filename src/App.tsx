@@ -22,6 +22,8 @@ import GestionMembresPage from "./pages/GestionMembres";
 import MonEquipePage from "./pages/MonEquipe";
 import OrganisationPage from "./pages/Organisation";
 import LoginPage from "./pages/Login";
+import SetPasswordPage from "./pages/SetPassword";
+import OnboardingPage from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -81,6 +83,8 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/set-password" element={<SetPasswordPage />} />
+                <Route path="/onboarding" element={<OnboardingPage />} />
                 <Route
                   path="/*"
                   element={
