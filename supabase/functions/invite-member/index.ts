@@ -41,7 +41,7 @@ serve(async (req) => {
       });
     }
 
-    const { email, display_name, role, pole_id } = await req.json();
+    const { email, display_name, role, pole_id, redirect_to } = await req.json();
 
     if (!email || !display_name) {
       return new Response(JSON.stringify({ error: "Email et nom requis" }), {
@@ -50,9 +50,10 @@ serve(async (req) => {
       });
     }
 
-    // Invite user via admin API
+    // Invite user via admin API with redirectTo pointing to /set-password
     const { data: inviteData, error: inviteErr } = await adminClient.auth.admin.inviteUserByEmail(email, {
       data: { display_name },
+      redirectTo: redirect_to ?? `${Deno.env.get("SUPABASE_URL")!.replace(".supabase.co", "")}/set-password`,
     });
 
     if (inviteErr) {
