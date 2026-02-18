@@ -57,8 +57,13 @@ serve(async (req) => {
     });
 
     if (inviteErr) {
-      return new Response(JSON.stringify({ error: inviteErr.message }), {
-        status: 400,
+      // Provide a user-friendly message for rate limit errors
+      const isRateLimit = inviteErr.message?.toLowerCase().includes("rate limit") || (inviteErr as any).status === 429;
+      const friendlyMessage = isRateLimit
+        ? "Limite d'envoi d'emails atteinte. Veuillez patienter quelques minutes avant d'envoyer une nouvelle invitation."
+        : inviteErr.message;
+      return new Response(JSON.stringify({ error: friendlyMessage }), {
+        status: isRateLimit ? 429 : 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
