@@ -236,6 +236,63 @@ export type Database = {
           },
         ]
       }
+      rooms: {
+        Row: {
+          capacity: number
+          created_at: string
+          features: string[]
+          floor: string
+          id: string
+          name: string
+          pole: string | null
+          statut: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          features?: string[]
+          floor: string
+          id?: string
+          name: string
+          pole?: string | null
+          statut?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          features?: string[]
+          floor?: string
+          id?: string
+          name?: string
+          pole?: string | null
+          statut?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      skills_library: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
       urgent_alerts: {
         Row: {
           alert_type: string

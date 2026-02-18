@@ -15,6 +15,7 @@ import {
   UserCheck,
   Settings2,
   UsersRound,
+  SlidersHorizontal,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -60,6 +61,7 @@ const navItems: NavItem[] = [
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin"] },
   { title: "Récoltes", url: "/recoltes", icon: HandCoins, roles: ["Admin"] },
   { title: "Organisation", url: "/organisation", icon: Building2, roles: ["Admin"] },
+  { title: "Configuration", url: "/configuration", icon: SlidersHorizontal, roles: ["Admin"] },
   { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Imam/Chef de Pôle"] },
   { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
 ];
