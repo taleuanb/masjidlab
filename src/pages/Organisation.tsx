@@ -17,6 +17,9 @@ import {
   MoreHorizontal,
   UserX,
   UserCheck2,
+  Phone,
+  PhoneCall,
+  UserPlus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -120,8 +123,11 @@ export default function OrganisationPage() {
 
   // Member edit dialog
   const [editMember, setEditMember] = useState<MemberRow | null>(null);
-  const [memberForm, setMemberForm] = useState({ name: "", role: "benevole" as AppRole, pole_id: "none", competences: "" });
+  const [memberForm, setMemberForm] = useState({ name: "", email: "", phone: "", role: "benevole" as AppRole, pole_id: "none", competences: "" });
   const [memberSaving, setMemberSaving] = useState(false);
+
+  // Contact filter
+  const [contactFilter, setContactFilter] = useState<"all" | "email" | "phone">("all");
 
   // Deactivate / Delete dialogs
   const [deactivateTarget, setDeactivateTarget] = useState<MemberRow | null>(null);
@@ -250,11 +256,12 @@ export default function OrganisationPage() {
     }
   };
 
-  // ─── Competences edit ──────────────────────────────────────────────
   const openEditMember = (m: MemberRow) => {
     setEditMember(m);
     setMemberForm({
       name: m.display_name,
+      email: m.email || "",
+      phone: m.phone || "",
       role: m.role,
       pole_id: m.pole_id || "none",
       competences: (m.competences || []).join(", "),
@@ -267,6 +274,8 @@ export default function OrganisationPage() {
       const competencesArr = memberForm.competences.split(",").map((c) => c.trim()).filter(Boolean);
       await supabase.from("profiles").update({
         display_name: memberForm.name,
+        email: memberForm.email.trim() || null,
+        phone: memberForm.phone.trim() || null,
         competences: competencesArr,
         pole_id: memberForm.pole_id === "none" ? null : memberForm.pole_id,
       } as any).eq("user_id", editMember.user_id);
@@ -286,6 +295,28 @@ export default function OrganisationPage() {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
       setMemberSaving(false);
+    }
+  };
+
+  // ─── Transform offline member to invited user ──────────────────────
+  const handleTransformToUser = async (m: MemberRow) => {
+    if (!m.email) return;
+    try {
+      const res = await supabase.functions.invoke("invite-member", {
+        body: {
+          email: m.email,
+          display_name: m.display_name,
+          role: m.role,
+          pole_id: m.pole_id,
+          redirect_to: `${window.location.origin}/set-password`,
+        },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      toast({ title: "Invitation envoyée", description: `${m.display_name} recevra un email pour créer son accès.` });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
     }
   };
 
@@ -402,8 +433,14 @@ export default function OrganisationPage() {
 
   const filtered = members.filter((m) => {
     const q = search.toLowerCase();
-    return m.display_name.toLowerCase().includes(q) || (m.email || "").toLowerCase().includes(q)
+    const matchSearch = m.display_name.toLowerCase().includes(q) || (m.email || "").toLowerCase().includes(q)
+      || (m.phone || "").includes(q)
       || ROLE_LABELS[m.role].toLowerCase().includes(q) || (m.competences || []).some((c) => c.toLowerCase().includes(q));
+    const matchContact =
+      contactFilter === "all" ? true :
+      contactFilter === "email" ? !!m.email :
+      contactFilter === "phone" ? !!m.phone && !m.email : true;
+    return matchSearch && matchContact;
   });
 
   const initials = (name: string) => name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -492,8 +529,8 @@ export default function OrganisationPage() {
 
             {/* ═══════════ MEMBERS TAB ═══════════ */}
             <TabsContent value="members" className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 max-w-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative flex-1 min-w-[160px] max-w-xs">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-8 text-xs" />
                   {search && (
@@ -502,6 +539,17 @@ export default function OrganisationPage() {
                     </button>
                   )}
                 </div>
+                {/* Contact filter */}
+                <Select value={contactFilter} onValueChange={(v) => setContactFilter(v as "all" | "email" | "phone")}>
+                  <SelectTrigger className="h-9 w-[150px] text-xs">
+                    <SelectValue placeholder="Tous les contacts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les contacts</SelectItem>
+                    <SelectItem value="email"><span className="flex items-center gap-1.5"><Mail className="h-3 w-3" />Email uniquement</span></SelectItem>
+                    <SelectItem value="phone"><span className="flex items-center gap-1.5"><Phone className="h-3 w-3" />Téléphone uniquement</span></SelectItem>
+                  </SelectContent>
+                </Select>
                 <Badge variant="outline" className="text-xs">{filtered.length} résultat{filtered.length !== 1 ? "s" : ""}</Badge>
                 <Button size="sm" onClick={openAddMember}>
                   <Plus className="h-4 w-4 mr-1" />
@@ -514,9 +562,10 @@ export default function OrganisationPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[220px]">Membre</TableHead>
-                        <TableHead className="w-[160px]">Rôle</TableHead>
-                        <TableHead className="w-[160px]">Pôle</TableHead>
+                        <TableHead className="w-[210px]">Membre</TableHead>
+                        <TableHead className="w-[180px]">Contact</TableHead>
+                        <TableHead className="w-[150px]">Rôle</TableHead>
+                        <TableHead className="w-[150px]">Pôle</TableHead>
                         <TableHead>Compétences</TableHead>
                         <TableHead className="w-[60px]" />
                       </TableRow>
@@ -524,11 +573,12 @@ export default function OrganisationPage() {
                     <TableBody>
                       {filtered.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">Aucun membre trouvé</TableCell>
+                          <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Aucun membre trouvé</TableCell>
                         </TableRow>
                       ) : (
                         filtered.map((m) => (
                           <TableRow key={m.user_id} className={!m.is_active ? "opacity-60 bg-muted/30" : ""}>
+                            {/* Membre */}
                             <TableCell>
                               <div className="flex items-center gap-2.5">
                                 <Avatar className="h-8 w-8">
@@ -536,57 +586,63 @@ export default function OrganisationPage() {
                                     {initials(m.display_name)}
                                   </AvatarFallback>
                                 </Avatar>
-                                <div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <p className="text-sm font-medium text-foreground leading-tight">{m.display_name}</p>
-                                    {!m.is_active && (
-                                      <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-destructive/10 text-destructive border-destructive/20">Inactif</Badge>
-                                    )}
-                                    {m.is_active && m.has_account && (
-                                      <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-primary/10 text-primary border-primary/20">Actif</Badge>
-                                    )}
-                                    {m.is_active && !m.has_account && (
-                                      <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-muted text-muted-foreground border-border">Hors-ligne</Badge>
-                                    )}
-                                    {isSelf(m) && (
-                                      <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-secondary/50">Vous</Badge>
-                                    )}
-                                  </div>
-                                  <p className="text-[11px] text-muted-foreground">{m.email || m.phone || "—"}</p>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-sm font-medium text-foreground leading-tight">{m.display_name}</p>
+                                  {!m.is_active && <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-destructive/10 text-destructive border-destructive/20">Inactif</Badge>}
+                                  {m.is_active && m.has_account && <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-primary/10 text-primary border-primary/20">Actif</Badge>}
+                                  {m.is_active && !m.has_account && <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-muted text-muted-foreground border-border">Hors-ligne</Badge>}
+                                  {isSelf(m) && <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-secondary/50">Vous</Badge>}
                                 </div>
                               </div>
                             </TableCell>
+                            {/* Contact */}
                             <TableCell>
-                              <Select value={m.role} onValueChange={(v) => handleInlineRoleChange(m, v as AppRole)}>
-                                <SelectTrigger className="h-8 text-xs w-[140px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="admin">
-                                    <span className="flex items-center gap-1.5"><Shield className="h-3 w-3" />Admin</span>
-                                  </SelectItem>
-                                  <SelectItem value="imam_chef">
-                                    <span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Responsable</span>
-                                  </SelectItem>
-                                  <SelectItem value="benevole">
-                                    <span className="flex items-center gap-1.5"><Users className="h-3 w-3" />Bénévole</span>
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <div className="space-y-1">
+                                {m.phone && (
+                                  <a href={`tel:${m.phone}`} className="flex items-center gap-1.5 text-xs text-foreground hover:text-primary transition-colors group" title={`Appeler ${m.display_name}`}>
+                                    <PhoneCall className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
+                                    <span>{m.phone}</span>
+                                  </a>
+                                )}
+                                {m.email && (
+                                  <a href={`mailto:${m.email}`} className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors" title={m.email}>
+                                    <Mail className="h-3 w-3" />
+                                    <span className="truncate max-w-[130px]">{m.email}</span>
+                                  </a>
+                                )}
+                                {!m.phone && !m.email && <span className="text-[11px] text-muted-foreground">—</span>}
+                              </div>
                             </TableCell>
+                            {/* Rôle */}
                             <TableCell>
-                              <Select value={m.pole_id || "none"} onValueChange={(v) => handleInlinePoleChange(m, v)}>
-                                <SelectTrigger className="h-8 text-xs w-[140px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">Aucun pôle</SelectItem>
-                                  {polesRaw.map((p) => (
-                                    <SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {isAdmin ? (
+                                <Select value={m.role} onValueChange={(v) => handleInlineRoleChange(m, v as AppRole)}>
+                                  <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="admin"><span className="flex items-center gap-1.5"><Shield className="h-3 w-3" />Admin</span></SelectItem>
+                                    <SelectItem value="imam_chef"><span className="flex items-center gap-1.5"><UserCheck className="h-3 w-3" />Responsable</span></SelectItem>
+                                    <SelectItem value="benevole"><span className="flex items-center gap-1.5"><Users className="h-3 w-3" />Bénévole</span></SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Badge variant="outline" className={`text-[10px] ${ROLE_STYLES[m.role]}`}>{ROLE_LABELS[m.role]}</Badge>
+                              )}
                             </TableCell>
+                            {/* Pôle */}
+                            <TableCell>
+                              {isAdmin ? (
+                                <Select value={m.pole_id || "none"} onValueChange={(v) => handleInlinePoleChange(m, v)}>
+                                  <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Aucun pôle</SelectItem>
+                                    {polesRaw.map((p) => (<SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">{poleName(m.pole_id) || "—"}</span>
+                              )}
+                            </TableCell>
+                            {/* Compétences */}
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {(m.competences || []).length > 0 ? (
@@ -603,6 +659,7 @@ export default function OrganisationPage() {
                                 )}
                               </div>
                             </TableCell>
+                            {/* Actions */}
                             <TableCell>
                               <div className="flex items-center justify-end gap-1">
                                 <Button variant="ghost" size="sm" onClick={() => openEditMember(m)}>
@@ -611,35 +668,30 @@ export default function OrganisationPage() {
                                 {isAdmin && !isSelf(m) && (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm">
-                                        <MoreHorizontal className="h-3.5 w-3.5" />
-                                      </Button>
+                                      <Button variant="ghost" size="sm"><MoreHorizontal className="h-3.5 w-3.5" /></Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-52 bg-popover border border-border shadow-md z-50">
+                                    <DropdownMenuContent align="end" className="w-56 bg-popover border border-border shadow-md z-50">
+                                      {!m.has_account && m.email && (
+                                        <>
+                                          <DropdownMenuItem className="text-primary focus:text-primary focus:bg-primary/5 cursor-pointer" onClick={() => handleTransformToUser(m)}>
+                                            <UserPlus className="h-3.5 w-3.5 mr-2" />
+                                            Transformer en utilisateur
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                        </>
+                                      )}
                                       {m.is_active ? (
-                                        <DropdownMenuItem
-                                          className="text-foreground focus:bg-muted cursor-pointer"
-                                          onClick={() => setDeactivateTarget(m)}
-                                        >
-                                          <UserX className="h-3.5 w-3.5 mr-2" />
-                                          Désactiver le compte
+                                        <DropdownMenuItem className="text-foreground focus:bg-muted cursor-pointer" onClick={() => setDeactivateTarget(m)}>
+                                          <UserX className="h-3.5 w-3.5 mr-2" />Désactiver le compte
                                         </DropdownMenuItem>
                                       ) : (
-                                        <DropdownMenuItem
-                                          className="text-primary focus:text-primary focus:bg-primary/5 cursor-pointer"
-                                          onClick={() => handleReactivate(m)}
-                                        >
-                                          <UserCheck2 className="h-3.5 w-3.5 mr-2" />
-                                          Réactiver le compte
+                                        <DropdownMenuItem className="text-primary focus:text-primary focus:bg-primary/5 cursor-pointer" onClick={() => handleReactivate(m)}>
+                                          <UserCheck2 className="h-3.5 w-3.5 mr-2" />Réactiver le compte
                                         </DropdownMenuItem>
                                       )}
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive focus:bg-destructive/5 cursor-pointer"
-                                        onClick={() => setDeleteTarget(m)}
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                        Supprimer définitivement
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/5 cursor-pointer" onClick={() => setDeleteTarget(m)}>
+                                        <Trash2 className="h-3.5 w-3.5 mr-2" />Supprimer définitivement
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
@@ -695,10 +747,20 @@ export default function OrganisationPage() {
             <DialogTitle>Modifier le profil</DialogTitle>
             <DialogDescription>{editMember?.display_name} — {editMember?.email || ""}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-3 py-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Nom d'affichage</Label>
               <Input value={memberForm.name} onChange={(e) => setMemberForm((f) => ({ ...f, name: e.target.value }))} className="h-9" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-1.5"><Phone className="h-3 w-3" />Téléphone</Label>
+                <Input value={memberForm.phone} onChange={(e) => setMemberForm((f) => ({ ...f, phone: e.target.value }))} className="h-9" placeholder="06 12 34 56 78" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-1.5"><Mail className="h-3 w-3" />Email</Label>
+                <Input type="email" value={memberForm.email} onChange={(e) => setMemberForm((f) => ({ ...f, email: e.target.value }))} className="h-9" placeholder="ahmed@example.com" />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Rôle</Label>
