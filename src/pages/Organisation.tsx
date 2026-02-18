@@ -14,9 +14,14 @@ import {
   Tag,
   Trash2,
   Mail,
+  MoreHorizontal,
+  UserX,
+  UserCheck2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,12 +48,20 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 
 // ─── Types ───────────────────────────────────────────────────────────
 type AppRole = "admin" | "imam_chef" | "benevole";
@@ -81,11 +94,15 @@ interface MemberRow {
   pole_id: string | null;
   role: AppRole;
   role_row_id: string | null;
+  is_active: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────────────
 export default function OrganisationPage() {
   const { toast } = useToast();
+  const { user: currentUser, dbRole } = useAuth();
+  const isAdmin = dbRole === "admin";
+
 
   const [loading, setLoading] = useState(true);
   const [poles, setPoles] = useState<PoleRow[]>([]);
@@ -104,6 +121,12 @@ export default function OrganisationPage() {
   const [memberForm, setMemberForm] = useState({ name: "", role: "benevole" as AppRole, pole_id: "none", competences: "" });
   const [memberSaving, setMemberSaving] = useState(false);
 
+  // Deactivate / Delete dialogs
+  const [deactivateTarget, setDeactivateTarget] = useState<MemberRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MemberRow | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+
   // Invite dialog
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteName, setInviteName] = useState("");
@@ -120,7 +143,7 @@ export default function OrganisationPage() {
       const { data: polesData } = await supabase.from("poles").select("id, nom, description, responsable_id").order("nom");
       
       // All profiles
-      const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, competences, pole_id, id").order("display_name");
+      const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, competences, pole_id, id, is_active").order("display_name");
       
       // All roles
       const { data: roles } = await supabase.from("user_roles").select("id, user_id, role");
@@ -154,6 +177,7 @@ export default function OrganisationPage() {
         pole_id: p.pole_id,
         role: roleMap.get(p.user_id)?.role || "benevole",
         role_row_id: roleMap.get(p.user_id)?.id || null,
+        is_active: p.is_active !== false,
       }));
       setMembers(enrichedMembers);
     } catch (err: any) {
@@ -292,7 +316,62 @@ export default function OrganisationPage() {
     }
   };
 
-  // ─── Filter ────────────────────────────────────────────────────────
+  // ─── Deactivate / Reactivate / Delete ─────────────────────────────
+  const isSelf = (m: MemberRow) => m.user_id === currentUser?.id;
+
+  const handleDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setActionLoading(true);
+    try {
+      const res = await supabase.functions.invoke("manage-member", {
+        body: { action: "deactivate", target_user_id: deactivateTarget.user_id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      toast({ title: "Compte désactivé", description: `Le compte de ${deactivateTarget.display_name} a été désactivé avec succès.` });
+      setDeactivateTarget(null);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReactivate = async (m: MemberRow) => {
+    try {
+      const res = await supabase.functions.invoke("manage-member", {
+        body: { action: "reactivate", target_user_id: m.user_id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      toast({ title: "Compte réactivé", description: `Le compte de ${m.display_name} a été réactivé.` });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setActionLoading(true);
+    try {
+      const res = await supabase.functions.invoke("manage-member", {
+        body: { action: "delete", target_user_id: deleteTarget.user_id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      toast({ title: "Utilisateur retiré", description: `${deleteTarget.display_name} a été retiré du système.` });
+      setDeleteTarget(null);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+
   const filtered = members.filter((m) => {
     const q = search.toLowerCase();
     return m.display_name.toLowerCase().includes(q) || (m.email || "").toLowerCase().includes(q)
@@ -421,16 +500,24 @@ export default function OrganisationPage() {
                         </TableRow>
                       ) : (
                         filtered.map((m) => (
-                          <TableRow key={m.user_id}>
+                          <TableRow key={m.user_id} className={!m.is_active ? "opacity-60 bg-muted/30" : ""}>
                             <TableCell>
                               <div className="flex items-center gap-2.5">
                                 <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                                  <AvatarFallback className={`text-[10px] font-semibold ${m.is_active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                                     {initials(m.display_name)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="text-sm font-medium text-foreground leading-tight">{m.display_name}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-sm font-medium text-foreground leading-tight">{m.display_name}</p>
+                                    {!m.is_active && (
+                                      <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-destructive/10 text-destructive border-destructive/20">Inactif</Badge>
+                                    )}
+                                    {isSelf(m) && (
+                                      <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-secondary/50">Vous</Badge>
+                                    )}
+                                  </div>
                                   <p className="text-[11px] text-muted-foreground">{m.email || "—"}</p>
                                 </div>
                               </div>
@@ -483,12 +570,51 @@ export default function OrganisationPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="sm" onClick={() => openEditMember(m)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="sm" onClick={() => openEditMember(m)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                {isAdmin && !isSelf(m) && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm">
+                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-52 bg-popover border border-border shadow-md z-50">
+                                      {m.is_active ? (
+                                        <DropdownMenuItem
+                                          className="text-foreground focus:bg-muted cursor-pointer"
+                                          onClick={() => setDeactivateTarget(m)}
+                                        >
+                                          <UserX className="h-3.5 w-3.5 mr-2" />
+                                          Désactiver le compte
+                                        </DropdownMenuItem>
+                                      ) : (
+                                        <DropdownMenuItem
+                                          className="text-primary focus:text-primary focus:bg-primary/5 cursor-pointer"
+                                          onClick={() => handleReactivate(m)}
+                                        >
+                                          <UserCheck2 className="h-3.5 w-3.5 mr-2" />
+                                          Réactiver le compte
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive focus:bg-destructive/5 cursor-pointer"
+                                        onClick={() => setDeleteTarget(m)}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                        Supprimer définitivement
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
+
                       )}
                     </TableBody>
                   </Table>
@@ -639,6 +765,79 @@ export default function OrganisationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Deactivate Confirm Dialog ─────────────────────────────── */}
+      <Dialog open={!!deactivateTarget} onOpenChange={(open) => !open && setDeactivateTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserX className="h-5 w-5" />
+              Désactiver le compte
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Vous êtes sur le point de désactiver le compte de{" "}
+              <strong>{deactivateTarget?.display_name}</strong>. Cette personne sera
+              immédiatement déconnectée et ne pourra plus accéder à MASJIDI.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm text-accent-foreground">
+            ℹ️ Le compte peut être réactivé à tout moment. Les données de l'utilisateur sont conservées.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeactivateTarget(null)}>Annuler</Button>
+            <Button
+              variant="outline"
+              className="border-accent/40 text-accent-foreground hover:bg-accent/10"
+              onClick={handleDeactivate}
+              disabled={actionLoading}
+            >
+              {actionLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <UserX className="h-4 w-4 mr-1" />}
+              Désactiver
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Hard Delete Confirm Dialog ────────────────────────────── */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Suppression définitive
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Vous êtes sur le point de supprimer définitivement le compte de{" "}
+              <strong>{deleteTarget?.display_name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 text-sm text-destructive space-y-2">
+            <p className="font-semibold">⚠️ Attention, cette action est irréversible.</p>
+            <p className="text-muted-foreground text-xs">
+              Souhaitez-vous plutôt <strong>désactiver le compte</strong> pour conserver
+              l'historique des activités (contributions, plannings) ?
+            </p>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setDeleteTarget(null);
+                if (deleteTarget) setDeactivateTarget(deleteTarget);
+              }}
+            >
+              <UserX className="h-4 w-4 mr-1" />
+              Désactiver à la place
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={actionLoading}>
+              {actionLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              Supprimer définitivement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
+
