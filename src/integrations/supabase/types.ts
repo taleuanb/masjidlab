@@ -105,24 +105,37 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          manager_id: string | null
           nom: string
           responsable_id: string | null
+          target_staff: number
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
+          manager_id?: string | null
           nom: string
           responsable_id?: string | null
+          target_staff?: number
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
+          manager_id?: string | null
           nom?: string
           responsable_id?: string | null
+          target_staff?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "poles_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "poles_responsable_id_fkey"
             columns: ["responsable_id"]
