@@ -68,7 +68,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           });
           setPendingAffectation(false);
         } else {
-          // org_id présent mais l'orga n'existe plus
           setPendingAffectation(true);
           setOrg(null);
         }
@@ -78,6 +77,15 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     };
 
     fetchOrg();
+
+    // Écoute les mises à jour optimistes depuis Settings (togglePole)
+    const handlePolesUpdated = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { active_poles: string[] };
+      setOrg((prev) => prev ? { ...prev, active_poles: detail.active_poles } : prev);
+    };
+    window.addEventListener("org-poles-updated", handlePolesUpdated);
+
+    return () => window.removeEventListener("org-poles-updated", handlePolesUpdated);
   }, [user, authLoading]);
 
   return (
