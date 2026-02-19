@@ -14,8 +14,9 @@ interface OrganizationContextType {
   orgId: string | null;
   activePoles: string[];
   loading: boolean;
-  /** true si l'utilisateur est authentifié mais n'a pas de org_id */
   pendingAffectation: boolean;
+  /** Force un rechargement du contexte (après création d'org) */
+  refetch: () => void;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -25,6 +26,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingAffectation, setPendingAffectation] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  const refetch = () => setTick((t) => t + 1);
 
   useEffect(() => {
     if (authLoading) return;
@@ -39,7 +43,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     const fetchOrg = async () => {
       setLoading(true);
       try {
-        // 1. Récupérer le profil pour obtenir org_id
         const { data: profile } = await supabase
           .from("profiles")
           .select("org_id")
@@ -52,7 +55,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // 2. Récupérer les infos de l'organisation
         const { data: orgData } = await supabase
           .from("organizations")
           .select("id, name, active_poles, subscription_plan")
@@ -78,15 +80,13 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
     fetchOrg();
 
-    // Écoute les mises à jour optimistes depuis Settings (togglePole)
     const handlePolesUpdated = (e: Event) => {
       const detail = (e as CustomEvent).detail as { active_poles: string[] };
       setOrg((prev) => prev ? { ...prev, active_poles: detail.active_poles } : prev);
     };
     window.addEventListener("org-poles-updated", handlePolesUpdated);
-
     return () => window.removeEventListener("org-poles-updated", handlePolesUpdated);
-  }, [user, authLoading]);
+  }, [user, authLoading, tick]);
 
   return (
     <OrganizationContext.Provider
@@ -96,6 +96,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         activePoles: org?.active_poles ?? [],
         loading,
         pendingAffectation,
+        refetch,
       }}
     >
       {children}
