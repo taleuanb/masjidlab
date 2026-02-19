@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Organization {
   id: string;
@@ -22,13 +23,67 @@ interface OrganizationContextType {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingAffectation, setPendingAffectation] = useState(false);
   const [tick, setTick] = useState(0);
 
-  const refetch = () => setTick((t) => t + 1);
+  const refetch = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+    setTick((t) => t + 1);
+  }, [queryClient]);
+
+  const fetchOrg = useCallback(async (userId: string) => {
+    setLoading(true);
+    try {
+      // Re-fetch session to ensure freshest token
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
+      const resolvedUserId = freshUser?.id ?? userId;
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("org_id")
+        .eq("user_id", resolvedUserId)
+        .maybeSingle();
+
+      console.log("Current Org ID:", profile?.org_id, "| Profile error:", profileError?.message ?? null);
+
+      if (!profile?.org_id) {
+        setPendingAffectation(true);
+        setOrg(null);
+        return;
+      }
+
+      const { data: orgData, error: orgError } = await supabase
+        .from("organizations")
+        .select("id, name, active_poles, subscription_plan")
+        .eq("id", profile.org_id)
+        .maybeSingle();
+
+      console.log("Org data:", orgData, "| Org error:", orgError?.message ?? null);
+
+      if (orgData) {
+        setOrg({
+          id: orgData.id,
+          name: orgData.name,
+          active_poles: orgData.active_poles ?? [],
+          subscription_plan: orgData.subscription_plan,
+        });
+        setPendingAffectation(false);
+      } else {
+        setPendingAffectation(true);
+        setOrg(null);
+      }
+    } catch (err) {
+      console.error("OrganizationContext fetchOrg error:", err);
+      setPendingAffectation(true);
+      setOrg(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -40,45 +95,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const fetchOrg = async () => {
-      setLoading(true);
-      try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("org_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (!profile?.org_id) {
-          setPendingAffectation(true);
-          setOrg(null);
-          return;
-        }
-
-        const { data: orgData } = await supabase
-          .from("organizations")
-          .select("id, name, active_poles, subscription_plan")
-          .eq("id", profile.org_id)
-          .maybeSingle();
-
-        if (orgData) {
-          setOrg({
-            id: orgData.id,
-            name: orgData.name,
-            active_poles: orgData.active_poles ?? [],
-            subscription_plan: orgData.subscription_plan,
-          });
-          setPendingAffectation(false);
-        } else {
-          setPendingAffectation(true);
-          setOrg(null);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrg();
+    fetchOrg(user.id);
 
     const handlePolesUpdated = (e: Event) => {
       const detail = (e as CustomEvent).detail as { active_poles: string[] };
@@ -86,7 +103,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("org-poles-updated", handlePolesUpdated);
     return () => window.removeEventListener("org-poles-updated", handlePolesUpdated);
-  }, [user, authLoading, tick]);
+  }, [user, session, authLoading, tick, fetchOrg]);
 
   return (
     <OrganizationContext.Provider
