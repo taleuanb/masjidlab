@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -85,6 +86,7 @@ const STATUT_STYLES: Record<string, string> = {
 export default function SettingsPage() {
   const { toast } = useToast();
   const { dbRole } = useAuth();
+  const { orgId } = useOrganization();
   const isAdmin = dbRole === "admin";
 
   // ── Tab: Espaces ──
@@ -116,11 +118,13 @@ export default function SettingsPage() {
 
   const fetchRooms = useCallback(async () => {
     setRoomsLoading(true);
-    const { data, error } = await supabase.from("rooms").select("*").order("floor").order("name");
+    let q = supabase.from("rooms").select("*").order("floor").order("name");
+    if (orgId) q = q.eq("org_id", orgId);
+    const { data, error } = await q;
     if (error) toast({ title: "Erreur", description: error.message, variant: "destructive" });
     else setRooms((data || []) as Room[]);
     setRoomsLoading(false);
-  }, [toast]);
+  }, [toast, orgId]);
 
   const fetchSkills = useCallback(async () => {
     setSkillsLoading(true);
@@ -132,11 +136,13 @@ export default function SettingsPage() {
 
   const fetchAssets = useCallback(async () => {
     setAssetsLoading(true);
-    const { data, error } = await supabase.from("assets").select("*").order("nom");
+    let q = supabase.from("assets").select("*").order("nom");
+    if (orgId) q = q.eq("org_id", orgId);
+    const { data, error } = await q;
     if (error) toast({ title: "Erreur", description: error.message, variant: "destructive" });
     else setAssets((data || []) as Asset[]);
     setAssetsLoading(false);
-  }, [toast]);
+  }, [toast, orgId]);
 
   useEffect(() => { fetchRooms(); fetchSkills(); fetchAssets(); }, [fetchRooms, fetchSkills, fetchAssets]);
 
@@ -169,6 +175,7 @@ export default function SettingsPage() {
       features: roomForm.features,
       statut: roomForm.statut,
       pole: roomForm.pole.trim() || null,
+      ...(orgId ? { org_id: orgId } : {}),
     };
     try {
       if (editingRoom) {
@@ -245,7 +252,13 @@ export default function SettingsPage() {
   const handleSaveAsset = async () => {
     if (!assetForm.nom.trim()) return;
     setAssetSaving(true);
-    const payload = { nom: assetForm.nom.trim(), type: assetForm.type.trim() || "Matériel", statut: assetForm.statut, description: assetForm.description.trim() || null };
+    const payload = {
+      nom: assetForm.nom.trim(),
+      type: assetForm.type.trim() || "Matériel",
+      statut: assetForm.statut,
+      description: assetForm.description.trim() || null,
+      ...(orgId ? { org_id: orgId } : {}),
+    };
     try {
       if (editingAsset) {
         const { error } = await supabase.from("assets").update(payload).eq("id", editingAsset.id);

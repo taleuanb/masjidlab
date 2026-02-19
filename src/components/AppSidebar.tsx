@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import {
   Building2,
   LayoutDashboard,
@@ -52,8 +53,9 @@ import { cn } from "@/lib/utils";
 import { useRole, type UserRole } from "@/contexts/RoleContext";
 import type { Pole } from "@/types/amm";
 
-// Simulation SaaS — sera remplacé par org.active_poles depuis Supabase
-const ACTIVE_POLES = ["gouvernance", "logistique"];
+// Simulation SaaS — sera remplacé dynamiquement par org.active_poles via OrganizationContext
+// Garde comme fallback si org non chargée
+const FALLBACK_ACTIVE_POLES = ["gouvernance", "logistique"];
 
 const POLES: Pole[] = ["Imam", "École (Avenir)", "Social (ABD)", "Accueil", "Récolte", "Digital", "Com", "Parking"];
 
@@ -133,13 +135,16 @@ const roleIcons: Record<UserRole, React.ElementType> = {
 export function AppSidebar() {
   const location = useLocation();
   const { role, setRole, pole, setPole } = useRole();
+  const { activePoles, org } = useOrganization();
+
+  // Fallback sur la constante locale si le context n'a pas encore chargé
+  const effectiveActivePoles = activePoles.length > 0 ? activePoles : FALLBACK_ACTIVE_POLES;
 
   const isPathInCategory = (items: NavItem[]) =>
     items.some((item) =>
       item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url)
     );
 
-  // Default open: category that contains current route
   const defaultOpenMap = POLE_CATEGORIES.reduce<Record<string, boolean>>((acc, cat) => {
     acc[cat.id] = isPathInCategory(cat.items);
     return acc;
@@ -152,10 +157,6 @@ export function AppSidebar() {
 
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
-  const activePoleCategories = POLE_CATEGORIES.filter((cat) =>
-    ACTIVE_POLES.includes(cat.id)
-  );
-
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-5">
@@ -165,7 +166,7 @@ export function AppSidebar() {
           </div>
           <div>
             <h1 className="text-sm font-bold text-sidebar-primary-foreground tracking-tight">
-              AMM Ops
+              {org?.name ?? "AMM Ops"}
             </h1>
             <p className="text-xs text-sidebar-foreground/60">
               Mosquée R+4
@@ -210,7 +211,7 @@ export function AppSidebar() {
           </p>
           <div className="space-y-0.5">
             {POLE_CATEGORIES.map((cat) => {
-              const isActive = ACTIVE_POLES.includes(cat.id);
+              const isActive = effectiveActivePoles.includes(cat.id);
               const visibleItems = cat.items.filter((i) => i.roles.includes(role));
               const isOpen = openCats[cat.id] ?? false;
               const hasActiveRoute = isPathInCategory(cat.items);

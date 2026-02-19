@@ -8,6 +8,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { OrganizationProvider, useOrganization } from "@/contexts/OrganizationContext";
+import PendingAffectation from "@/pages/PendingAffectation";
 import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
 import PlanningPage from "./pages/Planning";
@@ -32,8 +34,9 @@ const queryClient = new QueryClient();
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { loading: orgLoading, pendingAffectation } = useOrganization();
 
-  if (loading) {
+  if (loading || orgLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -43,6 +46,10 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (pendingAffectation) {
+    return <PendingAffectation />;
   }
 
   return <>{children}</>;
@@ -78,27 +85,29 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <RoleProvider>
-          <NotificationProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/set-password" element={<SetPasswordPage />} />
-                <Route path="/onboarding" element={<OnboardingPage />} />
-                <Route
-                  path="/*"
-                  element={
-                    <RequireAuth>
-                      <AppLayout />
-                    </RequireAuth>
-                  }
-                />
-              </Routes>
-            </BrowserRouter>
-          </NotificationProvider>
-        </RoleProvider>
+        <OrganizationProvider>
+          <RoleProvider>
+            <NotificationProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/set-password" element={<SetPasswordPage />} />
+                  <Route path="/onboarding" element={<OnboardingPage />} />
+                  <Route
+                    path="/*"
+                    element={
+                      <RequireAuth>
+                        <AppLayout />
+                      </RequireAuth>
+                    }
+                  />
+                </Routes>
+              </BrowserRouter>
+            </NotificationProvider>
+          </RoleProvider>
+        </OrganizationProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
