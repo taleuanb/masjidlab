@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, LogOut, Plus, ChevronRight, Loader2, CheckCircle2, Clock } from "lucide-react";
+import { Building2, LogOut, Plus, ChevronRight, Loader2, CheckCircle2, Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,15 @@ export default function PendingAffectation() {
   const [orgName, setOrgName] = useState("");
   const [complexType, setComplexType] = useState("mosquee");
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleForceSync = async () => {
+    setSyncing(true);
+    refetch();
+    // Give context time to re-evaluate
+    await new Promise((r) => setTimeout(r, 1500));
+    setSyncing(false);
+  };
 
   const handleCreate = async () => {
     if (!orgName.trim() || !user) return;
@@ -120,6 +129,20 @@ export default function PendingAffectation() {
                 </ul>
               </div>
             </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-muted-foreground"
+              onClick={handleForceSync}
+              disabled={syncing}
+            >
+              {syncing
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <RefreshCw className="h-4 w-4" />
+              }
+              {syncing ? "Synchronisation…" : "Forcer la synchronisation"}
+            </Button>
 
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={signOut}>
               <LogOut className="h-4 w-4" />
