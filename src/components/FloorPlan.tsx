@@ -4,6 +4,7 @@ import { Wifi, Mic, Snowflake, Monitor, Speaker, Eye, Loader2 } from "lucide-rea
 import { supabase } from "@/integrations/supabase/client";
 import { Etage, Equipement, StatutSalle } from "@/types/amm";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 interface FloorPlanProps {
   selectedEtage: Etage;
@@ -52,23 +53,27 @@ const equipementInfo: Record<string, { icon: typeof Wifi; label: string; tooltip
 export function FloorPlan({ selectedEtage }: FloorPlanProps) {
   const [salles, setSalles] = useState<RoomRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const { orgId } = useOrganization();
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    supabase
+    let query = supabase
       .from("rooms")
       .select("id, floor, name, type, capacity, features, statut, pole")
       .eq("floor", selectedEtage)
-      .order("name")
-      .then(({ data }) => {
-        if (!cancelled) {
-          setSalles((data || []) as RoomRow[]);
-          setLoading(false);
-        }
-      });
+      .order("name");
+
+    if (orgId) query = query.eq("org_id", orgId);
+
+    query.then(({ data }) => {
+      if (!cancelled) {
+        setSalles((data || []) as RoomRow[]);
+        setLoading(false);
+      }
+    });
     return () => { cancelled = true; };
-  }, [selectedEtage]);
+  }, [selectedEtage, orgId]);
 
   return (
     <div className="bento-card">
