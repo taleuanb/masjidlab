@@ -3,6 +3,7 @@ import {
   Building2, Plus, Trash2, Pencil, Loader2, Save,
   Layers, Tag, Package, RefreshCw, X, CheckCircle2,
   Snowflake, Wifi, Mic, Monitor, Speaker,
+  Landmark, Truck, BookOpen, Heart, Radio, Zap, Crown, Star,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -81,13 +83,66 @@ const STATUT_STYLES: Record<string, string> = {
   maintenance:"bg-muted text-muted-foreground border-border",
 };
 
+// ─── Pôles Métiers Config ─────────────────────────────────────────────────────
+
+interface PoleConfig {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ElementType;
+  minPlan: "starter" | "pro" | "elite";
+}
+
+const POLES_CONFIG: PoleConfig[] = [
+  { id: "gouvernance",   label: "Gouvernance",   description: "Dashboard, organisation, récoltes financières", icon: Landmark, minPlan: "starter" },
+  { id: "logistique",   label: "Logistique",    description: "Planning, événements, parking, maintenance",     icon: Truck,    minPlan: "starter" },
+  { id: "education",    label: "Éducation",     description: "Cours, inscriptions, suivi pédagogique",         icon: BookOpen, minPlan: "pro"     },
+  { id: "social",       label: "Social",         description: "Actions sociales, aides, bénéficiaires",         icon: Heart,    minPlan: "pro"     },
+  { id: "communication",label: "Communication", description: "Newsletter, réseaux sociaux, annonces",          icon: Radio,    minPlan: "elite"   },
+];
+
+const PLAN_ORDER = { starter: 0, pro: 1, elite: 2 };
+const PLAN_LABELS: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
+  starter: { label: "Starter",  icon: Zap,   cls: "bg-muted text-muted-foreground border-border" },
+  pro:     { label: "Pro",      icon: Star,  cls: "bg-primary/10 text-primary border-primary/30" },
+  elite:   { label: "Elite",    icon: Crown, cls: "bg-amber-500/10 text-amber-600 border-amber-400/30" },
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const { dbRole } = useAuth();
-  const { orgId } = useOrganization();
+  const { orgId, activePoles, org } = useOrganization();
   const isAdmin = dbRole === "admin";
+  const currentPlan = (org?.subscription_plan ?? "starter") as "starter" | "pro" | "elite";
+
+  // ── Tab: Pôles ──
+  const [polesLoading, setPolesLoading] = useState(false);
+
+  const togglePole = async (poleId: string) => {
+    if (!orgId || !isAdmin) return;
+    const isActive = activePoles.includes(poleId);
+    const next = isActive
+      ? activePoles.filter((p) => p !== poleId)
+      : [...activePoles, poleId];
+    setPolesLoading(true);
+    const { error } = await supabase
+      .from("organizations")
+      .update({ active_poles: next })
+      .eq("id", orgId);
+    setPolesLoading(false);
+    if (error) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } else {
+      window.dispatchEvent(new CustomEvent("org-poles-updated", { detail: { active_poles: next } }));
+      toast({
+        title: isActive ? "Pôle désactivé" : "Pôle activé",
+        description: POLES_CONFIG.find((p) => p.id === poleId)?.label,
+      });
+    }
+  };
+
 
   // ── Tab: Espaces ──
   const [rooms, setRooms]           = useState<Room[]>([]);
@@ -299,8 +354,11 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="espaces" className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+        <Tabs defaultValue="poles" className="space-y-4">
+          <TabsList className="grid grid-cols-4 w-full max-w-xl">
+            <TabsTrigger value="poles" className="gap-1.5 text-xs">
+              <Zap className="h-3.5 w-3.5" />Pôles
+            </TabsTrigger>
             <TabsTrigger value="espaces" className="gap-1.5 text-xs">
               <Layers className="h-3.5 w-3.5" />Espaces
             </TabsTrigger>
@@ -312,7 +370,90 @@ export default function SettingsPage() {
             </TabsTrigger>
           </TabsList>
 
+          {/* ═══════════ PÔLES ═══════════ */}
+          <TabsContent value="poles" className="space-y-4">
+            {/* Plan actuel */}
+            <div className="flex items-center justify-between rounded-xl border bg-card p-4">
+              <div>
+                <p className="text-sm font-semibold">Plan actuel</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Activez les pôles inclus dans votre abonnement
+                </p>
+              </div>
+              {(() => {
+                const plan = PLAN_LABELS[currentPlan];
+                const PlanIcon = plan.icon;
+                return (
+                  <Badge variant="outline" className={`gap-1.5 px-3 py-1 text-xs font-semibold ${plan.cls}`}>
+                    <PlanIcon className="h-3.5 w-3.5" />
+                    {plan.label}
+                  </Badge>
+                );
+              })()}
+            </div>
+
+            {/* Cartes pôles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {POLES_CONFIG.map((pole) => {
+                const isActive = activePoles.includes(pole.id);
+                const planRank = PLAN_ORDER[currentPlan];
+                const poleRank = PLAN_ORDER[pole.minPlan];
+                const included = planRank >= poleRank;
+                const PoleIcon = pole.icon;
+                const badgePlan = PLAN_LABELS[pole.minPlan];
+                const BadgeIcon = badgePlan.icon;
+
+                return (
+                  <div
+                    key={pole.id}
+                    className={`relative flex items-start gap-4 rounded-xl border p-4 transition-colors ${
+                      isActive
+                        ? "bg-primary/5 border-primary/25"
+                        : "bg-card border-border"
+                    } ${!included ? "opacity-60" : ""}`}
+                  >
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                      isActive ? "gradient-emerald" : "bg-muted"
+                    }`}>
+                      <PoleIcon className={`h-4 w-4 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold">{pole.label}</p>
+                        <Badge
+                          variant="outline"
+                          className={`gap-1 text-[10px] px-1.5 py-0 h-4 ${badgePlan.cls}`}
+                        >
+                          <BadgeIcon className="h-2.5 w-2.5" />
+                          {included ? "Inclus" : `Nécessite ${badgePlan.label}`}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                        {pole.description}
+                      </p>
+                    </div>
+
+                    <Switch
+                      checked={isActive}
+                      disabled={!isAdmin || !included || polesLoading}
+                      onCheckedChange={() => togglePole(pole.id)}
+                      className="mt-0.5 shrink-0"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {!isAdmin && (
+              <p className="text-xs text-muted-foreground text-center pt-2">
+                Seul un administrateur peut modifier les pôles actifs.
+              </p>
+            )}
+          </TabsContent>
+
           {/* ═══════════ ESPACES ═══════════ */}
+
           <TabsContent value="espaces" className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">{rooms.length} espace{rooms.length !== 1 ? "s" : ""} configuré{rooms.length !== 1 ? "s" : ""}</p>
