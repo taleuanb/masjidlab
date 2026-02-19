@@ -20,6 +20,7 @@ export type Database = {
           description: string | null
           id: string
           nom: string
+          org_id: string | null
           pole_id: string | null
           statut: string
           type: string
@@ -30,6 +31,7 @@ export type Database = {
           description?: string | null
           id?: string
           nom: string
+          org_id?: string | null
           pole_id?: string | null
           statut?: string
           type: string
@@ -40,12 +42,20 @@ export type Database = {
           description?: string | null
           id?: string
           nom?: string
+          org_id?: string | null
           pole_id?: string | null
           statut?: string
           type?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "assets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "assets_pole_id_fkey"
             columns: ["pole_id"]
@@ -64,6 +74,7 @@ export type Database = {
           date: string
           description: string | null
           id: string
+          org_id: string | null
           pole: string | null
           required_skill: string | null
           salle_id: string | null
@@ -78,6 +89,7 @@ export type Database = {
           date: string
           description?: string | null
           id?: string
+          org_id?: string | null
           pole?: string | null
           required_skill?: string | null
           salle_id?: string | null
@@ -92,11 +104,44 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
+          org_id?: string | null
           pole?: string | null
           required_skill?: string | null
           salle_id?: string | null
           titre?: string
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          active_poles: string[] | null
+          created_at: string | null
+          id: string
+          name: string
+          subscription_plan: string | null
+        }
+        Insert: {
+          active_poles?: string[] | null
+          created_at?: string | null
+          id?: string
+          name: string
+          subscription_plan?: string | null
+        }
+        Update: {
+          active_poles?: string[] | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          subscription_plan?: string | null
         }
         Relationships: []
       }
@@ -107,6 +152,7 @@ export type Database = {
           id: string
           manager_id: string | null
           nom: string
+          org_id: string | null
           responsable_id: string | null
           target_staff: number
         }
@@ -116,6 +162,7 @@ export type Database = {
           id?: string
           manager_id?: string | null
           nom: string
+          org_id?: string | null
           responsable_id?: string | null
           target_staff?: number
         }
@@ -125,6 +172,7 @@ export type Database = {
           id?: string
           manager_id?: string | null
           nom?: string
+          org_id?: string | null
           responsable_id?: string | null
           target_staff?: number
         }
@@ -134,6 +182,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -154,6 +209,7 @@ export type Database = {
           has_account: boolean
           id: string
           is_active: boolean
+          org_id: string | null
           phone: string | null
           pole_id: string | null
           updated_at: string
@@ -167,6 +223,7 @@ export type Database = {
           has_account?: boolean
           id?: string
           is_active?: boolean
+          org_id?: string | null
           phone?: string | null
           pole_id?: string | null
           updated_at?: string
@@ -180,12 +237,20 @@ export type Database = {
           has_account?: boolean
           id?: string
           is_active?: boolean
+          org_id?: string | null
           phone?: string | null
           pole_id?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_pole_id_fkey"
             columns: ["pole_id"]
@@ -244,6 +309,7 @@ export type Database = {
           floor: string
           id: string
           name: string
+          org_id: string | null
           pole: string | null
           statut: string
           type: string
@@ -256,6 +322,7 @@ export type Database = {
           floor: string
           id?: string
           name: string
+          org_id?: string | null
           pole?: string | null
           statut?: string
           type?: string
@@ -268,12 +335,21 @@ export type Database = {
           floor?: string
           id?: string
           name?: string
+          org_id?: string | null
           pole?: string | null
           statut?: string
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rooms_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       skills_library: {
         Row: {
