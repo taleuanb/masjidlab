@@ -386,15 +386,7 @@ export function AppSidebar() {
         </div>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 space-y-3">
-        {/* User identity */}
-        <div className="rounded-lg bg-sidebar-accent/40 px-3 py-2.5 space-y-0.5">
-          <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium">Utilisateur</p>
-          <p className="text-xs font-semibold text-sidebar-foreground truncate">{displayName ?? "—"}</p>
-          <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium mt-1.5">Organisation</p>
-          <p className="text-xs text-sidebar-foreground/70 truncate">{org?.name ?? "—"}</p>
-        </div>
-
+      <SidebarFooter className="p-3 space-y-2">
         {/* Role switcher — super admin gets a static badge */}
         {isSuperAdmin ? (
           <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2">
@@ -422,7 +414,7 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Mon Pôle — only for Chef de Pôle, Bénévole, Parent, Élève */}
+        {/* Mon Pôle */}
         {showPoleSelector && (
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">Mon Pôle</label>
@@ -441,20 +433,23 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Sign out */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-destructive"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-4 w-4" />
-          Se déconnecter
-        </Button>
-
-        <div className="rounded-lg bg-sidebar-accent/50 p-3">
-          <p className="text-xs text-sidebar-foreground/50">Complexe AMM — Bâtiment R+4</p>
-          <p className="text-xs text-sidebar-foreground/30 mt-1">v1.0 · Micro-ERP</p>
+        {/* Compact footer: user + org + version + sign out */}
+        <div className="rounded-lg bg-sidebar-accent/30 px-3 py-2.5 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-sidebar-foreground truncate">{displayName ?? "—"}</p>
+              <p className="text-[11px] text-sidebar-foreground/50 truncate">{org?.name ?? "—"}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-sidebar-foreground/40 hover:text-destructive"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <p className="text-[10px] text-sidebar-foreground/25">v1.0 · Micro-ERP</p>
         </div>
       </SidebarFooter>
     </Sidebar>
