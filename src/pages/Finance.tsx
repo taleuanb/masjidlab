@@ -11,20 +11,12 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Wallet, TrendingUp, TrendingDown, Plus, CreditCard } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Plus, CreditCard, Heart, Users } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
-type Transaction = {
-  id: string;
-  titre: string;
-  montant: number;
-  type: string | null;
-  categorie: string | null;
-  date_transaction: string | null;
-  created_at: string | null;
-};
+const fmt = (n: number) => n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function FinancePage() {
   const { orgId } = useOrganization();
@@ -42,7 +34,33 @@ export default function FinancePage() {
         .eq("org_id", orgId!)
         .order("date_transaction", { ascending: false });
       if (error) throw error;
-      return data as Transaction[];
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: donorsCount = 0 } = useQuery({
+    queryKey: ["donors_count", orgId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("donors")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId!);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: totalDons = 0 } = useQuery({
+    queryKey: ["donations_total", orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("donations")
+        .select("montant")
+        .eq("org_id", orgId!);
+      if (error) throw error;
+      return (data ?? []).reduce((s, d) => s + Number(d.montant), 0);
     },
     enabled: !!orgId,
   });
@@ -81,15 +99,10 @@ export default function FinancePage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter
-            </Button>
+            <Button><Plus className="h-4 w-4 mr-2" />Ajouter</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nouvelle transaction</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Nouvelle transaction</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-1.5">
                 <Label>Titre</Label>
@@ -121,43 +134,53 @@ export default function FinancePage() {
         </Dialog>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* ── Dashboard Stats ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-500" /> Recettes
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Heart className="h-3.5 w-3.5 text-pink-500" /> Total Dons
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-emerald-600">{totalRecettes.toLocaleString("fr-FR")} €</p>
-          </CardContent>
+          <CardContent><p className="text-xl font-bold text-pink-600">{fmt(totalDons)} €</p></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-red-500" /> Dépenses
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Users className="h-3.5 w-3.5 text-blue-500" /> Donateurs
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-red-600">{totalDepenses.toLocaleString("fr-FR")} €</p>
-          </CardContent>
+          <CardContent><p className="text-xl font-bold text-blue-600">{donorsCount}</p></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-primary" /> Solde
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> Recettes
+            </CardTitle>
+          </CardHeader>
+          <CardContent><p className="text-xl font-bold text-emerald-600">{fmt(totalRecettes)} €</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingDown className="h-3.5 w-3.5 text-red-500" /> Dépenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent><p className="text-xl font-bold text-red-600">{fmt(totalDepenses)} €</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Wallet className="h-3.5 w-3.5 text-primary" /> Solde
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${solde >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-              {solde.toLocaleString("fr-FR")} €
-            </p>
+            <p className={`text-xl font-bold ${solde >= 0 ? "text-emerald-600" : "text-red-600"}`}>{fmt(solde)} €</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Transaction list */}
+      {/* ── Transaction list ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -172,7 +195,7 @@ export default function FinancePage() {
           ) : (
             <div className="space-y-2">
               {transactions.map((t) => (
-                <div key={t.id} className="flex items-center justify-between p-3 rounded-lg border">
+                <div key={t.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium">{t.titre}</p>
                     <p className="text-xs text-muted-foreground">
@@ -184,8 +207,8 @@ export default function FinancePage() {
                     <Badge variant={t.type === "recette" ? "default" : "destructive"} className="text-xs">
                       {t.type === "recette" ? "Recette" : "Dépense"}
                     </Badge>
-                    <span className={`text-sm font-semibold ${t.type === "recette" ? "text-emerald-600" : "text-red-600"}`}>
-                      {t.type === "recette" ? "+" : "-"}{t.montant.toLocaleString("fr-FR")} €
+                    <span className={`text-sm font-semibold tabular-nums ${t.type === "recette" ? "text-emerald-600" : "text-red-600"}`}>
+                      {t.type === "recette" ? "+" : "-"}{fmt(t.montant)} €
                     </span>
                   </div>
                 </div>

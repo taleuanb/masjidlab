@@ -2,3 +2,6 @@ project_id = "ubppgmbtrxtfecfnjrlm"
 
 [functions.manage-member]
 verify_jwt = false
+
+[functions.generate-tax-receipt]
+verify_jwt = false
