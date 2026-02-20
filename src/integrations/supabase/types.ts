@@ -789,6 +789,7 @@ export type Database = {
           can_edit: boolean | null
           can_view: boolean | null
           created_at: string | null
+          enabled: boolean | null
           id: string
           module: string
           org_id: string | null
@@ -801,6 +802,7 @@ export type Database = {
           can_edit?: boolean | null
           can_view?: boolean | null
           created_at?: string | null
+          enabled?: boolean | null
           id?: string
           module: string
           org_id?: string | null
@@ -813,6 +815,7 @@ export type Database = {
           can_edit?: boolean | null
           can_view?: boolean | null
           created_at?: string | null
+          enabled?: boolean | null
           id?: string
           module?: string
           org_id?: string | null
@@ -1165,6 +1168,7 @@ export type Database = {
               can_delete: boolean
               can_edit: boolean
               can_view: boolean
+              enabled: boolean
               module: string
             }[]
           }

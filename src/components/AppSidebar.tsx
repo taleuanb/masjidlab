@@ -271,7 +271,7 @@ export function AppSidebar() {
       }
       const allowed = new Set<string>();
       for (const row of data as any[]) {
-        if (row.can_view) allowed.add(row.module);
+        if (row.enabled ?? row.can_view) allowed.add(row.module);
       }
       setAllowedModules(allowed);
     })();
