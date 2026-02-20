@@ -143,18 +143,22 @@ function SidebarBlock({
   role,
   activePoles,
   isAdminLike,
+  isSuperAdmin,
   location,
 }: {
   block: NavBlock;
   role: UserRole;
   activePoles: string[];
   isAdminLike: boolean;
+  isSuperAdmin: boolean;
   location: ReturnType<typeof useLocation>;
 }) {
   const isPoleActive =
     block.poleIds.length === 0 || block.poleIds.some((p) => activePoles.includes(p));
-  const isActive = isAdminLike ? isPoleActive : isPoleActive;
-  const visibleItems = block.items.filter((i) => i.roles.includes(role));
+  const isActive = isSuperAdmin ? true : isPoleActive;
+  const visibleItems = isSuperAdmin
+    ? block.items // super admin sees all items
+    : block.items.filter((i) => i.roles.includes(role));
   const hasActiveRoute = block.items.some((item) =>
     item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url)
   );
@@ -324,6 +328,7 @@ export function AppSidebar() {
                   role={role}
                   activePoles={activePoles}
                   isAdminLike={isAdminLike}
+                  isSuperAdmin={isSuperAdmin}
                   location={location}
                 />
               ))}
@@ -372,6 +377,7 @@ export function AppSidebar() {
                 role={role}
                 activePoles={activePoles}
                 isAdminLike={isAdminLike}
+                isSuperAdmin={isSuperAdmin}
                 location={location}
               />
             ))}

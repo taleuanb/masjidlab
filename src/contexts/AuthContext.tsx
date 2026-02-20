@@ -19,12 +19,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [dbRole, setDbRole] = useState<string | null>(null);
 
   const fetchRole = async (userId: string) => {
-    const { data } = await supabase
+    // Fetch ALL roles for this user to prioritize super_admin
+    const { data, error } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
-      .maybeSingle();
-    setDbRole(data?.role ?? null);
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Error fetching roles:", error.message);
+      setDbRole(null);
+      return;
+    }
+
+    const roles = (data ?? []).map((r) => r.role);
+    // Prioritize super_admin over any other role
+    if (roles.includes("super_admin")) {
+      setDbRole("super_admin");
+    } else if (roles.includes("admin")) {
+      setDbRole("admin");
+    } else if (roles.includes("responsable")) {
+      setDbRole("responsable");
+    } else if (roles.includes("imam_chef")) {
+      setDbRole("imam_chef");
+    } else {
+      setDbRole(roles[0] ?? null);
+    }
   };
 
   useEffect(() => {
