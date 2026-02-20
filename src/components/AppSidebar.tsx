@@ -156,18 +156,19 @@ function SidebarBlock({
 }) {
   const isPoleActive =
     block.poleIds.length === 0 || block.poleIds.some((p) => activePoles.includes(p));
-  const isActive = isSuperAdmin ? true : isPoleActive;
-  const visibleItems = isSuperAdmin
-    ? block.items // super admin sees all items
-    : block.items.filter((i) => i.roles.includes(role));
   const hasActiveRoute = block.items.some((item) =>
     item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url)
   );
   const [open, setOpen] = useState(hasActiveRoute);
 
-  // Non-admin: hide inactive blocks entirely
-  if (!isPoleActive && !isAdminLike) return null;
-  if (!block.blockRoles.includes(role) && !isAdminLike) return null;
+  // Non-super-admin: completely hide inactive modules
+  if (!isPoleActive && !isSuperAdmin) return null;
+  if (!block.blockRoles.includes(role) && !isSuperAdmin) return null;
+
+  const isActive = isSuperAdmin ? isPoleActive : true;
+  const visibleItems = isSuperAdmin
+    ? block.items
+    : block.items.filter((i) => i.roles.includes(role));
 
   return (
     <Collapsible open={open} onOpenChange={() => isActive && setOpen((o) => !o)}>
@@ -191,9 +192,9 @@ function SidebarBlock({
               )}
             />
           )}
-          {!isActive && (
-            <span className="text-[9px] uppercase tracking-wide text-sidebar-foreground/30 border border-sidebar-foreground/20 rounded px-1 py-0.5">
-              inactif
+          {!isActive && isSuperAdmin && (
+            <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 bg-muted/50 rounded px-1.5 py-0.5">
+              Off
             </span>
           )}
         </button>

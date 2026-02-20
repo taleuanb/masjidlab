@@ -10,6 +10,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { OrganizationProvider, useOrganization } from "@/contexts/OrganizationContext";
 import PendingAffectation from "@/pages/PendingAffectation";
+import { RequireActivePole } from "@/components/RequireActivePole";
 import { AppSidebar } from "@/components/AppSidebar";
 import Index from "./pages/Index";
 import PlanningPage from "./pages/Planning";
@@ -61,25 +62,27 @@ const AppLayout = () => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/planning" element={<PlanningPage />} />
-          <Route path="/evenements" element={<EvenementsPage />} />
-          <Route path="/parking" element={<ParkingPage />} />
-          <Route path="/maintenance" element={<MaintenancePage />} />
-          <Route path="/mon-agenda" element={<MonAgendaPage />} />
-          <Route path="/missions" element={<MesMissionsPage />} />
-          <Route path="/approbations" element={<ApprobationsPage />} />
-          <Route path="/operations" element={<GestionOperationsPage />} />
-          <Route path="/structure-membres" element={<StructureMembresPage />} />
-          <Route path="/membres" element={<StructureMembresPage />} />
-          <Route path="/organisation" element={<StructureMembresPage />} />
-          <Route path="/mon-equipe" element={<MonEquipePage />} />
-          <Route path="/configuration" element={<SettingsPage />} />
-          <Route path="/finance" element={<FinancePage />} />
-          <Route path="/saas-admin" element={<SaasAdminPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <RequireActivePole>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/planning" element={<PlanningPage />} />
+            <Route path="/evenements" element={<EvenementsPage />} />
+            <Route path="/parking" element={<ParkingPage />} />
+            <Route path="/maintenance" element={<MaintenancePage />} />
+            <Route path="/mon-agenda" element={<MonAgendaPage />} />
+            <Route path="/missions" element={<MesMissionsPage />} />
+            <Route path="/approbations" element={<ApprobationsPage />} />
+            <Route path="/operations" element={<GestionOperationsPage />} />
+            <Route path="/structure-membres" element={<StructureMembresPage />} />
+            <Route path="/membres" element={<StructureMembresPage />} />
+            <Route path="/organisation" element={<StructureMembresPage />} />
+            <Route path="/mon-equipe" element={<MonEquipePage />} />
+            <Route path="/configuration" element={<SettingsPage />} />
+            <Route path="/finance" element={<FinancePage />} />
+            <Route path="/saas-admin" element={<SaasAdminPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </RequireActivePole>
       </div>
     </SidebarProvider>
   );
