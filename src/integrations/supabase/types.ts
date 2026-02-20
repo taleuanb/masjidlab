@@ -127,6 +127,7 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          owner_id: string | null
           subscription_plan: string | null
         }
         Insert: {
@@ -134,6 +135,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          owner_id?: string | null
           subscription_plan?: string | null
         }
         Update: {
@@ -141,6 +143,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          owner_id?: string | null
           subscription_plan?: string | null
         }
         Relationships: []

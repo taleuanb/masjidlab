@@ -40,9 +40,10 @@ interface PoleCategory {
 
 const ALL_ROLES: UserRole[] = ["Admin", "Chef de Pôle", "Responsable", "Bénévole", "Parent", "Élève"];
 
+// DB active_poles uses: admin, logistics, education, social, comms
 const POLE_CATEGORIES: PoleCategory[] = [
   {
-    id: "gouvernance", label: "Gouvernance", icon: Landmark,
+    id: "admin", label: "Gouvernance", icon: Landmark,
     items: [
       { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin", "Chef de Pôle", "Responsable", "Bénévole"] },
       { title: "Organisation", url: "/organisation", icon: Building2, roles: ["Admin"] },
@@ -50,7 +51,7 @@ const POLE_CATEGORIES: PoleCategory[] = [
     ],
   },
   {
-    id: "logistique", label: "Logistique", icon: Truck,
+    id: "logistics", label: "Logistique", icon: Truck,
     items: [
       { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin", "Chef de Pôle", "Responsable"] },
       { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin", "Chef de Pôle", "Responsable"] },
@@ -62,7 +63,7 @@ const POLE_CATEGORIES: PoleCategory[] = [
   },
   { id: "education", label: "Éducation", icon: BookOpen, items: [] },
   { id: "social", label: "Social", icon: Heart, items: [] },
-  { id: "communication", label: "Communication", icon: Radio, items: [] },
+  { id: "comms", label: "Communication", icon: Radio, items: [] },
 ];
 
 const STANDALONE_ITEMS: NavItem[] = [
