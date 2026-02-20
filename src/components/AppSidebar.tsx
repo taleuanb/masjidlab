@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Building2, LayoutDashboard, Package, CalendarDays, HandCoins, Users,
   Calendar, Car, Wrench, Shield, ClipboardList, UserCheck, Settings2,
   SlidersHorizontal, ChevronDown, BookOpen, Heart, Radio, Landmark, Truck, Globe,
+  LogOut, Eye,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -17,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { useRole, type UserRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import type { Pole } from "@/types/amm";
 
 const POLES: Pole[] = ["Imam", "École (Avenir)", "Social (ABD)", "Accueil", "Récolte", "Digital", "Com", "Parking"];
@@ -35,13 +38,13 @@ interface PoleCategory {
   items: NavItem[];
 }
 
-const ALL_ROLES: UserRole[] = ["Admin", "Imam/Chef de Pôle", "Bénévole", "Responsable", "Parent", "Élève"];
+const ALL_ROLES: UserRole[] = ["Admin", "Chef de Pôle", "Responsable", "Bénévole", "Parent", "Élève"];
 
 const POLE_CATEGORIES: PoleCategory[] = [
   {
     id: "gouvernance", label: "Gouvernance", icon: Landmark,
     items: [
-      { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin", "Imam/Chef de Pôle", "Responsable", "Bénévole"] },
+      { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin", "Chef de Pôle", "Responsable", "Bénévole"] },
       { title: "Organisation", url: "/organisation", icon: Building2, roles: ["Admin"] },
       { title: "Récoltes", url: "/recoltes", icon: HandCoins, roles: ["Admin"] },
     ],
@@ -49,9 +52,9 @@ const POLE_CATEGORIES: PoleCategory[] = [
   {
     id: "logistique", label: "Logistique", icon: Truck,
     items: [
-      { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin", "Imam/Chef de Pôle", "Responsable"] },
-      { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin", "Imam/Chef de Pôle", "Responsable"] },
-      { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin", "Imam/Chef de Pôle", "Responsable"] },
+      { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin", "Chef de Pôle", "Responsable"] },
+      { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin", "Chef de Pôle", "Responsable"] },
+      { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin", "Chef de Pôle", "Responsable"] },
       { title: "Parking", url: "/parking", icon: Car, roles: ["Admin"] },
       { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin"] },
       { title: "Configuration", url: "/configuration", icon: SlidersHorizontal, roles: ["Admin"] },
@@ -63,16 +66,16 @@ const POLE_CATEGORIES: PoleCategory[] = [
 ];
 
 const STANDALONE_ITEMS: NavItem[] = [
-  { title: "Approbations", url: "/approbations", icon: UserCheck, roles: ["Admin", "Imam/Chef de Pôle", "Responsable"] },
-  { title: "Opérations", url: "/operations", icon: Settings2, roles: ["Admin", "Imam/Chef de Pôle", "Responsable"] },
+  { title: "Approbations", url: "/approbations", icon: UserCheck, roles: ["Admin", "Chef de Pôle", "Responsable"] },
+  { title: "Opérations", url: "/operations", icon: Settings2, roles: ["Admin", "Chef de Pôle", "Responsable"] },
   { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays, roles: ["Bénévole", "Parent", "Élève"] },
   { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
-  { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Imam/Chef de Pôle", "Responsable"] },
+  { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Chef de Pôle", "Responsable"] },
 ];
 
 const roleIcons: Record<UserRole, React.ElementType> = {
   "Admin": Shield,
-  "Imam/Chef de Pôle": UserCheck,
+  "Chef de Pôle": UserCheck,
   "Responsable": UserCheck,
   "Bénévole": Users,
   "Parent": Users,
@@ -81,8 +84,10 @@ const roleIcons: Record<UserRole, React.ElementType> = {
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { role, setRole, pole, setPole, displayName, isSuperAdmin } = useRole();
   const { activePoles, org } = useOrganization();
+  const { signOut } = useAuth();
 
   // Super-admin org switcher
   const [allOrgs, setAllOrgs] = useState<{ id: string; name: string }[]>([]);
@@ -97,6 +102,8 @@ export function AppSidebar() {
 
   useEffect(() => { setSelectedOrgId(org?.id ?? null); }, [org?.id]);
 
+  // Admin/Super-Admin sees all active poles as active (no grey)
+  const isAdminLike = role === "Admin" || isSuperAdmin;
   const effectiveActivePoles = activePoles.length > 0 ? activePoles : ["gouvernance", "logistique"];
 
   const isPathInCategory = (items: NavItem[]) =>
@@ -110,6 +117,14 @@ export function AppSidebar() {
   const [openCats, setOpenCats] = useState<Record<string, boolean>>(defaultOpenMap);
   const toggleCat = (id: string) => setOpenCats((prev) => ({ ...prev, [id]: !prev[id] }));
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
+
+  // Show "Mon Pôle" for Chef de Pôle, Bénévole, Parent, Élève — hide for Admin/Responsable
+  const showPoleSelector = ["Chef de Pôle", "Bénévole", "Parent", "Élève"].includes(role);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <Sidebar className="border-r-0">
@@ -128,6 +143,24 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-3 gap-0">
+        {/* Super-Admin global dashboard link */}
+        {isSuperAdmin && (
+          <SidebarGroup className="py-2">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink to="/saas-overview" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                      <Eye className="h-4 w-4" />
+                      <span>Vue d'ensemble SaaS</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {standaloneVisible.length > 0 && (
           <SidebarGroup className="py-2">
             <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1">Personnel</SidebarGroupLabel>
@@ -152,7 +185,9 @@ export function AppSidebar() {
           <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-2 px-2">Pôles Métiers</p>
           <div className="space-y-0.5">
             {POLE_CATEGORIES.map((cat) => {
-              const isActive = effectiveActivePoles.includes(cat.id);
+              const isPoleActive = effectiveActivePoles.includes(cat.id);
+              // Admin/Super-Admin: all listed poles are shown as active
+              const isActive = isAdminLike ? isPoleActive : isPoleActive;
               const visibleItems = cat.items.filter((i) => i.roles.includes(role));
               const isOpen = openCats[cat.id] ?? false;
               const hasActiveRoute = isPathInCategory(cat.items);
@@ -210,17 +245,11 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 space-y-3">
-        {/* User identity */}
-        <div className="rounded-lg bg-sidebar-accent/40 px-3 py-2.5 space-y-0.5">
-          <p className="text-xs font-semibold text-sidebar-foreground truncate">{displayName ?? "Utilisateur"}</p>
-          <p className="text-[10px] text-sidebar-foreground/50 truncate">{org?.name ?? "—"}</p>
-        </div>
-
-        {/* Super-admin org switcher */}
+        {/* Super-admin org switcher — above user identity */}
         {isSuperAdmin && allOrgs.length > 1 && (
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1 flex items-center gap-1">
-              <Globe className="h-3 w-3" /> Organisation
+              <Globe className="h-3 w-3" /> Mosquée active
             </label>
             <Select value={selectedOrgId ?? ""} onValueChange={(v) => setSelectedOrgId(v)}>
               <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
@@ -234,6 +263,14 @@ export function AppSidebar() {
             </Select>
           </div>
         )}
+
+        {/* User identity */}
+        <div className="rounded-lg bg-sidebar-accent/40 px-3 py-2.5 space-y-0.5">
+          <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium">Utilisateur</p>
+          <p className="text-xs font-semibold text-sidebar-foreground truncate">{displayName ?? "—"}</p>
+          <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium mt-1.5">Organisation</p>
+          <p className="text-xs text-sidebar-foreground/70 truncate">{org?.name ?? "—"}</p>
+        </div>
 
         {/* Role switcher */}
         <div className="space-y-1.5">
@@ -253,7 +290,8 @@ export function AppSidebar() {
           </Select>
         </div>
 
-        {(role === "Imam/Chef de Pôle" || role === "Responsable") && (
+        {/* Mon Pôle — only for Chef de Pôle, Bénévole, Parent, Élève */}
+        {showPoleSelector && (
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">Mon Pôle</label>
             <Select value={pole} onValueChange={(v) => setPole(v as Pole)}>
@@ -268,6 +306,12 @@ export function AppSidebar() {
             </Select>
           </div>
         )}
+
+        {/* Sign out */}
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-destructive" onClick={handleSignOut}>
+          <LogOut className="h-4 w-4" />
+          Se déconnecter
+        </Button>
 
         <div className="rounded-lg bg-sidebar-accent/50 p-3">
           <p className="text-xs text-sidebar-foreground/50">Complexe AMM — Bâtiment R+4</p>

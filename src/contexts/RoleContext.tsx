@@ -3,12 +3,12 @@ import { Pole } from "@/types/amm";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
-export type UserRole = "Admin" | "Imam/Chef de Pôle" | "Bénévole" | "Responsable" | "Parent" | "Élève";
+export type UserRole = "Admin" | "Chef de Pôle" | "Bénévole" | "Responsable" | "Parent" | "Élève";
 
 const DB_ROLE_TO_UI: Record<string, UserRole> = {
   admin: "Admin",
   super_admin: "Admin",
-  imam_chef: "Imam/Chef de Pôle",
+  imam_chef: "Chef de Pôle",
   responsable: "Responsable",
   benevole: "Bénévole",
   parent: "Parent",

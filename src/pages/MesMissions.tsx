@@ -166,7 +166,7 @@ function MissionCard({ mission }: { mission: Mission }) {
                 type: "presence",
                 titre: `Présence confirmée : ${mission.titre}`,
                 description: `Un bénévole a confirmé sa présence pour "${mission.titre}" le ${format(parseISO(mission.date), "d MMM", { locale: fr })}.`,
-                destinataire: "Imam/Chef de Pôle",
+                destinataire: "Chef de Pôle",
                 pole: mission.pole,
               });
             }

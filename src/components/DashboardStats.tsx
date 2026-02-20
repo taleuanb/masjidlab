@@ -19,7 +19,7 @@ interface DashboardStatsProps {
 
 export function DashboardStats({ selectedEtage }: DashboardStatsProps) {
   const { role, pole } = useRole();
-  const isChef = role === "Imam/Chef de Pôle";
+  const isChef = role === "Chef de Pôle";
 
   // ---------- Admin / default stats ----------
   const sallesEtage = sallesMock.filter(s => s.etage === selectedEtage);
