@@ -93,22 +93,17 @@ const Classes = () => {
     queryKey: ["teachers_education", orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      // Find poles matching education
-      const { data: poles } = await supabase
-        .from("poles")
-        .select("id")
-        .eq("org_id", orgId!)
-        .or("nom.ilike.%école%,nom.ilike.%education%,nom.ilike.%éducation%,nom.ilike.%madrasa%,nom.ilike.%madrassa%");
-      const poleIds = (poles ?? []).map((p) => p.id);
-      if (poleIds.length === 0) return [];
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name")
-        .eq("org_id", orgId!)
-        .in("pole_id", poleIds)
-        .order("display_name");
+        .select("id, display_name, user_roles!inner(role)")
+        .eq("user_roles.role", "enseignant")
+        .eq("org_id", orgId!);
       if (error) throw error;
-      return data ?? [];
+      console.log("[Classes] Teachers with role enseignant:", data);
+      if (!data || data.length === 0) {
+        console.log("[Classes] No teachers found with role 'enseignant' for org", orgId);
+      }
+      return (data ?? []).map((t: any) => ({ id: t.id, display_name: t.display_name }));
     },
   });
 
