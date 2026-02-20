@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap } from "lucide-react";
+import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,7 @@ const Classes = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ nom: "", niveau: "", prof_id: "", salle_id: "" });
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [filterNiveau, setFilterNiveau] = useState<string>("all");
 
   // ── Fetch classes with joined prof, salle, and subjects ──
   const { data: classes = [], isLoading } = useQuery({
@@ -89,20 +90,22 @@ const Classes = () => {
   });
 
   const { data: teachers = [] } = useQuery({
-    queryKey: ["teachers", orgId],
+    queryKey: ["teachers_education", orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("role", ["imam_chef", "benevole"]);
-      const userIds = (roles ?? []).map((r) => r.user_id);
-      if (userIds.length === 0) return [];
+      // Find poles matching education
+      const { data: poles } = await supabase
+        .from("poles")
+        .select("id")
+        .eq("org_id", orgId!)
+        .or("nom.ilike.%école%,nom.ilike.%education%,nom.ilike.%éducation%,nom.ilike.%madrasa%,nom.ilike.%madrassa%");
+      const poleIds = (poles ?? []).map((p) => p.id);
+      if (poleIds.length === 0) return [];
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name, user_id")
-        .in("user_id", userIds)
+        .select("id, display_name")
         .eq("org_id", orgId!)
+        .in("pole_id", poleIds)
         .order("display_name");
       if (error) throw error;
       return data ?? [];
@@ -178,6 +181,22 @@ const Classes = () => {
           </Button>
         </div>
 
+        {/* Filter */}
+        {classes.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={filterNiveau} onValueChange={setFilterNiveau}>
+              <SelectTrigger className="h-9 w-48"><SelectValue placeholder="Filtrer par niveau" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les niveaux</SelectItem>
+                {levels.map((l) => (
+                  <SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Grid */}
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -189,7 +208,7 @@ const Classes = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {classes.map((c: any) => (
+            {classes.filter((c: any) => filterNiveau === "all" || c.niveau === filterNiveau).map((c: any) => (
               <Card key={c.id} className="group relative">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
