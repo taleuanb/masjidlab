@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -195,64 +196,115 @@ function DashboardTab({
 // ── Permissions Tab ────────────────────────────────────────
 type PermMatrix = Record<string, Record<string, boolean>>;
 
-function PermissionsTab() {
+function buildEmptyMatrix(allIds: string[]): PermMatrix {
+  const m: PermMatrix = {};
+  for (const role of RBAC_ROLES) {
+    m[role.id] = {};
+    for (const modId of allIds) m[role.id][modId] = false;
+  }
+  return m;
+}
+
+function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
   const { toast } = useToast();
-  const [matrix, setMatrix] = useState<PermMatrix>({});
+  const allIds = getAllModuleIds();
+
+  const [selectedOrgId, setSelectedOrgId] = useState<string>("global");
+  const [matrix, setMatrix] = useState<PermMatrix>(buildEmptyMatrix(allIds));
+  const [globalMatrix, setGlobalMatrix] = useState<PermMatrix>(buildEmptyMatrix(allIds));
+  const [hasOrgOverride, setHasOrgOverride] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  const allIds = getAllModuleIds();
+  const isGlobal = selectedOrgId === "global";
 
+  // Load global defaults once
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("role_permissions" as any)
+        .select("role, module, enabled")
+        .is("org_id", null);
+      const m = buildEmptyMatrix(allIds);
+      for (const row of (data ?? []) as any[]) {
+        if (m[row.role]) m[row.role][row.module] = !!row.enabled;
+      }
+      setGlobalMatrix(m);
+    })();
+  }, []);
+
+  // Load matrix when org selection changes
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("role_permissions" as any)
-          .select("role, module, enabled")
-          .is("org_id", null);
-        if (error) throw error;
-
-        const m: PermMatrix = {};
-        for (const role of RBAC_ROLES) {
-          m[role.id] = {};
-          for (const modId of allIds) {
-            m[role.id][modId] = false;
+        if (isGlobal) {
+          const { data, error } = await supabase
+            .from("role_permissions" as any)
+            .select("role, module, enabled")
+            .is("org_id", null);
+          if (error) throw error;
+          const m = buildEmptyMatrix(allIds);
+          for (const row of (data ?? []) as any[]) {
+            if (m[row.role]) m[row.role][row.module] = !!row.enabled;
+          }
+          setMatrix(m);
+          setGlobalMatrix(m);
+          setHasOrgOverride(false);
+        } else {
+          const { data, error } = await supabase
+            .from("role_permissions" as any)
+            .select("role, module, enabled")
+            .eq("org_id", selectedOrgId);
+          if (error) throw error;
+          if (!data || data.length === 0) {
+            // No override — show global defaults
+            setMatrix(JSON.parse(JSON.stringify(globalMatrix)));
+            setHasOrgOverride(false);
+          } else {
+            const m = buildEmptyMatrix(allIds);
+            for (const row of (data as any[])) {
+              if (m[row.role]) m[row.role][row.module] = !!row.enabled;
+            }
+            setMatrix(m);
+            setHasOrgOverride(true);
           }
         }
-        for (const row of (data ?? []) as any[]) {
-          if (m[row.role]) m[row.role][row.module] = !!row.enabled;
-        }
-        setMatrix(m);
       } catch (err: any) {
         toast({ title: "Erreur", description: err.message, variant: "destructive" });
       } finally {
         setLoading(false);
       }
     })();
-  }, [toast]);
+  }, [selectedOrgId, toast]);
+
+  const copyDefaults = () => {
+    setMatrix(JSON.parse(JSON.stringify(globalMatrix)));
+    setHasOrgOverride(true);
+  };
+
+  // Check if a specific cell differs from global default
+  const isDifferentFromGlobal = (roleId: string, modId: string) => {
+    if (isGlobal) return false;
+    return (matrix[roleId]?.[modId] ?? false) !== (globalMatrix[roleId]?.[modId] ?? false);
+  };
 
   const toggle = (role: string, moduleId: string) => {
+    if (!isGlobal && !hasOrgOverride) setHasOrgOverride(true);
     setMatrix((prev) => {
       const next = { ...prev, [role]: { ...prev[role] } };
       const newVal = !next[role][moduleId];
       next[role][moduleId] = newVal;
 
-      // Parent unchecked → cascade disable children
       const parent = RBAC_MODULES.find((m) => m.id === moduleId);
       if (parent?.children && !newVal) {
-        for (const child of parent.children) {
-          next[role][child.id] = false;
-        }
+        for (const child of parent.children) next[role][child.id] = false;
       }
-
-      // Child checked → auto-enable parent
       if (newVal) {
         const parentMod = RBAC_MODULES.find((m) => m.children?.some((c) => c.id === moduleId));
         if (parentMod) next[role][parentMod.id] = true;
       }
-
       return next;
     });
   };
@@ -263,17 +315,26 @@ function PermissionsTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const orgId = isGlobal ? null : selectedOrgId;
       const rows: any[] = [];
       for (const role of RBAC_ROLES) {
         for (const modId of allIds) {
-          rows.push({ org_id: null, role: role.id, module: modId, enabled: matrix[role.id]?.[modId] ?? false });
+          rows.push({ org_id: orgId, role: role.id, module: modId, enabled: matrix[role.id]?.[modId] ?? false });
         }
       }
       const { error } = await supabase
         .from("role_permissions" as any)
         .upsert(rows, { onConflict: "org_id,role,module" });
       if (error) throw error;
-      toast({ title: "Configuration sauvegardée", description: "Les permissions par défaut ont été mises à jour." });
+
+      if (isGlobal) setGlobalMatrix(JSON.parse(JSON.stringify(matrix)));
+      setHasOrgOverride(true);
+      toast({
+        title: "Configuration sauvegardée",
+        description: isGlobal
+          ? "Les permissions par défaut ont été mises à jour."
+          : `Permissions personnalisées pour ${orgs.find((o) => o.id === selectedOrgId)?.name ?? "l'organisation"}.`,
+      });
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
@@ -281,90 +342,132 @@ function PermissionsTab() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const selectedOrgName = orgs.find((o) => o.id === selectedOrgId)?.name;
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between pb-3">
-          <div>
-            <CardTitle className="text-base">Matrice des permissions</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Définissez les modules accessibles par rôle (configuration globale par défaut).
-            </p>
-          </div>
-          <Button onClick={handleSave} disabled={saving} size="sm">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-            Sauvegarder
+    <div className="space-y-4">
+      {/* Org selector */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+          <SelectTrigger className="w-72 h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="global">--- Configuration Globale (Défaut) ---</SelectItem>
+            {orgs.map((o) => (
+              <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {!isGlobal && !hasOrgOverride && (
+          <Button variant="outline" size="sm" onClick={copyDefaults}>
+            Copier les réglages par défaut
           </Button>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-56">Module</TableHead>
-                {RBAC_ROLES.map((r) => (
-                  <TableHead key={r.id} className="text-center">{r.label}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {RBAC_MODULES.map((mod) => {
-                const isCollapsed = collapsed[mod.id];
-                const hasChildren = !!mod.children?.length;
-                return (
-                  <Fragment key={mod.id}>
-                    <TableRow className="bg-muted/30">
-                      <TableCell className="font-semibold">
-                        <button
-                          type="button"
-                          className="flex items-center gap-1.5 text-left w-full"
-                          onClick={() => hasChildren && toggleCollapse(mod.id)}
-                        >
-                          {hasChildren ? (
-                            isCollapsed
-                              ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                              : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                          ) : <span className="w-4" />}
-                          {mod.label}
-                        </button>
-                      </TableCell>
-                      {RBAC_ROLES.map((role) => (
-                        <TableCell key={role.id} className="text-center">
-                          <Switch
-                            checked={matrix[role.id]?.[mod.id] ?? false}
-                            onCheckedChange={() => toggle(role.id, mod.id)}
-                          />
+        )}
+
+        {!isGlobal && hasOrgOverride && (
+          <Badge variant="secondary" className="text-xs">Personnalisé</Badge>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between pb-3">
+            <div>
+              <CardTitle className="text-base">
+                Matrice des permissions
+                {!isGlobal && selectedOrgName && (
+                  <span className="text-muted-foreground font-normal ml-2">— {selectedOrgName}</span>
+                )}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {isGlobal
+                  ? "Configuration par défaut appliquée à toutes les organisations."
+                  : "Surcharge spécifique pour cette organisation."}
+              </p>
+            </div>
+            <Button onClick={handleSave} disabled={saving} size="sm">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+              Sauvegarder
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-56">Module</TableHead>
+                  {RBAC_ROLES.map((r) => (
+                    <TableHead key={r.id} className="text-center">{r.label}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {RBAC_MODULES.map((mod) => {
+                  const isCollapsed = collapsed[mod.id];
+                  const hasChildren = !!mod.children?.length;
+                  return (
+                    <Fragment key={mod.id}>
+                      <TableRow className="bg-muted/30">
+                        <TableCell className="font-semibold">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 text-left w-full"
+                            onClick={() => hasChildren && toggleCollapse(mod.id)}
+                          >
+                            {hasChildren ? (
+                              isCollapsed
+                                ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            ) : <span className="w-4" />}
+                            {mod.label}
+                          </button>
                         </TableCell>
-                      ))}
-                    </TableRow>
-                    {hasChildren && !isCollapsed && mod.children!.map((child) => (
-                      <TableRow key={child.id}>
-                        <TableCell className="pl-10 text-muted-foreground text-sm">{child.label}</TableCell>
                         {RBAC_ROLES.map((role) => (
                           <TableCell key={role.id} className="text-center">
-                            <Switch
-                              checked={matrix[role.id]?.[child.id] ?? false}
-                              onCheckedChange={() => toggle(role.id, child.id)}
-                              disabled={!(matrix[role.id]?.[mod.id])}
-                            />
+                            <div className="flex flex-col items-center gap-0.5">
+                              <Switch
+                                checked={matrix[role.id]?.[mod.id] ?? false}
+                                onCheckedChange={() => toggle(role.id, mod.id)}
+                              />
+                              {isDifferentFromGlobal(role.id, mod.id) && (
+                                <span className="text-[9px] text-primary font-medium">Modifié</span>
+                              )}
+                            </div>
                           </TableCell>
                         ))}
                       </TableRow>
-                    ))}
-                  </Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                      {hasChildren && !isCollapsed && mod.children!.map((child) => (
+                        <TableRow key={child.id}>
+                          <TableCell className="pl-10 text-muted-foreground text-sm">{child.label}</TableCell>
+                          {RBAC_ROLES.map((role) => (
+                            <TableCell key={role.id} className="text-center">
+                              <div className="flex flex-col items-center gap-0.5">
+                                <Switch
+                                  checked={matrix[role.id]?.[child.id] ?? false}
+                                  onCheckedChange={() => toggle(role.id, child.id)}
+                                  disabled={!(matrix[role.id]?.[mod.id])}
+                                />
+                                {isDifferentFromGlobal(role.id, child.id) && (
+                                  <span className="text-[9px] text-primary font-medium">Modifié</span>
+                                )}
+                              </div>
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -475,7 +578,7 @@ export default function SaasAdminPage() {
           </TabsContent>
 
           <TabsContent value="permissions">
-            <PermissionsTab />
+            <PermissionsTab orgs={orgs} />
           </TabsContent>
         </Tabs>
       </div>
