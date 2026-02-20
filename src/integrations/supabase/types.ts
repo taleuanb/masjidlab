@@ -121,6 +121,53 @@ export type Database = {
           },
         ]
       }
+      finance_transactions: {
+        Row: {
+          categorie: string | null
+          created_at: string | null
+          created_by: string | null
+          date_transaction: string | null
+          id: string
+          montant: number
+          org_id: string | null
+          piece_jointe_url: string | null
+          titre: string
+          type: string | null
+        }
+        Insert: {
+          categorie?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date_transaction?: string | null
+          id?: string
+          montant: number
+          org_id?: string | null
+          piece_jointe_url?: string | null
+          titre: string
+          type?: string | null
+        }
+        Update: {
+          categorie?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date_transaction?: string | null
+          id?: string
+          montant?: number
+          org_id?: string | null
+          piece_jointe_url?: string | null
+          titre?: string
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_transactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           active_poles: string[] | null
