@@ -10,7 +10,7 @@ export interface AppNotification {
   description: string;
   date: string;
   lu: boolean;
-  destinataire: "Admin" | "Chef de Pôle" | "Bénévole" | "all";
+  destinataire: "Admin Mosquée" | "Responsable" | "Bénévole" | "all";
   pole?: string;
 }
 
@@ -25,11 +25,11 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 const INITIAL: AppNotification[] = [
-  { id: "1", type: "stock", titre: "Stock critique : Sono portable", description: "Plus que 1 sono portable disponible sur 3.", date: "2026-02-17T10:30", lu: false, destinataire: "Admin" },
-  { id: "2", type: "stock", titre: "Stock bas : Chapiteaux", description: "Plus que 2 chapiteaux disponibles sur 4.", date: "2026-02-17T09:15", lu: false, destinataire: "Admin" },
+  { id: "1", type: "stock", titre: "Stock critique : Sono portable", description: "Plus que 1 sono portable disponible sur 3.", date: "2026-02-17T10:30", lu: false, destinataire: "Admin Mosquée" },
+  { id: "2", type: "stock", titre: "Stock bas : Chapiteaux", description: "Plus que 2 chapiteaux disponibles sur 4.", date: "2026-02-17T09:15", lu: false, destinataire: "Admin Mosquée" },
   { id: "3", type: "message", titre: "Réunion du Conseil", description: "Prochaine réunion du Conseil de la Mosquée le 20/02 à 20h.", date: "2026-02-16T18:00", lu: false, destinataire: "all" },
   { id: "4", type: "message", titre: "Ramadan : Organisation", description: "Veuillez confirmer les bénévoles pour les Iftars.", date: "2026-02-15T14:00", lu: true, destinataire: "all" },
-  { id: "5", type: "stock", titre: "Chaises pliantes", description: "Plus que 145 chaises disponibles. 55 réservées pour la distribution.", date: "2026-02-15T08:00", lu: true, destinataire: "Admin" },
+  { id: "5", type: "stock", titre: "Chaises pliantes", description: "Plus que 145 chaises disponibles. 55 réservées pour la distribution.", date: "2026-02-15T08:00", lu: true, destinataire: "Admin Mosquée" },
 ];
 
 const TOAST_ICONS: Record<NotifType, string> = {
@@ -77,7 +77,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         if (n.lu) return false;
         if (n.destinataire === "all") return true;
         if (n.destinataire === role) {
-          if (role === "Chef de Pôle" && n.pole) return n.pole === pole;
+          if (role === "Responsable" && n.pole) return n.pole === pole;
           return true;
         }
         return false;

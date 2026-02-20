@@ -23,7 +23,7 @@ export function NotificationBell() {
   const filtered = notifications.filter((n) => {
     if (n.destinataire === "all") return true;
     if (n.destinataire === role) {
-      if (role === "Chef de Pôle" && n.pole) return n.pole === pole;
+      if (role === "Responsable" && n.pole) return n.pole === pole;
       return true;
     }
     return false;

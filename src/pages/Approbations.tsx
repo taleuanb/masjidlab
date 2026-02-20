@@ -200,7 +200,7 @@ export default function ApprobationsPage() {
         type: "panne",
         titre: "⚠️ Absence non couverte",
         description: `Le remplacement pour "${req.event_titre}" a été refusé. Action requise.`,
-        destinataire: "Admin",
+        destinataire: "Admin Mosquée",
       });
 
       toast({ title: "Refusé", description: `La demande a été refusée. Alerte créée.`, variant: "destructive" });

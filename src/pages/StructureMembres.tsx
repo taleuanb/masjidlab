@@ -35,13 +35,14 @@ import {
 type AppRole = "admin" | "imam_chef" | "benevole" | "responsable" | "parent" | "eleve";
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
+  admin: "Admin Mosquée",
   super_admin: "Super Admin",
-  imam_chef: "Chef de Pôle",
+  imam_chef: "Imam / Chef",
   responsable: "Responsable",
   benevole: "Bénévole",
-  parent: "Parent",
+  parent: "Parent d'élève",
   eleve: "Élève",
+  enseignant: "Enseignant / Oustaz",
 };
 const ROLE_STYLES: Record<string, string> = {
   admin: "bg-primary/10 text-primary border-primary/20",
