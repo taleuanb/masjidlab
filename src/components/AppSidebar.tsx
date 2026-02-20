@@ -387,32 +387,35 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-3 space-y-2">
-        {/* Role switcher — super admin gets a static badge */}
-        {isSuperAdmin ? (
+        {/* Super Admin badge */}
+        {isSuperAdmin && (
           <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2">
             <Globe className="h-4 w-4 text-primary" />
             <span className="text-xs font-semibold text-primary">Super Admin</span>
           </div>
-        ) : (
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">Rôle actif</label>
-            <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-              <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
-                <div className="flex items-center gap-2">
-                  {React.createElement(roleIcons[role], { className: "h-3.5 w-3.5 text-sidebar-foreground/60" })}
-                  <SelectValue />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                {ALL_ROLES.filter(r => r !== "Super Admin").map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         )}
+
+        {/* Role switcher — always visible, includes all roles for super admin */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">
+            {isSuperAdmin ? "Prévisualiser en tant que" : "Rôle actif"}
+          </label>
+          <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
+            <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
+              <div className="flex items-center gap-2">
+                {React.createElement(roleIcons[role], { className: "h-3.5 w-3.5 text-sidebar-foreground/60" })}
+                <SelectValue />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {ALL_ROLES.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Mon Pôle */}
         {showPoleSelector && (
