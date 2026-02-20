@@ -153,6 +153,7 @@ const roleIcons: Record<UserRole, React.ElementType> = {
   Bénévole: Users,
   Parent: Users,
   Élève: Users,
+  Enseignant: GraduationCap,
 };
 
 // ── Reusable collapsible block ────────────────────────────
