@@ -1126,6 +1126,7 @@ export type Database = {
         | "responsable"
         | "parent"
         | "eleve"
+        | "enseignant"
       contract_type: "CDI" | "CDD" | "Bénévole" | "Vacataire"
     }
     CompositeTypes: {
@@ -1262,6 +1263,7 @@ export const Constants = {
         "responsable",
         "parent",
         "eleve",
+        "enseignant",
       ],
       contract_type: ["CDI", "CDD", "Bénévole", "Vacataire"],
     },
