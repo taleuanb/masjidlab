@@ -113,7 +113,7 @@ interface MemberRow {
 export default function OrganisationPage() {
   const { toast } = useToast();
   const { user: currentUser, dbRole } = useAuth();
-  const isAdmin = dbRole === "admin";
+  const isAdmin = dbRole === "admin" || dbRole === "super_admin";
 
 
   const [loading, setLoading] = useState(true);

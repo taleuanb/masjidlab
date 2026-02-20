@@ -114,7 +114,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { dbRole } = useAuth();
   const { orgId, activePoles, org } = useOrganization();
-  const isAdmin = dbRole === "admin";
+  const isAdmin = dbRole === "admin" || dbRole === "super_admin";
   const currentPlan = (org?.subscription_plan ?? "starter") as "starter" | "pro" | "elite";
 
   // ── Tab: Pôles ──

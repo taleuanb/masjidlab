@@ -20,8 +20,8 @@ import { useRole } from "@/contexts/RoleContext";
 
 export default function Dashboard() {
   const [selectedEtage, setSelectedEtage] = useState<Etage>('RDC');
-  const { role, pole } = useRole();
-  const isAdmin = role === "Admin";
+  const { role, pole, isSuperAdmin } = useRole();
+  const isAdmin = role === "Admin" || role === "Super Admin" || isSuperAdmin;
   const isChef = role === "Chef de Pôle";
 
   return (
