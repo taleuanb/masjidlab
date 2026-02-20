@@ -1,0 +1,595 @@
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Users, Plus, Pencil, Loader2, RefreshCw, Search, X, Shield, UserCheck, Tag,
+  Trash2, Mail, MoreHorizontal, UserX, UserCheck2, Phone, PhoneCall, UserPlus,
+  ExternalLink, UserCog, Building2,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+
+// ─── Types ───────────────────────────────────────────────────────────
+type AppRole = "admin" | "imam_chef" | "benevole" | "responsable" | "parent" | "eleve";
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  super_admin: "Super Admin",
+  imam_chef: "Chef de Pôle",
+  responsable: "Responsable",
+  benevole: "Bénévole",
+  parent: "Parent",
+  eleve: "Élève",
+};
+const ROLE_STYLES: Record<string, string> = {
+  admin: "bg-primary/10 text-primary border-primary/20",
+  super_admin: "bg-primary/10 text-primary border-primary/20",
+  imam_chef: "bg-accent/10 text-accent border-accent/20",
+  responsable: "bg-accent/10 text-accent border-accent/20",
+  benevole: "bg-muted text-muted-foreground border-border",
+  parent: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  eleve: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+};
+
+const PROFILE_TAGS = ["Fidèle", "Donateur", "Parent", "Élève"] as const;
+type ProfileTag = typeof PROFILE_TAGS[number];
+const TAG_STYLES: Record<ProfileTag, string> = {
+  "Fidèle": "bg-primary/10 text-primary border-primary/20",
+  "Donateur": "bg-green-500/10 text-green-700 border-green-500/20",
+  "Parent": "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  "Élève": "bg-amber-500/10 text-amber-700 border-amber-500/20",
+};
+
+interface PoleRow {
+  id: string;
+  nom: string;
+  description: string | null;
+  responsable_id: string | null;
+  responsable_name: string | null;
+  manager_id: string | null;
+  manager_name: string | null;
+  target_staff: number;
+  member_count: number;
+}
+
+interface MemberRow {
+  user_id: string;
+  profile_id: string;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  competences: string[] | null;
+  tags: string[];
+  pole_id: string | null;
+  pole_nom: string | null;
+  role: string;
+  role_row_id: string | null;
+  is_active: boolean;
+  has_account: boolean;
+}
+
+// ─── Component ───────────────────────────────────────────────────────
+export default function StructureMembresPage() {
+  const { toast } = useToast();
+  const { user: currentUser, dbRole } = useAuth();
+  const isAdmin = dbRole === "admin" || dbRole === "super_admin";
+
+  const [loading, setLoading] = useState(true);
+  const [poles, setPoles] = useState<PoleRow[]>([]);
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [polesRaw, setPolesRaw] = useState<{ id: string; nom: string }[]>([]);
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState("organigramme");
+
+  // Pole dialog
+  const [poleDialogOpen, setPoleDialogOpen] = useState(false);
+  const [editingPole, setEditingPole] = useState<PoleRow | null>(null);
+  const [poleForm, setPoleForm] = useState({ nom: "", description: "", manager_id: "none", target_staff: 0 });
+  const [poleSaving, setPoleSaving] = useState(false);
+
+  // Member edit dialog
+  const [editMember, setEditMember] = useState<MemberRow | null>(null);
+  const [memberForm, setMemberForm] = useState({ name: "", email: "", phone: "", role: "benevole", pole_id: "none", competences: "", tags: [] as string[] });
+  const [memberSaving, setMemberSaving] = useState(false);
+
+  // Add member dialog
+  const [addOpen, setAddOpen] = useState(false);
+  const [addMode, setAddMode] = useState<"simple" | "invite">("simple");
+  const [addForm, setAddForm] = useState({ name: "", phone: "", email: "", role: "benevole", pole_id: "none", competences: "", sendInvite: false });
+  const [addSaving, setAddSaving] = useState(false);
+
+  // Action modals
+  const [deactivateTarget, setDeactivateTarget] = useState<MemberRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MemberRow | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // ─── Fetch ─────────────────────────────────────────────────────────
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: polesData } = await supabase.from("poles").select("id, nom, description, responsable_id, manager_id, target_staff").order("nom");
+      const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, phone, competences, pole_id, id, is_active, has_account, tags").order("display_name");
+      const { data: roles } = await supabase.from("user_roles").select("id, user_id, role");
+
+      const roleMap = new Map((roles || []).map((r) => [r.user_id, { role: r.role as string, id: r.id }]));
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      const poleMap = new Map((polesData || []).map((p: any) => [p.id, p.nom]));
+
+      const enrichedPoles: PoleRow[] = (polesData || []).map((p: any) => {
+        const memberCount = (profiles || []).filter((pr: any) => pr.pole_id === p.id).length;
+        const resp = p.responsable_id ? profileMap.get(p.responsable_id) : null;
+        const mgr = p.manager_id ? profileMap.get(p.manager_id) : null;
+        return {
+          id: p.id, nom: p.nom, description: p.description,
+          responsable_id: p.responsable_id, responsable_name: resp?.display_name || null,
+          manager_id: p.manager_id || null, manager_name: mgr?.display_name || null,
+          target_staff: p.target_staff ?? 0, member_count: memberCount,
+        };
+      });
+      setPoles(enrichedPoles);
+      setPolesRaw((polesData || []).map((p: any) => ({ id: p.id, nom: p.nom })));
+
+      const enrichedMembers: MemberRow[] = (profiles || []).map((p: any) => ({
+        user_id: p.user_id, profile_id: p.id, display_name: p.display_name,
+        email: p.email, phone: p.phone || null, competences: p.competences,
+        tags: p.tags ?? [], pole_id: p.pole_id, pole_nom: p.pole_id ? poleMap.get(p.pole_id) || null : null,
+        role: roleMap.get(p.user_id)?.role || "benevole",
+        role_row_id: roleMap.get(p.user_id)?.id || null,
+        is_active: p.is_active !== false, has_account: p.has_account === true,
+      }));
+      setMembers(enrichedMembers);
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // ─── Pole CRUD ─────────────────────────────────────────────────────
+  const openAddPole = () => {
+    setEditingPole(null);
+    setPoleForm({ nom: "", description: "", manager_id: "none", target_staff: 0 });
+    setPoleDialogOpen(true);
+  };
+  const openEditPole = (p: PoleRow) => {
+    setEditingPole(p);
+    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff });
+    setPoleDialogOpen(true);
+  };
+  const handleDeletePole = async (p: PoleRow) => {
+    if (p.member_count > 0) {
+      toast({ title: "Suppression impossible", description: `${p.member_count} membre(s) rattachés.`, variant: "destructive" });
+      return;
+    }
+    await supabase.from("poles").delete().eq("id", p.id);
+    toast({ title: "Pôle supprimé" });
+    fetchAll();
+  };
+  const handleSavePole = async () => {
+    if (!poleForm.nom.trim()) return;
+    setPoleSaving(true);
+    try {
+      const payload: any = { nom: poleForm.nom, description: poleForm.description || null, manager_id: poleForm.manager_id === "none" ? null : poleForm.manager_id, target_staff: poleForm.target_staff };
+      if (editingPole) {
+        await supabase.from("poles").update(payload).eq("id", editingPole.id);
+      } else {
+        await supabase.from("poles").insert(payload);
+      }
+      setPoleDialogOpen(false);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setPoleSaving(false);
+    }
+  };
+
+  // ─── Member Edit ───────────────────────────────────────────────────
+  const openEditMember = (m: MemberRow) => {
+    setEditMember(m);
+    setMemberForm({ name: m.display_name, email: m.email || "", phone: m.phone || "", role: m.role, pole_id: m.pole_id || "none", competences: (m.competences || []).join(", "), tags: m.tags ?? [] });
+  };
+  const handleSaveMember = async () => {
+    if (!editMember) return;
+    setMemberSaving(true);
+    try {
+      const competencesArr = memberForm.competences.split(",").map((c) => c.trim()).filter(Boolean);
+      await supabase.from("profiles").update({
+        display_name: memberForm.name, email: memberForm.email.trim() || null,
+        phone: memberForm.phone.trim() || null, competences: competencesArr,
+        tags: memberForm.tags, pole_id: memberForm.pole_id === "none" ? null : memberForm.pole_id,
+      } as any).eq("user_id", editMember.user_id);
+
+      if (editMember.role !== memberForm.role) {
+        if (editMember.role_row_id) {
+          await supabase.from("user_roles").update({ role: memberForm.role as any }).eq("id", editMember.role_row_id);
+        } else {
+          await supabase.from("user_roles").insert({ user_id: editMember.user_id, role: memberForm.role as any });
+        }
+      }
+      setEditMember(null);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setMemberSaving(false);
+    }
+  };
+
+  // ─── Add Member ────────────────────────────────────────────────────
+  const handleAddMember = async () => {
+    if (!addForm.name.trim()) return;
+    setAddSaving(true);
+    try {
+      if (addMode === "invite" && addForm.sendInvite && addForm.email.trim()) {
+        const res = await supabase.functions.invoke("invite-member", {
+          body: { email: addForm.email.trim(), display_name: addForm.name.trim(), role: addForm.role, pole_id: addForm.pole_id === "none" ? null : addForm.pole_id, redirect_to: `${window.location.origin}/set-password` },
+        });
+        if (res.error) throw new Error(res.error.message);
+        if (res.data?.error) throw new Error(res.data.error);
+      } else {
+        const fakeUserId = crypto.randomUUID();
+        await supabase.from("profiles").insert({ user_id: fakeUserId, display_name: addForm.name.trim(), email: addForm.email.trim() || null, phone: addForm.phone.trim() || null, pole_id: addForm.pole_id === "none" ? null : addForm.pole_id, has_account: false, is_active: true } as any);
+        await supabase.from("user_roles").insert({ user_id: fakeUserId, role: addForm.role as any });
+      }
+      setAddOpen(false);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
+  // ─── Deactivate / Delete ───────────────────────────────────────────
+  const handleDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setActionLoading(true);
+    try {
+      const res = await supabase.functions.invoke("manage-member", { body: { action: "deactivate", target_user_id: deactivateTarget.user_id } });
+      if (res.error) throw new Error(res.error.message);
+      setDeactivateTarget(null);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+  const handleReactivate = async (m: MemberRow) => {
+    const res = await supabase.functions.invoke("manage-member", { body: { action: "reactivate", target_user_id: m.user_id } });
+    if (res.error) toast({ title: "Erreur", description: res.error.message, variant: "destructive" });
+    else fetchAll();
+  };
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setActionLoading(true);
+    try {
+      const res = await supabase.functions.invoke("manage-member", { body: { action: "delete", target_user_id: deleteTarget.user_id } });
+      if (res.error) throw new Error(res.error.message);
+      setDeleteTarget(null);
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+  const handleTransformToUser = async (m: MemberRow) => {
+    if (!m.email) return;
+    const res = await supabase.functions.invoke("invite-member", { body: { email: m.email, display_name: m.display_name, role: m.role, pole_id: m.pole_id, redirect_to: `${window.location.origin}/set-password` } });
+    if (res.error) toast({ title: "Erreur", description: res.error.message, variant: "destructive" });
+    else { toast({ title: "Invitation envoyée" }); fetchAll(); }
+  };
+
+  const isSelf = (m: MemberRow) => m.user_id === currentUser?.id;
+  const initials = (name: string) => name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+
+  const filtered = members.filter((m) => {
+    const q = search.toLowerCase();
+    return m.display_name.toLowerCase().includes(q) || (m.email || "").toLowerCase().includes(q) || (m.pole_nom || "").toLowerCase().includes(q);
+  });
+
+  return (
+    <main className="flex-1 overflow-y-auto">
+      <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <SidebarTrigger />
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Structure & Membres</h1>
+              <p className="text-sm text-muted-foreground">{poles.length} pôles · {members.length} membres</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-[200px] pl-8 text-xs" />
+              {search && <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2"><X className="h-3.5 w-3.5 text-muted-foreground" /></button>}
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+        ) : (
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList>
+              <TabsTrigger value="organigramme" className="gap-1.5"><Building2 className="h-3.5 w-3.5" /> Organigramme</TabsTrigger>
+              <TabsTrigger value="annuaire" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Annuaire</TabsTrigger>
+            </TabsList>
+
+            {/* ── ORGANIGRAMME ── */}
+            <TabsContent value="organigramme" className="space-y-4 mt-4">
+              <div className="flex justify-end">
+                {isAdmin && <Button size="sm" onClick={openAddPole}><Plus className="h-4 w-4 mr-1" /> Ajouter un pôle</Button>}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {poles.map((p) => {
+                  const pct = p.target_staff > 0 ? Math.min(100, Math.round((p.member_count / p.target_staff) * 100)) : 0;
+                  return (
+                    <Card key={p.id}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-foreground">{p.nom}</h3>
+                          {isAdmin && (
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditPole(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeletePole(p)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          )}
+                        </div>
+                        {p.description && <p className="text-xs text-muted-foreground">{p.description}</p>}
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <p>Responsable : <span className="font-medium text-foreground">{p.manager_name || p.responsable_name || "—"}</span></p>
+                          <div className="flex items-center gap-2">
+                            <span>{p.member_count}/{p.target_staff || "∞"}</span>
+                            <Progress value={pct} className="h-1.5 flex-1" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </TabsContent>
+
+            {/* ── ANNUAIRE ── */}
+            <TabsContent value="annuaire" className="mt-4">
+              <div className="flex justify-end mb-3">
+                {isAdmin && (
+                  <Button size="sm" onClick={() => { setAddForm({ name: "", phone: "", email: "", role: "benevole", pole_id: "none", competences: "", sendInvite: false }); setAddMode("simple"); setAddOpen(true); }}>
+                    <Plus className="h-4 w-4 mr-1" /> Ajouter un membre
+                  </Button>
+                )}
+              </div>
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[240px]">Membre</TableHead>
+                        <TableHead>Rôle</TableHead>
+                        <TableHead>Pôle</TableHead>
+                        <TableHead>Tags</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead className="w-[80px] text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Aucun membre trouvé</TableCell></TableRow>
+                      ) : filtered.map((m) => (
+                        <TableRow key={m.user_id} className={!m.is_active ? "opacity-50" : ""}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8"><AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback></Avatar>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm font-medium">{m.display_name}</span>
+                                  {!m.has_account && <Badge variant="outline" className="text-[9px] h-4 px-1">Hors-ligne</Badge>}
+                                  {!m.is_active && <Badge variant="outline" className="text-[9px] h-4 px-1 bg-destructive/10 text-destructive">Inactif</Badge>}
+                                </div>
+                                <p className="text-xs text-muted-foreground">{m.email || "—"}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`text-[11px] ${ROLE_STYLES[m.role] || ROLE_STYLES.benevole}`}>
+                              {ROLE_LABELS[m.role] || m.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">{m.pole_nom || "—"}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {(m.tags ?? []).map((t) => (
+                                <Badge key={t} variant="outline" className={`text-[10px] ${TAG_STYLES[t as ProfileTag] || ""}`}>{t}</Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{m.phone || m.email || "—"}</TableCell>
+                          <TableCell className="text-right">
+                            {isAdmin && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => openEditMember(m)}><Pencil className="h-3.5 w-3.5 mr-2" /> Modifier</DropdownMenuItem>
+                                  {!m.has_account && m.email && (
+                                    <DropdownMenuItem onClick={() => handleTransformToUser(m)}><UserPlus className="h-3.5 w-3.5 mr-2" /> Inviter</DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  {m.is_active ? (
+                                    <DropdownMenuItem onClick={() => setDeactivateTarget(m)} disabled={isSelf(m)}><UserX className="h-3.5 w-3.5 mr-2" /> Désactiver</DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem onClick={() => handleReactivate(m)}><UserCheck2 className="h-3.5 w-3.5 mr-2" /> Réactiver</DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(m)} disabled={isSelf(m)}><Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
+
+      {/* ── Pole Dialog ── */}
+      <Dialog open={poleDialogOpen} onOpenChange={setPoleDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editingPole ? "Modifier le pôle" : "Nouveau pôle"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nom</Label><Input value={poleForm.nom} onChange={(e) => setPoleForm({ ...poleForm, nom: e.target.value })} /></div>
+            <div><Label>Description</Label><Textarea value={poleForm.description} onChange={(e) => setPoleForm({ ...poleForm, description: e.target.value })} rows={2} /></div>
+            <div><Label>Responsable</Label>
+              <Select value={poleForm.manager_id} onValueChange={(v) => setPoleForm({ ...poleForm, manager_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun</SelectItem>
+                  {members.filter((m) => m.is_active).map((m) => <SelectItem key={m.profile_id} value={m.profile_id}>{m.display_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Effectif cible</Label><Input type="number" value={poleForm.target_staff} onChange={(e) => setPoleForm({ ...poleForm, target_staff: parseInt(e.target.value) || 0 })} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPoleDialogOpen(false)}>Annuler</Button>
+            <Button onClick={handleSavePole} disabled={poleSaving}>{poleSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Member Edit Dialog ── */}
+      <Dialog open={!!editMember} onOpenChange={() => setEditMember(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Modifier — {editMember?.display_name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nom</Label><Input value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} /></div>
+            <div><Label>Email</Label><Input value={memberForm.email} onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })} /></div>
+            <div><Label>Téléphone</Label><Input value={memberForm.phone} onChange={(e) => setMemberForm({ ...memberForm, phone: e.target.value })} /></div>
+            <div><Label>Rôle</Label>
+              <Select value={memberForm.role} onValueChange={(v) => setMemberForm({ ...memberForm, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ROLE_LABELS).filter(([k]) => k !== "super_admin").map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Pôle</Label>
+              <Select value={memberForm.pole_id} onValueChange={(v) => setMemberForm({ ...memberForm, pole_id: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun</SelectItem>
+                  {polesRaw.map((p) => <SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Compétences</Label><Input value={memberForm.competences} onChange={(e) => setMemberForm({ ...memberForm, competences: e.target.value })} placeholder="Séparées par des virgules" /></div>
+            <div>
+              <Label>Tags Profil</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {PROFILE_TAGS.map((t) => (
+                  <Badge
+                    key={t}
+                    variant="outline"
+                    className={`cursor-pointer ${memberForm.tags.includes(t) ? TAG_STYLES[t] : "opacity-40"}`}
+                    onClick={() => setMemberForm((f) => ({ ...f, tags: f.tags.includes(t) ? f.tags.filter((x) => x !== t) : [...f.tags, t] }))}
+                  >
+                    {t}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditMember(null)}>Annuler</Button>
+            <Button onClick={handleSaveMember} disabled={memberSaving}>{memberSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Add Member Dialog ── */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Ajouter un membre</DialogTitle></DialogHeader>
+          <Tabs value={addMode} onValueChange={(v) => setAddMode(v as any)}>
+            <TabsList className="w-full"><TabsTrigger value="simple" className="flex-1">Enregistrement simple</TabsTrigger><TabsTrigger value="invite" className="flex-1">Invitation numérique</TabsTrigger></TabsList>
+          </Tabs>
+          <div className="space-y-3 mt-2">
+            <div><Label>Nom *</Label><Input value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} /></div>
+            {addMode === "invite" && <div><Label>Email *</Label><Input value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value, sendInvite: true })} /></div>}
+            {addMode === "simple" && <>
+              <div><Label>Téléphone</Label><Input value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} /></div>
+              <div><Label>Email</Label><Input value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} /></div>
+            </>}
+            <div><Label>Pôle</Label>
+              <Select value={addForm.pole_id} onValueChange={(v) => setAddForm({ ...addForm, pole_id: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="none">Aucun</SelectItem>{polesRaw.map((p) => <SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Annuler</Button>
+            <Button onClick={handleAddMember} disabled={addSaving}>{addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ajouter"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Deactivate Confirm ── */}
+      <Dialog open={!!deactivateTarget} onOpenChange={() => setDeactivateTarget(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Désactiver ce compte ?</DialogTitle><DialogDescription>{deactivateTarget?.display_name} ne pourra plus se connecter.</DialogDescription></DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeactivateTarget(null)}>Annuler</Button>
+            <Button variant="destructive" onClick={handleDeactivate} disabled={actionLoading}>{actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Désactiver"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirm ── */}
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Supprimer définitivement ?</DialogTitle><DialogDescription>Cette action est irréversible pour {deleteTarget?.display_name}.</DialogDescription></DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Annuler</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={actionLoading}>{actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </main>
+  );
+}
