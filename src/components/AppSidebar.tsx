@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -237,6 +237,18 @@ function SidebarBlock({
 }
 
 // ── Main Sidebar ─────────────────────────────────────────
+// Map UI role labels back to DB role identifiers for the RPC call
+const UI_ROLE_TO_DB: Record<UserRole, string> = {
+  "Super Admin": "super_admin",
+  Admin: "admin",
+  "Chef de Pôle": "imam_chef",
+  Responsable: "responsable",
+  Bénévole: "benevole",
+  Parent: "parent",
+  Élève: "eleve",
+  Enseignant: "enseignant",
+};
+
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -244,48 +256,55 @@ export function AppSidebar() {
   const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
   const { signOut, dbRole } = useAuth();
 
-  const isAdminLike = role === "Admin" || role === "Super Admin" || isSuperAdmin;
-  const showPoleSelector = !isSuperAdmin && ["Chef de Pôle", "Bénévole", "Parent", "Élève"].includes(role);
-  const showPilotage = ADMIN_ROLES.includes(role) || isSuperAdmin;
+  // When previewing a different role, disable the Super Admin bypass
+  const isPreviewingOtherRole = isSuperAdmin && role !== "Super Admin";
+  const effectiveBypass = isSuperAdmin && !isPreviewingOtherRole;
+
+  const isAdminLike = role === "Admin" || role === "Super Admin" || effectiveBypass;
+  const showPoleSelector = !effectiveBypass && ["Chef de Pôle", "Bénévole", "Parent", "Élève"].includes(role);
+  const showPilotage = ADMIN_ROLES.includes(role) || effectiveBypass;
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
   // ── RBAC permissions from DB ──
   const [allowedModules, setAllowedModules] = useState<Set<string> | null>(null);
 
   const orgId = org?.id;
-  const currentDbRole = dbRole;
+  // Use the previewed role (mapped to DB) for the RPC call
+  const effectiveDbRole = UI_ROLE_TO_DB[role] ?? dbRole;
 
-  useEffect(() => {
-    if (!orgId || !currentDbRole || isSuperAdmin) {
-      setAllowedModules(null); // Super admin sees everything
+  const fetchPermissions = useCallback(async () => {
+    // If Super Admin without preview → bypass, show all
+    if (effectiveBypass) {
+      setAllowedModules(null);
       return;
     }
-    (async () => {
-      const { data, error } = await supabase.rpc("get_effective_permissions" as any, {
-        p_org_id: orgId,
-        p_role: currentDbRole,
-      });
-      if (error || !data) {
-        setAllowedModules(null); // Fallback: show all
-        return;
-      }
-      const allowed = new Set<string>();
-      for (const row of data as any[]) {
-        if (row.enabled ?? row.can_view) allowed.add(row.module);
-      }
-      setAllowedModules(allowed);
-    })();
-  }, [orgId, currentDbRole, isSuperAdmin]);
+    if (!orgId || !effectiveDbRole) {
+      setAllowedModules(null);
+      return;
+    }
+    const { data, error } = await supabase.rpc("get_effective_permissions" as any, {
+      p_org_id: orgId,
+      p_role: effectiveDbRole,
+    });
+    if (error || !data) {
+      setAllowedModules(null);
+      return;
+    }
+    const allowed = new Set<string>();
+    for (const row of data as any[]) {
+      if (row.enabled ?? row.can_view) allowed.add(row.module);
+    }
+    setAllowedModules(allowed);
+  }, [orgId, effectiveDbRole, effectiveBypass]);
+
+  // Re-fetch when role preview, org, or bypass changes
+  useEffect(() => { fetchPermissions(); }, [fetchPermissions]);
 
   // Filter metier blocks by RBAC permissions
   const filteredMetierBlocks = useMemo(() => {
-    if (!allowedModules || isSuperAdmin) return METIER_BLOCKS;
-    return METIER_BLOCKS.filter((block) => {
-      // A block is visible if its id or any child module is allowed
-      if (allowedModules.has(block.id)) return true;
-      return false;
-    });
-  }, [allowedModules, isSuperAdmin]);
+    if (!allowedModules) return METIER_BLOCKS;
+    return METIER_BLOCKS.filter((block) => allowedModules.has(block.id));
+  }, [allowedModules]);
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => navigate("/");
@@ -326,7 +345,7 @@ export function AppSidebar() {
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pilotage</p>
             <div className="space-y-px">
               {PILOTAGE_BLOCKS.map((block) => (
-                <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={isSuperAdmin} location={location} />
+                <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
               ))}
             </div>
           </div>
@@ -358,7 +377,7 @@ export function AppSidebar() {
           <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
           <div className="space-y-px">
             {filteredMetierBlocks.map((block) => (
-              <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={isSuperAdmin} location={location} />
+              <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
             ))}
           </div>
         </div>
