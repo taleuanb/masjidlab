@@ -1,20 +1,19 @@
 import React, { useState } from "react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Settings2, Plus, Trash2, Loader2, BookOpen, Layers } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Trash2, Loader2, BookOpen, Layers } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Tables } from "@/integrations/supabase/types";
 
-/* ─────────────── Onglet Général ─────────────── */
+/* ─────────────── Général ─────────────── */
 
 function GeneralTab() {
   const { orgId } = useOrganization();
@@ -111,7 +110,7 @@ function GeneralTab() {
   );
 }
 
-/* ─────────────── Onglet Matières ─────────────── */
+/* ─────────────── Matières ─────────────── */
 
 function SubjectsTab() {
   const { orgId } = useOrganization();
@@ -209,7 +208,7 @@ function SubjectsTab() {
   );
 }
 
-/* ─────────────── Onglet Niveaux ─────────────── */
+/* ─────────────── Niveaux ─────────────── */
 
 function LevelsTab() {
   const { orgId } = useOrganization();
@@ -320,28 +319,21 @@ function LevelsTab() {
   );
 }
 
-/* ─────────────── Page principale ─────────────── */
+/* ─────────────── Composant exporté ─────────────── */
 
-const MadrasaSettings = () => (
-  <main className="flex-1 p-6 space-y-6">
-    <div className="flex items-center gap-3">
-      <SidebarTrigger />
-      <Settings2 className="h-6 w-6 text-primary" />
-      <h1 className="text-2xl font-bold text-foreground">Configuration Éducation</h1>
+export function MadrasaSettingsPanel() {
+  return (
+    <div className="space-y-4">
+      <Tabs defaultValue="general" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="general">Général</TabsTrigger>
+          <TabsTrigger value="subjects">Matières</TabsTrigger>
+          <TabsTrigger value="levels">Niveaux</TabsTrigger>
+        </TabsList>
+        <TabsContent value="general"><GeneralTab /></TabsContent>
+        <TabsContent value="subjects"><SubjectsTab /></TabsContent>
+        <TabsContent value="levels"><LevelsTab /></TabsContent>
+      </Tabs>
     </div>
-
-    <Tabs defaultValue="general" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="general">Général</TabsTrigger>
-        <TabsTrigger value="subjects">Matières</TabsTrigger>
-        <TabsTrigger value="levels">Niveaux</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="general"><GeneralTab /></TabsContent>
-      <TabsContent value="subjects"><SubjectsTab /></TabsContent>
-      <TabsContent value="levels"><LevelsTab /></TabsContent>
-    </Tabs>
-  </main>
-);
-
-export default MadrasaSettings;
+  );
+}

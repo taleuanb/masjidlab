@@ -3,8 +3,9 @@ import {
   Building2, Plus, Trash2, Pencil, Loader2, Save,
   Layers, Tag, Package, RefreshCw, X, CheckCircle2,
   Snowflake, Wifi, Mic, Monitor, Speaker,
-  Landmark, Truck, BookOpen, Heart, Radio, Zap, Crown, Star,
+  Landmark, Truck, BookOpen, Heart, Radio, Zap, Crown, Star, GraduationCap,
 } from "lucide-react";
+import { MadrasaSettingsPanel } from "@/components/MadrasaSettingsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -116,6 +117,7 @@ export default function SettingsPage() {
   const { orgId, activePoles, org } = useOrganization();
   const isAdmin = dbRole === "admin" || dbRole === "super_admin";
   const currentPlan = (org?.subscription_plan ?? "starter") as "starter" | "pro" | "elite";
+  const showMadrassa = activePoles.includes("education");
 
   // ── Tab: Pôles ──
   const [polesLoading, setPolesLoading] = useState(false);
@@ -355,7 +357,7 @@ export default function SettingsPage() {
         </div>
 
         <Tabs defaultValue="poles" className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full max-w-xl">
+          <TabsList className={`grid w-full max-w-2xl ${showMadrassa ? "grid-cols-5" : "grid-cols-4"}`}>
             <TabsTrigger value="poles" className="gap-1.5 text-xs">
               <Zap className="h-3.5 w-3.5" />Pôles
             </TabsTrigger>
@@ -368,6 +370,11 @@ export default function SettingsPage() {
             <TabsTrigger value="inventaire" className="gap-1.5 text-xs">
               <Package className="h-3.5 w-3.5" />Inventaire
             </TabsTrigger>
+            {showMadrassa && (
+              <TabsTrigger value="madrassa" className="gap-1.5 text-xs">
+                <GraduationCap className="h-3.5 w-3.5" />Madrassa
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* ═══════════ PÔLES ═══════════ */}
@@ -665,6 +672,13 @@ export default function SettingsPage() {
               </Card>
             )}
           </TabsContent>
+
+          {/* ═══════════ MADRASSA ═══════════ */}
+          {showMadrassa && (
+            <TabsContent value="madrassa">
+              <MadrasaSettingsPanel />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
