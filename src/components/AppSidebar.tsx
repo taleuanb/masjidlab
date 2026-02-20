@@ -18,7 +18,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useRole, type UserRole } from "@/contexts/RoleContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import type { Pole } from "@/types/amm";
 
@@ -35,9 +34,7 @@ interface NavBlock {
   id: string;
   label: string;
   icon: React.ElementType;
-  /** Which active_poles IDs enable this block (empty = always visible if role allows) */
   poleIds: string[];
-  /** Which roles can see the entire block */
   blockRoles: UserRole[];
   items: NavItem[];
 }
@@ -59,24 +56,13 @@ const PILOTAGE_BLOCKS: NavBlock[] = [
   },
   {
     id: "gouvernance",
-    label: "Gouvernance",
-    icon: Landmark,
+    label: "Structure & Membres",
+    icon: Users,
     poleIds: ["admin"],
     blockRoles: ["Admin", "Responsable"],
     items: [
       { title: "Annuaire", url: "/membres", icon: Users, roles: ["Admin", "Responsable"] },
       { title: "Organisation", url: "/organisation", icon: Building2, roles: ["Admin"] },
-    ],
-  },
-  {
-    id: "finance",
-    label: "Finance & Récoltes",
-    icon: Wallet,
-    poleIds: ["admin"],
-    blockRoles: ["Admin", "Responsable"],
-    items: [
-      { title: "Transactions", url: "/finance", icon: CreditCard, roles: ["Admin", "Responsable"] },
-      { title: "Récoltes", url: "/recoltes", icon: HandCoins, roles: ["Admin", "Responsable"] },
     ],
   },
 ];
@@ -96,6 +82,17 @@ const METIER_BLOCKS: NavBlock[] = [
       { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin", "Chef de Pôle", "Responsable"] },
       { title: "Parking", url: "/parking", icon: Car, roles: ["Admin"] },
       { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin"] },
+    ],
+  },
+  {
+    id: "finance",
+    label: "Finance & Récoltes",
+    icon: Wallet,
+    poleIds: ["admin"],
+    blockRoles: ALL_ROLES,
+    items: [
+      { title: "Transactions", url: "/finance", icon: CreditCard, roles: ["Admin", "Responsable"] },
+      { title: "Récoltes", url: "/recoltes", icon: HandCoins, roles: ["Admin", "Responsable", "Chef de Pôle", "Bénévole"] },
     ],
   },
   {
@@ -164,6 +161,8 @@ function SidebarBlock({
   );
   const [open, setOpen] = useState(hasActiveRoute);
 
+  // Non-admin: hide inactive blocks entirely
+  if (!isPoleActive && !isAdminLike) return null;
   if (!block.blockRoles.includes(role) && !isAdminLike) return null;
 
   return (
@@ -234,25 +233,8 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, setRole, pole, setPole, displayName, isSuperAdmin } = useRole();
-  const { activePoles, org } = useOrganization();
+  const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
   const { signOut } = useAuth();
-
-  // Super-admin org switcher
-  const [allOrgs, setAllOrgs] = useState<{ id: string; name: string }[]>([]);
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(org?.id ?? null);
-
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    supabase
-      .from("organizations")
-      .select("id, name")
-      .order("name")
-      .then(({ data }) => setAllOrgs(data ?? []));
-  }, [isSuperAdmin]);
-
-  useEffect(() => {
-    setSelectedOrgId(org?.id ?? null);
-  }, [org?.id]);
 
   const isAdminLike = role === "Admin" || isSuperAdmin;
   const showPoleSelector = ["Chef de Pôle", "Bénévole", "Parent", "Élève"].includes(role);
@@ -267,27 +249,51 @@ export function AppSidebar() {
 
   const handleLogoClick = () => navigate("/");
 
+  const handleOrgSwitch = (orgId: string) => {
+    setOverrideOrgId(orgId);
+  };
+
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-5">
-        {/* Super-admin org switcher at the very top */}
-        {isSuperAdmin && allOrgs.length > 1 && (
-          <div className="space-y-1.5 mb-4">
-            <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1 flex items-center gap-1">
-              <Globe className="h-3 w-3" /> Mosquée active
-            </label>
-            <Select value={selectedOrgId ?? ""} onValueChange={(v) => setSelectedOrgId(v)}>
-              <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
-                <SelectValue placeholder="Choisir…" />
-              </SelectTrigger>
-              <SelectContent>
-                {allOrgs.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Super-admin Console SaaS */}
+        {isSuperAdmin && (
+          <div className="space-y-3 mb-4 rounded-lg bg-sidebar-accent/50 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold flex items-center gap-1.5">
+              <Globe className="h-3 w-3" /> Console SaaS
+            </p>
+
+            {/* Org switcher */}
+            {allOrgs.length > 0 && (
+              <div className="space-y-1">
+                <label className="text-[10px] text-sidebar-foreground/40 px-0.5">Mosquée active</label>
+                <Select
+                  value={overrideOrgId ?? org?.id ?? ""}
+                  onValueChange={handleOrgSwitch}
+                >
+                  <SelectTrigger className="h-8 text-xs bg-sidebar-accent/60 border-sidebar-accent text-sidebar-foreground">
+                    <SelectValue placeholder="Choisir…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allOrgs.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Dashboard Global SaaS */}
+            <NavLink
+              to="/saas-overview"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+              activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span>Dashboard Global SaaS</span>
+            </NavLink>
           </div>
         )}
 
@@ -305,28 +311,6 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-3 gap-0">
-        {/* Super-Admin global dashboard */}
-        {isSuperAdmin && (
-          <SidebarGroup className="py-2">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/saas-overview"
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                    >
-                      <Eye className="h-4 w-4" />
-                      <span>Dashboard Global SaaS</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
         {/* ── PILOTAGE ── */}
         {showPilotage && (
           <div className="py-2">

@@ -18,27 +18,61 @@ interface OrganizationContextType {
   pendingAffectation: boolean;
   /** Force un rechargement du contexte (après création d'org) */
   refetch: () => void;
+  /** Super-admin: override l'org courante */
+  overrideOrgId: string | null;
+  setOverrideOrgId: (id: string | null) => void;
+  /** Toutes les orgs (pour super-admin) */
+  allOrgs: Organization[];
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-  const { user, session, loading: authLoading } = useAuth();
+  const { user, session, loading: authLoading, dbRole } = useAuth();
   const queryClient = useQueryClient();
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingAffectation, setPendingAffectation] = useState(false);
   const [tick, setTick] = useState(0);
+  const [overrideOrgId, setOverrideOrgId] = useState<string | null>(null);
+  const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
+
+  const isSuperAdmin = dbRole === "super_admin";
 
   const refetch = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["userProfile"] });
     setTick((t) => t + 1);
   }, [queryClient]);
 
+  // Fetch all orgs for super-admin
+  useEffect(() => {
+    if (!isSuperAdmin || !user) { setAllOrgs([]); return; }
+    supabase.rpc("get_all_organizations").then(({ data }) => {
+      setAllOrgs(
+        (data ?? []).map((o: any) => ({
+          id: o.id,
+          name: o.name,
+          active_poles: o.active_poles ?? [],
+          subscription_plan: o.subscription_plan,
+        }))
+      );
+    });
+  }, [isSuperAdmin, user]);
+
+  // When super-admin overrides org, use that directly
+  useEffect(() => {
+    if (!isSuperAdmin || !overrideOrgId) return;
+    const found = allOrgs.find((o) => o.id === overrideOrgId);
+    if (found) {
+      setOrg(found);
+      setPendingAffectation(false);
+      setLoading(false);
+    }
+  }, [overrideOrgId, allOrgs, isSuperAdmin]);
+
   const fetchOrg = useCallback(async (userId: string) => {
     setLoading(true);
     try {
-      // Re-fetch session to ensure freshest token
       const { data: { user: freshUser } } = await supabase.auth.getUser();
       const resolvedUserId = freshUser?.id ?? userId;
 
@@ -61,8 +95,6 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         .select("id, name, active_poles, subscription_plan")
         .eq("id", profile.org_id)
         .maybeSingle();
-
-      console.log("Org data:", orgData, "| Org error:", orgError?.message ?? null);
 
       if (orgData) {
         setOrg({
@@ -87,13 +119,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (authLoading) return;
-
     if (!user) {
       setOrg(null);
       setLoading(false);
       setPendingAffectation(false);
       return;
     }
+    // If super-admin has an override, skip profile fetch
+    if (isSuperAdmin && overrideOrgId) return;
 
     fetchOrg(user.id);
 
@@ -103,7 +136,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("org-poles-updated", handlePolesUpdated);
     return () => window.removeEventListener("org-poles-updated", handlePolesUpdated);
-  }, [user, session, authLoading, tick, fetchOrg]);
+  }, [user, session, authLoading, tick, fetchOrg, isSuperAdmin, overrideOrgId]);
 
   return (
     <OrganizationContext.Provider
@@ -114,6 +147,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         loading,
         pendingAffectation,
         refetch,
+        overrideOrgId,
+        setOverrideOrgId,
+        allOrgs,
       }}
     >
       {children}
