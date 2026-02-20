@@ -3,17 +3,15 @@ import { Pole } from "@/types/amm";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
-export type UserRole = "Super Admin" | "Admin" | "Chef de Pôle" | "Bénévole" | "Responsable" | "Parent" | "Élève" | "Enseignant";
+export type UserRole = "Super Admin" | "Admin Mosquée" | "Responsable" | "Enseignant / Oustaz" | "Bénévole" | "Parent d'élève";
 
 const DB_ROLE_TO_UI: Record<string, UserRole> = {
   super_admin: "Super Admin",
-  admin: "Admin",
-  imam_chef: "Chef de Pôle",
+  admin: "Admin Mosquée",
   responsable: "Responsable",
+  enseignant: "Enseignant / Oustaz",
   benevole: "Bénévole",
-  parent: "Parent",
-  eleve: "Élève",
-  enseignant: "Enseignant",
+  parent: "Parent d'élève",
 };
 
 interface RoleContextType {
@@ -29,7 +27,7 @@ const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const { user, dbRole } = useAuth();
-  const [role, setRole] = useState<UserRole>("Admin");
+  const [role, setRole] = useState<UserRole>("Admin Mosquée");
   const [pole, setPole] = useState<Pole>("Imam");
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);

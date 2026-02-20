@@ -40,8 +40,8 @@ interface NavBlock {
   items: NavItem[];
 }
 
-const ALL_ROLES: UserRole[] = ["Super Admin", "Admin", "Chef de Pôle", "Responsable", "Bénévole", "Parent", "Élève"];
-const ADMIN_ROLES: UserRole[] = ["Super Admin", "Admin", "Chef de Pôle", "Responsable"];
+const ALL_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable", "Enseignant / Oustaz", "Bénévole", "Parent d'élève"];
+const ADMIN_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable"];
 
 // ── PILOTAGE ──────────────────────────────────────────────
 const PILOTAGE_BLOCKS: NavBlock[] = [
@@ -50,9 +50,9 @@ const PILOTAGE_BLOCKS: NavBlock[] = [
     label: "Configuration",
     icon: SlidersHorizontal,
     poleIds: [],
-    blockRoles: ["Admin", "Responsable"],
+    blockRoles: ["Admin Mosquée", "Responsable"],
     items: [
-      { title: "Espaces & Pôles", url: "/configuration", icon: SlidersHorizontal, roles: ["Admin", "Responsable"] },
+      { title: "Espaces & Pôles", url: "/configuration", icon: SlidersHorizontal, roles: ["Admin Mosquée", "Responsable"] },
     ],
   },
   {
@@ -60,9 +60,9 @@ const PILOTAGE_BLOCKS: NavBlock[] = [
     label: "Structure & Membres",
     icon: Users,
     poleIds: ["admin"],
-    blockRoles: ["Admin", "Responsable"],
+    blockRoles: ["Admin Mosquée", "Responsable"],
     items: [
-      { title: "Structure & Membres", url: "/structure-membres", icon: Users, roles: ["Admin", "Responsable"] },
+      { title: "Structure & Membres", url: "/structure-membres", icon: Users, roles: ["Admin Mosquée", "Responsable"] },
     ],
   },
 ];
@@ -76,12 +76,12 @@ const METIER_BLOCKS: NavBlock[] = [
     poleIds: ["logistics"],
     blockRoles: ALL_ROLES,
     items: [
-      { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin", "Chef de Pôle", "Responsable", "Bénévole"] },
-      { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin", "Chef de Pôle", "Responsable"] },
-      { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin", "Chef de Pôle", "Responsable"] },
-      { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin", "Chef de Pôle", "Responsable"] },
-      { title: "Parking", url: "/parking", icon: Car, roles: ["Admin"] },
-      { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin"] },
+      { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin Mosquée", "Responsable", "Bénévole"] },
+      { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Parking", url: "/parking", icon: Car, roles: ["Admin Mosquée"] },
+      { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin Mosquée"] },
     ],
   },
   {
@@ -115,9 +115,9 @@ const METIER_BLOCKS: NavBlock[] = [
     poleIds: ["admin"],
     blockRoles: ADMIN_ROLES,
     items: [
-      { title: "Transactions", url: "/finance", icon: CreditCard, roles: ["Admin", "Responsable"] },
-      { title: "Donateurs", url: "/donateurs", icon: Heart, roles: ["Admin", "Responsable"] },
-      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt, roles: ["Admin", "Responsable"] },
+      { title: "Transactions", url: "/finance", icon: CreditCard, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Donateurs", url: "/donateurs", icon: Heart, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt, roles: ["Admin Mosquée", "Responsable"] },
     ],
   },
   {
@@ -139,22 +139,20 @@ const METIER_BLOCKS: NavBlock[] = [
 ];
 
 const STANDALONE_ITEMS: NavItem[] = [
-  { title: "Approbations", url: "/approbations", icon: UserCheck, roles: ["Admin", "Chef de Pôle", "Responsable"] },
-  { title: "Opérations", url: "/operations", icon: Settings2, roles: ["Admin", "Chef de Pôle", "Responsable"] },
-  { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays, roles: ["Bénévole", "Parent", "Élève"] },
+  { title: "Approbations", url: "/approbations", icon: UserCheck, roles: ["Admin Mosquée", "Responsable"] },
+  { title: "Opérations", url: "/operations", icon: Settings2, roles: ["Admin Mosquée", "Responsable"] },
+  { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays, roles: ["Bénévole", "Parent d'élève"] },
   { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
-  { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Chef de Pôle", "Responsable"] },
+  { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Responsable"] },
 ];
 
 const roleIcons: Record<UserRole, React.ElementType> = {
   "Super Admin": Globe,
-  Admin: ShieldCheck,
-  "Chef de Pôle": UserCheck,
+  "Admin Mosquée": ShieldCheck,
   Responsable: UserCheck,
+  "Enseignant / Oustaz": GraduationCap,
   Bénévole: Users,
-  Parent: Users,
-  Élève: Users,
-  Enseignant: GraduationCap,
+  "Parent d'élève": Users,
 };
 
 // ── Reusable collapsible block ────────────────────────────
@@ -240,13 +238,11 @@ function SidebarBlock({
 // Map UI role labels back to DB role identifiers for the RPC call
 const UI_ROLE_TO_DB: Record<UserRole, string> = {
   "Super Admin": "super_admin",
-  Admin: "admin",
-  "Chef de Pôle": "imam_chef",
+  "Admin Mosquée": "admin",
   Responsable: "responsable",
+  "Enseignant / Oustaz": "enseignant",
   Bénévole: "benevole",
-  Parent: "parent",
-  Élève: "eleve",
-  Enseignant: "enseignant",
+  "Parent d'élève": "parent",
 };
 
 export function AppSidebar() {
@@ -260,8 +256,8 @@ export function AppSidebar() {
   const isPreviewingOtherRole = isSuperAdmin && role !== "Super Admin";
   const effectiveBypass = isSuperAdmin && !isPreviewingOtherRole;
 
-  const isAdminLike = role === "Admin" || role === "Super Admin" || effectiveBypass;
-  const showPoleSelector = !effectiveBypass && ["Chef de Pôle", "Bénévole", "Parent", "Élève"].includes(role);
+  const isAdminLike = role === "Admin Mosquée" || role === "Super Admin" || effectiveBypass;
+  const showPoleSelector = !effectiveBypass && ["Bénévole", "Parent d'élève"].includes(role);
   const showPilotage = ADMIN_ROLES.includes(role) || effectiveBypass;
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 

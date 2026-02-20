@@ -274,7 +274,7 @@ export default function MonAgendaPage() {
         type: "changement",
         titre: `🔄 Demande de remplacement`,
         description: `${user.email?.split("@")[0] || "Utilisateur"} demande ${selected?.display_name || "un remplaçant"} pour "${absenceTarget.titre}"`,
-         destinataire: "Chef de Pôle",
+         destinataire: "Responsable",
         pole: absenceTarget.pole,
       });
 
@@ -325,13 +325,13 @@ export default function MonAgendaPage() {
         type: "panne",
         titre: `⚠️ ALERTE : Absence non couverte`,
         description: `${user.email?.split("@")[0] || "Utilisateur"} est absent(e) pour "${absenceTarget.titre}" — Aucun remplaçant assigné !`,
-        destinataire: "Admin",
+        destinataire: "Admin Mosquée",
       });
       pushNotification({
         type: "panne",
         titre: `⚠️ Absence non couverte — ${absenceTarget.pole}`,
         description: `"${absenceTarget.titre}" n'a pas de remplaçant. Action urgente requise.`,
-        destinataire: "Chef de Pôle",
+        destinataire: "Responsable",
         pole: absenceTarget.pole,
       });
 

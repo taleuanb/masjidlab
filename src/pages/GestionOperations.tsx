@@ -172,7 +172,7 @@ export default function GestionOperationsPage() {
   }, [fetchAll]);
 
   // ─── Filtering ─────────────────────────────────────────────────────
-  const effectiveFilter = role === "Chef de Pôle" && poleFilter === "all" ? userPole : poleFilter;
+  const effectiveFilter = role === "Responsable" && poleFilter === "all" ? userPole : poleFilter;
 
   const filteredAlerts = useMemo(() =>
     effectiveFilter === "all" ? alerts : alerts.filter((a) => a.pole === effectiveFilter),
@@ -262,7 +262,7 @@ export default function GestionOperationsPage() {
         type: "panne",
         titre: "⚠️ Absence non couverte",
         description: `"${req.event_titre}" — remplacement refusé. Action requise.`,
-        destinataire: "Admin",
+        destinataire: "Admin Mosquée",
       });
 
       toast({ title: "Refusé", description: "Alerte créée.", variant: "destructive" });

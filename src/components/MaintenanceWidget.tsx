@@ -48,7 +48,7 @@ export function MaintenanceWidget() {
       type: "panne",
       titre: `Panne signalée : ${type}`,
       description: `${type} en ${salleName}. Priorité : ${prioriteConfig[priorite as PrioriteTicket]?.label ?? priorite}.`,
-      destinataire: "Admin",
+      destinataire: "Admin Mosquée",
     });
     setSalle(""); setType(""); setPriorite(""); setDesc("");
     setOpen(false);
