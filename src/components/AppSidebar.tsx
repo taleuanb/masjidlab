@@ -259,69 +259,64 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="p-5">
-        {/* Super-admin Console SaaS */}
-        {isSuperAdmin && (
-          <div className="space-y-3 mb-4 rounded-lg bg-sidebar-accent/50 p-3">
-            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold flex items-center gap-1.5">
-              <Globe className="h-3 w-3" /> Console SaaS
-            </p>
-
-            {/* Org switcher */}
-            {allOrgs.length > 0 && (
-              <div className="space-y-1">
-                <label className="text-[10px] text-sidebar-foreground/40 px-0.5">Mosquée active</label>
-                <Select
-                  value={overrideOrgId ?? org?.id ?? ""}
-                  onValueChange={handleOrgSwitch}
-                >
-                  <SelectTrigger className="h-8 text-xs bg-sidebar-accent/60 border-sidebar-accent text-sidebar-foreground">
-                    <SelectValue placeholder="Choisir…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allOrgs.map((o) => (
-                      <SelectItem key={o.id} value={o.id}>
-                        {o.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Dashboard Global SaaS */}
-            <NavLink
-              to="/saas-admin"
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
-              activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              <span>Console SaaS</span>
-            </NavLink>
+      {/* ── Compact Header: logo + org name on one line ── */}
+      <SidebarHeader className="px-4 py-3">
+        <button onClick={handleLogoClick} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md gradient-emerald">
+            <Building2 className="h-4 w-4 text-primary-foreground" />
           </div>
-        )}
-
-        <button onClick={handleLogoClick} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-emerald">
-            <Building2 className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div className="text-left">
-            <h1 className="text-sm font-bold text-sidebar-primary-foreground tracking-tight">
+          <div className="min-w-0 text-left">
+            <h1 className="text-sm font-bold text-sidebar-primary-foreground tracking-tight truncate">
               {org?.name ?? "AMM Ops"}
             </h1>
-            <p className="text-xs text-sidebar-foreground/60">Mosquée R+4</p>
           </div>
         </button>
+
+        {/* Org switcher for super-admin — compact */}
+        {isSuperAdmin && allOrgs.length > 0 && (
+          <Select
+            value={overrideOrgId ?? org?.id ?? ""}
+            onValueChange={handleOrgSwitch}
+          >
+            <SelectTrigger className="mt-2 h-7 text-[11px] bg-sidebar-accent/40 border-sidebar-accent text-sidebar-foreground">
+              <SelectValue placeholder="Choisir une mosquée…" />
+            </SelectTrigger>
+            <SelectContent>
+              {allOrgs.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </SidebarHeader>
 
       <SidebarContent className="px-3 gap-0">
         {/* ── PILOTAGE ── */}
         {showPilotage && (
-          <div className="py-2">
-            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-2 px-2">
+          <div className="py-1.5">
+            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">
               Pilotage
             </p>
-            <div className="space-y-0.5">
+            <div className="space-y-px">
+              {/* Console SaaS — inside Pilotage, above Configuration */}
+              {isSuperAdmin && (
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/saas-admin"
+                        className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      >
+                        <Globe className="h-4 w-4" />
+                        <span>Console SaaS</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              )}
               {PILOTAGE_BLOCKS.map((block) => (
                 <SidebarBlock
                   key={block.id}
@@ -339,8 +334,8 @@ export function AppSidebar() {
 
         {/* ── PERSONNEL ── */}
         {standaloneVisible.length > 0 && (
-          <SidebarGroup className="py-2">
-            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1">
+          <SidebarGroup className="py-1.5">
+            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5">
               Personnel
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -351,7 +346,7 @@ export function AppSidebar() {
                       <NavLink
                         to={item.url}
                         end={item.url === "/"}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                       >
                         <item.icon className="h-4 w-4" />
@@ -366,11 +361,11 @@ export function AppSidebar() {
         )}
 
         {/* ── MÉTIERS ── */}
-        <div className="py-2">
-          <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-2 px-2">
+        <div className="py-1.5">
+          <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">
             Pôles Métiers
           </p>
-          <div className="space-y-0.5">
+          <div className="space-y-px">
             {METIER_BLOCKS.map((block) => (
               <SidebarBlock
                 key={block.id}
@@ -386,24 +381,17 @@ export function AppSidebar() {
         </div>
       </SidebarContent>
 
-      <SidebarFooter className="p-3 space-y-2">
-        {/* Super Admin badge */}
-        {isSuperAdmin && (
-          <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2">
-            <Globe className="h-4 w-4 text-primary" />
-            <span className="text-xs font-semibold text-primary">Super Admin</span>
-          </div>
-        )}
-
-        {/* Role switcher — always visible, includes all roles for super admin */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">
+      {/* ── Compact Footer ── */}
+      <SidebarFooter className="px-3 py-2.5 space-y-2">
+        {/* Role preview switcher — discret */}
+        <div className="space-y-1">
+          <label className="text-[9px] uppercase tracking-wider text-sidebar-foreground/30 font-medium px-1">
             {isSuperAdmin ? "Prévisualiser en tant que" : "Rôle actif"}
           </label>
           <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-            <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
+            <SelectTrigger className="h-8 text-[11px] bg-sidebar-accent/30 border-sidebar-accent/50 text-sidebar-foreground/70">
               <div className="flex items-center gap-2">
-                {React.createElement(roleIcons[role], { className: "h-3.5 w-3.5 text-sidebar-foreground/60" })}
+                {React.createElement(roleIcons[role], { className: "h-3 w-3 text-sidebar-foreground/40" })}
                 <SelectValue />
               </div>
             </SelectTrigger>
@@ -419,10 +407,10 @@ export function AppSidebar() {
 
         {/* Mon Pôle */}
         {showPoleSelector && (
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">Mon Pôle</label>
+          <div className="space-y-1">
+            <label className="text-[9px] uppercase tracking-wider text-sidebar-foreground/30 font-medium px-1">Mon Pôle</label>
             <Select value={pole} onValueChange={(v) => setPole(v as Pole)}>
-              <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
+              <SelectTrigger className="h-8 text-[11px] bg-sidebar-accent/30 border-sidebar-accent/50 text-sidebar-foreground/70">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -436,23 +424,25 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Compact footer: user + org + version + sign out */}
-        <div className="rounded-lg bg-sidebar-accent/30 px-3 py-2.5 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-sidebar-foreground truncate">{displayName ?? "—"}</p>
-              <p className="text-[11px] text-sidebar-foreground/50 truncate">{org?.name ?? "—"}</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0 text-sidebar-foreground/40 hover:text-destructive"
-              onClick={handleSignOut}
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </Button>
+        {/* User identity + version + sign out — single compact row */}
+        <div className="flex items-center gap-2 pt-1 border-t border-sidebar-border/30">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sidebar-accent/50 text-sidebar-foreground/60">
+            <Users className="h-3.5 w-3.5" />
           </div>
-          <p className="text-[10px] text-sidebar-foreground/25">v1.0 · Micro-ERP</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium text-sidebar-foreground truncate">
+              {displayName ?? "—"} <span className="text-sidebar-foreground/25 font-normal">· v1.0</span>
+            </p>
+            <p className="text-[10px] text-sidebar-foreground/40 truncate">{org?.name ?? "—"}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-sidebar-foreground/30 hover:text-destructive"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>
