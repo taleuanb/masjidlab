@@ -36,7 +36,6 @@ import ContratsStaffPage from "./pages/ContratsStaff";
 import DocumentsPage from "./pages/Documents";
 import DonateursPage from "./pages/Donateurs";
 import RecusFiscauxPage from "./pages/RecusFiscaux";
-import MadrasaSettingsPage from "./pages/MadrasaSettings";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -96,7 +95,7 @@ const AppLayout = () => {
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/donateurs" element={<DonateursPage />} />
             <Route path="/recus-fiscaux" element={<RecusFiscauxPage />} />
-            <Route path="/education/configuration" element={<MadrasaSettingsPage />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </RequireActivePole>
