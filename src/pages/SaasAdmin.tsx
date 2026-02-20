@@ -224,11 +224,11 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
     (async () => {
       const { data } = await supabase
         .from("role_permissions" as any)
-        .select("role, module, can_view")
+        .select("role, module, enabled, can_view")
         .is("org_id", null);
       const m = buildEmptyMatrix(allIds);
       for (const row of (data ?? []) as any[]) {
-        if (m[row.role]) m[row.role][row.module] = !!row.can_view;
+        if (m[row.role]) m[row.role][row.module] = !!(row.enabled ?? row.can_view);
       }
       setGlobalMatrix(m);
     })();
@@ -242,12 +242,12 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
         if (isGlobal) {
           const { data, error } = await supabase
             .from("role_permissions" as any)
-            .select("role, module, can_view")
+            .select("role, module, enabled, can_view")
             .is("org_id", null);
           if (error) throw error;
           const m = buildEmptyMatrix(allIds);
           for (const row of (data ?? []) as any[]) {
-            if (m[row.role]) m[row.role][row.module] = !!row.can_view;
+            if (m[row.role]) m[row.role][row.module] = !!(row.enabled ?? row.can_view);
           }
           setMatrix(m);
           setGlobalMatrix(m);
@@ -255,7 +255,7 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
         } else {
           const { data, error } = await supabase
             .from("role_permissions" as any)
-            .select("role, module, can_view")
+            .select("role, module, enabled, can_view")
             .eq("org_id", selectedOrgId);
           if (error) throw error;
           if (!data || data.length === 0) {
@@ -264,7 +264,7 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
           } else {
             const m = buildEmptyMatrix(allIds);
             for (const row of (data as any[])) {
-              if (m[row.role]) m[row.role][row.module] = !!row.can_view;
+              if (m[row.role]) m[row.role][row.module] = !!(row.enabled ?? row.can_view);
             }
             setMatrix(m);
             setHasOrgOverride(true);
@@ -318,7 +318,8 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
       const rows: any[] = [];
       for (const role of RBAC_ROLES) {
         for (const modId of allIds) {
-          rows.push({ org_id: orgId, role: role.id, module: modId, can_view: matrix[role.id]?.[modId] ?? false });
+          const val = matrix[role.id]?.[modId] ?? false;
+          rows.push({ org_id: orgId, role: role.id, module: modId, enabled: val, can_view: val });
         }
       }
       const { error } = await supabase
