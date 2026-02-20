@@ -1176,6 +1176,7 @@ export type Database = {
             Args: { p_org_id: string; p_role: string }
             Returns: {
               can_view: boolean
+              enabled: boolean
               module: string
             }[]
           }
