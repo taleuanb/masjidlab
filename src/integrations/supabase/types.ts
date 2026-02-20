@@ -1155,18 +1155,26 @@ export type Database = {
           user_count: number
         }[]
       }
-      get_effective_permissions: {
-        Args: {
-          p_org_id: string
-          p_role: Database["public"]["Enums"]["app_role"]
-        }
-        Returns: {
-          can_delete: boolean
-          can_edit: boolean
-          can_view: boolean
-          module: string
-        }[]
-      }
+      get_effective_permissions:
+        | {
+            Args: {
+              p_org_id: string
+              p_role: Database["public"]["Enums"]["app_role"]
+            }
+            Returns: {
+              can_delete: boolean
+              can_edit: boolean
+              can_view: boolean
+              module: string
+            }[]
+          }
+        | {
+            Args: { p_org_id: string; p_role: string }
+            Returns: {
+              can_view: boolean
+              module: string
+            }[]
+          }
       get_my_org_id: { Args: never; Returns: string }
       has_role: {
         Args: {

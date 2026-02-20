@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, LayoutDashboard, CalendarDays, Users, Calendar, Car, Wrench,
   ClipboardList, UserCheck, Settings2, SlidersHorizontal, ChevronDown,
@@ -241,12 +242,50 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { role, setRole, pole, setPole, displayName, isSuperAdmin } = useRole();
   const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
-  const { signOut } = useAuth();
+  const { signOut, dbRole } = useAuth();
 
   const isAdminLike = role === "Admin" || role === "Super Admin" || isSuperAdmin;
   const showPoleSelector = !isSuperAdmin && ["Chef de Pôle", "Bénévole", "Parent", "Élève"].includes(role);
   const showPilotage = ADMIN_ROLES.includes(role) || isSuperAdmin;
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
+
+  // ── RBAC permissions from DB ──
+  const [allowedModules, setAllowedModules] = useState<Set<string> | null>(null);
+
+  const orgId = org?.id;
+  const currentDbRole = dbRole;
+
+  useEffect(() => {
+    if (!orgId || !currentDbRole || isSuperAdmin) {
+      setAllowedModules(null); // Super admin sees everything
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase.rpc("get_effective_permissions" as any, {
+        p_org_id: orgId,
+        p_role: currentDbRole,
+      });
+      if (error || !data) {
+        setAllowedModules(null); // Fallback: show all
+        return;
+      }
+      const allowed = new Set<string>();
+      for (const row of data as any[]) {
+        if (row.can_view) allowed.add(row.module);
+      }
+      setAllowedModules(allowed);
+    })();
+  }, [orgId, currentDbRole, isSuperAdmin]);
+
+  // Filter metier blocks by RBAC permissions
+  const filteredMetierBlocks = useMemo(() => {
+    if (!allowedModules || isSuperAdmin) return METIER_BLOCKS;
+    return METIER_BLOCKS.filter((block) => {
+      // A block is visible if its id or any child module is allowed
+      if (allowedModules.has(block.id)) return true;
+      return false;
+    });
+  }, [allowedModules, isSuperAdmin]);
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => navigate("/");
@@ -318,7 +357,7 @@ export function AppSidebar() {
         <div className="py-1">
           <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
           <div className="space-y-px">
-            {METIER_BLOCKS.map((block) => (
+            {filteredMetierBlocks.map((block) => (
               <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={isSuperAdmin} location={location} />
             ))}
           </div>
