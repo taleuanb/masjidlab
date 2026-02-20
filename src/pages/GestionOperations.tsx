@@ -172,7 +172,7 @@ export default function GestionOperationsPage() {
   }, [fetchAll]);
 
   // ─── Filtering ─────────────────────────────────────────────────────
-  const effectiveFilter = role === "Imam/Chef de Pôle" && poleFilter === "all" ? userPole : poleFilter;
+  const effectiveFilter = role === "Chef de Pôle" && poleFilter === "all" ? userPole : poleFilter;
 
   const filteredAlerts = useMemo(() =>
     effectiveFilter === "all" ? alerts : alerts.filter((a) => a.pole === effectiveFilter),

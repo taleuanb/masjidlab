@@ -10,7 +10,7 @@ export interface AppNotification {
   description: string;
   date: string;
   lu: boolean;
-  destinataire: "Admin" | "Imam/Chef de Pôle" | "Bénévole" | "all";
+  destinataire: "Admin" | "Chef de Pôle" | "Bénévole" | "all";
   pole?: string;
 }
 
@@ -77,7 +77,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         if (n.lu) return false;
         if (n.destinataire === "all") return true;
         if (n.destinataire === role) {
-          if (role === "Imam/Chef de Pôle" && n.pole) return n.pole === pole;
+          if (role === "Chef de Pôle" && n.pole) return n.pole === pole;
           return true;
         }
         return false;

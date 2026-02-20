@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [selectedEtage, setSelectedEtage] = useState<Etage>('RDC');
   const { role, pole } = useRole();
   const isAdmin = role === "Admin";
-  const isChef = role === "Imam/Chef de Pôle";
+  const isChef = role === "Chef de Pôle";
 
   return (
     <div className="flex-1 overflow-auto">
