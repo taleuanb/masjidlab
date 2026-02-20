@@ -212,6 +212,7 @@ export type Database = {
           org_id: string | null
           phone: string | null
           pole_id: string | null
+          tags: string[]
           updated_at: string
           user_id: string
         }
@@ -226,6 +227,7 @@ export type Database = {
           org_id?: string | null
           phone?: string | null
           pole_id?: string | null
+          tags?: string[]
           updated_at?: string
           user_id: string
         }
@@ -240,6 +242,7 @@ export type Database = {
           org_id?: string | null
           phone?: string | null
           pole_id?: string | null
+          tags?: string[]
           updated_at?: string
           user_id?: string
         }
