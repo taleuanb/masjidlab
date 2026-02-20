@@ -449,20 +449,31 @@ export type Database = {
       user_roles: {
         Row: {
           id: string
+          org_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           id?: string
+          org_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           id?: string
+          org_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -479,7 +490,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "imam_chef" | "benevole"
+      app_role:
+        | "admin"
+        | "imam_chef"
+        | "benevole"
+        | "super_admin"
+        | "responsable"
+        | "parent"
+        | "eleve"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -607,7 +625,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "imam_chef", "benevole"],
+      app_role: [
+        "admin",
+        "imam_chef",
+        "benevole",
+        "super_admin",
+        "responsable",
+        "parent",
+        "eleve",
+      ],
     },
   },
 } as const
