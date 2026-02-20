@@ -533,6 +533,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_organizations: {
+        Args: never
+        Returns: {
+          active_poles: string[] | null
+          created_at: string | null
+          id: string
+          name: string
+          owner_id: string | null
+          subscription_plan: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "organizations"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_all_organizations: {
         Args: never
         Returns: {
