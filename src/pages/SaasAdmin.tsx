@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import {
   Building2, Users, Globe, Loader2, RefreshCw, Check, Shield, Save,
+  ChevronDown, ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
@@ -36,13 +37,44 @@ const RBAC_ROLES = [
   { id: "parent", label: "Parent" },
 ];
 
-const RBAC_MODULES = [
-  { id: "education", label: "Éducation" },
-  { id: "admin", label: "Finance / RH" },
-  { id: "logistics", label: "Opérations" },
+const RBAC_MODULES: { id: string; label: string; children?: { id: string; label: string }[] }[] = [
+  {
+    id: "education", label: "Éducation",
+    children: [
+      { id: "education.classes", label: "Classes" },
+      { id: "education.eleves", label: "Élèves" },
+      { id: "education.inscriptions", label: "Inscriptions" },
+    ],
+  },
+  {
+    id: "admin", label: "Finance / RH",
+    children: [
+      { id: "admin.finance", label: "Finance" },
+      { id: "admin.contrats", label: "Contrats Staff" },
+      { id: "admin.donateurs", label: "Donateurs" },
+    ],
+  },
+  {
+    id: "logistics", label: "Opérations",
+    children: [
+      { id: "logistics.planning", label: "Planning" },
+      { id: "logistics.maintenance", label: "Maintenance" },
+      { id: "logistics.parking", label: "Parking" },
+    ],
+  },
   { id: "social", label: "Social" },
   { id: "comms", label: "Communication" },
 ];
+
+// Flatten all module IDs for matrix init
+function getAllModuleIds(): string[] {
+  const ids: string[] = [];
+  for (const mod of RBAC_MODULES) {
+    ids.push(mod.id);
+    if (mod.children) ids.push(...mod.children.map((c) => c.id));
+  }
+  return ids;
+}
 
 interface OrgRow {
   id: string;
@@ -168,8 +200,10 @@ function PermissionsTab() {
   const [matrix, setMatrix] = useState<PermMatrix>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  // Load global defaults (org_id IS NULL)
+  const allIds = getAllModuleIds();
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -180,15 +214,13 @@ function PermissionsTab() {
           .is("org_id", null);
         if (error) throw error;
 
-        // Build matrix with defaults
         const m: PermMatrix = {};
         for (const role of RBAC_ROLES) {
           m[role.id] = {};
-          for (const mod of RBAC_MODULES) {
-            m[role.id][mod.id] = false;
+          for (const modId of allIds) {
+            m[role.id][modId] = false;
           }
         }
-        // Apply saved values
         for (const row of (data ?? []) as any[]) {
           if (m[row.role]) m[row.role][row.module] = !!row.enabled;
         }
@@ -201,34 +233,46 @@ function PermissionsTab() {
     })();
   }, [toast]);
 
-  const toggle = (role: string, module: string) => {
-    setMatrix((prev) => ({
-      ...prev,
-      [role]: { ...prev[role], [module]: !prev[role][module] },
-    }));
+  const toggle = (role: string, moduleId: string) => {
+    setMatrix((prev) => {
+      const next = { ...prev, [role]: { ...prev[role] } };
+      const newVal = !next[role][moduleId];
+      next[role][moduleId] = newVal;
+
+      // Parent unchecked → cascade disable children
+      const parent = RBAC_MODULES.find((m) => m.id === moduleId);
+      if (parent?.children && !newVal) {
+        for (const child of parent.children) {
+          next[role][child.id] = false;
+        }
+      }
+
+      // Child checked → auto-enable parent
+      if (newVal) {
+        const parentMod = RBAC_MODULES.find((m) => m.children?.some((c) => c.id === moduleId));
+        if (parentMod) next[role][parentMod.id] = true;
+      }
+
+      return next;
+    });
   };
+
+  const toggleCollapse = (id: string) =>
+    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Build upsert rows
       const rows: any[] = [];
       for (const role of RBAC_ROLES) {
-        for (const mod of RBAC_MODULES) {
-          rows.push({
-            org_id: null,
-            role: role.id,
-            module: mod.id,
-            enabled: matrix[role.id]?.[mod.id] ?? false,
-          });
+        for (const modId of allIds) {
+          rows.push({ org_id: null, role: role.id, module: modId, enabled: matrix[role.id]?.[modId] ?? false });
         }
       }
-
       const { error } = await supabase
         .from("role_permissions" as any)
         .upsert(rows, { onConflict: "org_id,role,module" });
       if (error) throw error;
-
       toast({ title: "Configuration sauvegardée", description: "Les permissions par défaut ont été mises à jour." });
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -257,33 +301,66 @@ function PermissionsTab() {
           </div>
           <Button onClick={handleSave} disabled={saving} size="sm">
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-            Sauvegarder la configuration globale
+            Sauvegarder
           </Button>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-48">Module</TableHead>
+                <TableHead className="w-56">Module</TableHead>
                 {RBAC_ROLES.map((r) => (
                   <TableHead key={r.id} className="text-center">{r.label}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {RBAC_MODULES.map((mod) => (
-                <TableRow key={mod.id}>
-                  <TableCell className="font-medium">{mod.label}</TableCell>
-                  {RBAC_ROLES.map((role) => (
-                    <TableCell key={role.id} className="text-center">
-                      <Switch
-                        checked={matrix[role.id]?.[mod.id] ?? false}
-                        onCheckedChange={() => toggle(role.id, mod.id)}
-                      />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
+              {RBAC_MODULES.map((mod) => {
+                const isCollapsed = collapsed[mod.id];
+                const hasChildren = !!mod.children?.length;
+                return (
+                  <Fragment key={mod.id}>
+                    <TableRow className="bg-muted/30">
+                      <TableCell className="font-semibold">
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 text-left w-full"
+                          onClick={() => hasChildren && toggleCollapse(mod.id)}
+                        >
+                          {hasChildren ? (
+                            isCollapsed
+                              ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                              : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                          ) : <span className="w-4" />}
+                          {mod.label}
+                        </button>
+                      </TableCell>
+                      {RBAC_ROLES.map((role) => (
+                        <TableCell key={role.id} className="text-center">
+                          <Switch
+                            checked={matrix[role.id]?.[mod.id] ?? false}
+                            onCheckedChange={() => toggle(role.id, mod.id)}
+                          />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {hasChildren && !isCollapsed && mod.children!.map((child) => (
+                      <TableRow key={child.id}>
+                        <TableCell className="pl-10 text-muted-foreground text-sm">{child.label}</TableCell>
+                        {RBAC_ROLES.map((role) => (
+                          <TableCell key={role.id} className="text-center">
+                            <Switch
+                              checked={matrix[role.id]?.[child.id] ?? false}
+                              onCheckedChange={() => toggle(role.id, child.id)}
+                              disabled={!(matrix[role.id]?.[mod.id])}
+                            />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
