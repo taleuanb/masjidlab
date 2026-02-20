@@ -78,11 +78,22 @@ interface PoleRow {
   nom: string;
 }
 
+const PROFILE_TAGS = ["Fidèle", "Donateur", "Parent", "Élève"] as const;
+type ProfileTag = typeof PROFILE_TAGS[number];
+
+const TAG_STYLES: Record<ProfileTag, string> = {
+  "Fidèle": "bg-primary/10 text-primary border-primary/20",
+  "Donateur": "bg-green-500/10 text-green-700 border-green-500/20",
+  "Parent": "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  "Élève": "bg-amber-500/10 text-amber-700 border-amber-500/20",
+};
+
 interface MemberRow {
   user_id: string;
   display_name: string;
   email: string | null;
   competences: string[] | null;
+  tags: string[];
   pole_id: string | null;
   pole_nom: string | null;
   role: AppRole;
@@ -108,6 +119,7 @@ export default function GestionMembresPage() {
   const [formPole, setFormPole] = useState<string>("none");
   const [formName, setFormName] = useState("");
   const [formCompetences, setFormCompetences] = useState("");
+  const [formTags, setFormTags] = useState<string[]>([]);
 
   // Invite dialog
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -134,7 +146,7 @@ export default function GestionMembresPage() {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, email, competences, pole_id, is_active")
+        .select("user_id, display_name, email, competences, pole_id, is_active, tags")
         .order("display_name");
 
       const { data: roles } = await supabase
@@ -153,6 +165,7 @@ export default function GestionMembresPage() {
         display_name: p.display_name,
         email: p.email,
         competences: p.competences,
+        tags: p.tags ?? [],
         pole_id: p.pole_id,
         pole_nom: p.pole_id ? poleMap.get(p.pole_id) || null : null,
         role: roleMap.get(p.user_id)?.role || "benevole",
@@ -179,6 +192,7 @@ export default function GestionMembresPage() {
     setFormPole(m.pole_id || "none");
     setFormName(m.display_name);
     setFormCompetences((m.competences || []).join(", "));
+    setFormTags(m.tags ?? []);
   };
 
   const handleSave = async () => {
@@ -196,6 +210,7 @@ export default function GestionMembresPage() {
         .update({
           display_name: formName,
           competences: competencesArr,
+          tags: formTags,
           pole_id: formPole === "none" ? null : formPole,
         } as any)
         .eq("user_id", editTarget.user_id);
@@ -396,6 +411,7 @@ export default function GestionMembresPage() {
                     <TableHead className="w-[260px]">Membre</TableHead>
                     <TableHead>Rôle</TableHead>
                     <TableHead>Pôle</TableHead>
+                    <TableHead>Tags</TableHead>
                     <TableHead>Compétences</TableHead>
                     <TableHead className="w-[100px] text-right">Actions</TableHead>
                   </TableRow>
@@ -403,7 +419,7 @@ export default function GestionMembresPage() {
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                         Aucun membre trouvé
                       </TableCell>
                     </TableRow>
@@ -454,6 +470,17 @@ export default function GestionMembresPage() {
                             ) : (
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {m.tags.length > 0 ? m.tags.map((t) => (
+                                <Badge key={t} variant="outline" className={`text-[10px] h-5 px-1.5 ${TAG_STYLES[t as ProfileTag] ?? ""}`}>
+                                  {t}
+                                </Badge>
+                              )) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
@@ -567,6 +594,25 @@ export default function GestionMembresPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tags Profil</Label>
+              <div className="flex flex-wrap gap-2">
+                {PROFILE_TAGS.map((tag) => {
+                  const active = formTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setFormTags((prev) => active ? prev.filter((t) => t !== tag) : [...prev, tag])}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${active ? TAG_STYLES[tag] + " font-medium" : "border-border text-muted-foreground hover:bg-muted"}`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="space-y-1.5">
