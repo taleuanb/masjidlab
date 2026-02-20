@@ -65,6 +65,133 @@ export type Database = {
           },
         ]
       }
+      documents_library: {
+        Row: {
+          created_at: string | null
+          id: string
+          nom: string
+          org_id: string
+          type_document: string | null
+          updated_at: string | null
+          uploaded_by: string | null
+          url_fichier: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nom: string
+          org_id: string
+          type_document?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+          url_fichier: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nom?: string
+          org_id?: string
+          type_document?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+          url_fichier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_library_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donations: {
+        Row: {
+          created_at: string | null
+          date_don: string | null
+          donor_id: string | null
+          id: string
+          methode_paiement: string | null
+          montant: number
+          org_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date_don?: string | null
+          donor_id?: string | null
+          id?: string
+          methode_paiement?: string | null
+          montant: number
+          org_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date_don?: string | null
+          donor_id?: string | null
+          id?: string
+          methode_paiement?: string | null
+          montant?: number
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donations_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donors: {
+        Row: {
+          adresse_postale: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          nom: string
+          org_id: string
+          prenom: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          adresse_postale?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nom: string
+          org_id: string
+          prenom?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          adresse_postale?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nom?: string
+          org_id?: string
+          prenom?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donors_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           budget: number | null
@@ -164,6 +291,167 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_classes: {
+        Row: {
+          created_at: string | null
+          id: string
+          niveau: string | null
+          nom: string
+          org_id: string
+          prof_id: string | null
+          salle_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          niveau?: string | null
+          nom: string
+          org_id: string
+          prof_id?: string | null
+          salle_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          niveau?: string | null
+          nom?: string
+          org_id?: string
+          prof_id?: string | null
+          salle_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_classes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_classes_prof_id_fkey"
+            columns: ["prof_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_classes_salle_id_fkey"
+            columns: ["salle_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_enrollments: {
+        Row: {
+          annee_scolaire: string
+          class_id: string
+          created_at: string | null
+          id: string
+          org_id: string
+          statut: string | null
+          student_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          annee_scolaire: string
+          class_id: string
+          created_at?: string | null
+          id?: string
+          org_id: string
+          statut?: string | null
+          student_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          annee_scolaire?: string
+          class_id?: string
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          statut?: string | null
+          student_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_enrollments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_enrollments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_students: {
+        Row: {
+          created_at: string | null
+          date_naissance: string | null
+          id: string
+          niveau: string | null
+          nom: string
+          org_id: string
+          parent_id: string | null
+          prenom: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date_naissance?: string | null
+          id?: string
+          niveau?: string | null
+          nom: string
+          org_id: string
+          parent_id?: string | null
+          prenom: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date_naissance?: string | null
+          id?: string
+          niveau?: string | null
+          nom?: string
+          org_id?: string
+          parent_id?: string | null
+          prenom?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_students_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_students_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -431,6 +719,102 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_contracts: {
+        Row: {
+          created_at: string | null
+          date_debut: string
+          date_fin: string | null
+          id: string
+          org_id: string
+          profile_id: string
+          salaire_base: number | null
+          type_contrat: Database["public"]["Enums"]["contract_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date_debut: string
+          date_fin?: string | null
+          id?: string
+          org_id: string
+          profile_id: string
+          salaire_base?: number | null
+          type_contrat?: Database["public"]["Enums"]["contract_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date_debut?: string
+          date_fin?: string | null
+          id?: string
+          org_id?: string
+          profile_id?: string
+          salaire_base?: number | null
+          type_contrat?: Database["public"]["Enums"]["contract_type"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_contracts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_contracts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_receipts: {
+        Row: {
+          annee_fiscale: number
+          created_at: string | null
+          donor_id: string
+          id: string
+          numero_cerfa: string | null
+          org_id: string
+          url_pdf: string | null
+        }
+        Insert: {
+          annee_fiscale: number
+          created_at?: string | null
+          donor_id: string
+          id?: string
+          numero_cerfa?: string | null
+          org_id: string
+          url_pdf?: string | null
+        }
+        Update: {
+          annee_fiscale?: number
+          created_at?: string | null
+          donor_id?: string
+          id?: string
+          numero_cerfa?: string | null
+          org_id?: string
+          url_pdf?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_receipts_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_receipts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       urgent_alerts: {
         Row: {
           alert_type: string
@@ -610,6 +994,7 @@ export type Database = {
         | "responsable"
         | "parent"
         | "eleve"
+      contract_type: "CDI" | "CDD" | "Bénévole" | "Vacataire"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -746,6 +1131,7 @@ export const Constants = {
         "parent",
         "eleve",
       ],
+      contract_type: ["CDI", "CDD", "Bénévole", "Vacataire"],
     },
   },
 } as const

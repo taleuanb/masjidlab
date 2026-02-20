@@ -29,6 +29,13 @@ import SetPasswordPage from "./pages/SetPassword";
 import OnboardingPage from "./pages/Onboarding";
 import SettingsPage from "./pages/Settings";
 import FinancePage from "./pages/Finance";
+import ElevesPage from "./pages/Eleves";
+import ClassesPage from "./pages/Classes";
+import InscriptionsPage from "./pages/Inscriptions";
+import ContratsStaffPage from "./pages/ContratsStaff";
+import DocumentsPage from "./pages/Documents";
+import DonateursPage from "./pages/Donateurs";
+import RecusFiscauxPage from "./pages/RecusFiscaux";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -80,6 +87,14 @@ const AppLayout = () => {
             <Route path="/configuration" element={<SettingsPage />} />
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/saas-admin" element={<SaasAdminPage />} />
+            {/* New skeleton routes */}
+            <Route path="/eleves" element={<ElevesPage />} />
+            <Route path="/classes" element={<ClassesPage />} />
+            <Route path="/inscriptions" element={<InscriptionsPage />} />
+            <Route path="/contrats-staff" element={<ContratsStaffPage />} />
+            <Route path="/documents" element={<DocumentsPage />} />
+            <Route path="/donateurs" element={<DonateursPage />} />
+            <Route path="/recus-fiscaux" element={<RecusFiscauxPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </RequireActivePole>
