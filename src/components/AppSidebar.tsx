@@ -39,8 +39,8 @@ interface NavBlock {
   items: NavItem[];
 }
 
-const ALL_ROLES: UserRole[] = ["Admin", "Chef de Pôle", "Responsable", "Bénévole", "Parent", "Élève"];
-const ADMIN_ROLES: UserRole[] = ["Admin", "Responsable"];
+const ALL_ROLES: UserRole[] = ["Super Admin", "Admin", "Chef de Pôle", "Responsable", "Bénévole", "Parent", "Élève"];
+const ADMIN_ROLES: UserRole[] = ["Super Admin", "Admin", "Responsable"];
 
 // ── PILOTAGE ──────────────────────────────────────────────
 const PILOTAGE_BLOCKS: NavBlock[] = [
@@ -129,6 +129,7 @@ const STANDALONE_ITEMS: NavItem[] = [
 ];
 
 const roleIcons: Record<UserRole, React.ElementType> = {
+  "Super Admin": Globe,
   Admin: Shield,
   "Chef de Pôle": UserCheck,
   Responsable: UserCheck,
@@ -239,8 +240,8 @@ export function AppSidebar() {
   const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
   const { signOut } = useAuth();
 
-  const isAdminLike = role === "Admin" || isSuperAdmin;
-  const showPoleSelector = ["Chef de Pôle", "Bénévole", "Parent", "Élève"].includes(role);
+  const isAdminLike = role === "Admin" || role === "Super Admin" || isSuperAdmin;
+  const showPoleSelector = !isSuperAdmin && ["Chef de Pôle", "Bénévole", "Parent", "Élève"].includes(role);
   const showPilotage = ADMIN_ROLES.includes(role) || isSuperAdmin;
 
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
@@ -394,25 +395,32 @@ export function AppSidebar() {
           <p className="text-xs text-sidebar-foreground/70 truncate">{org?.name ?? "—"}</p>
         </div>
 
-        {/* Role switcher */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">Rôle actif</label>
-          <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-            <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
-              <div className="flex items-center gap-2">
-                {React.createElement(roleIcons[role], { className: "h-3.5 w-3.5 text-sidebar-foreground/60" })}
-                <SelectValue />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {ALL_ROLES.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Role switcher — super admin gets a static badge */}
+        {isSuperAdmin ? (
+          <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2">
+            <Globe className="h-4 w-4 text-primary" />
+            <span className="text-xs font-semibold text-primary">Super Admin</span>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-medium px-1">Rôle actif</label>
+            <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
+              <SelectTrigger className="h-9 text-xs bg-sidebar-accent/50 border-sidebar-accent text-sidebar-foreground">
+                <div className="flex items-center gap-2">
+                  {React.createElement(roleIcons[role], { className: "h-3.5 w-3.5 text-sidebar-foreground/60" })}
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_ROLES.filter(r => r !== "Super Admin").map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Mon Pôle — only for Chef de Pôle, Bénévole, Parent, Élève */}
         {showPoleSelector && (

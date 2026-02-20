@@ -173,24 +173,33 @@ export type Database = {
           active_poles: string[] | null
           created_at: string | null
           id: string
+          max_users: number | null
           name: string
+          notes_admin: string | null
           owner_id: string | null
+          status: string | null
           subscription_plan: string | null
         }
         Insert: {
           active_poles?: string[] | null
           created_at?: string | null
           id?: string
+          max_users?: number | null
           name: string
+          notes_admin?: string | null
           owner_id?: string | null
+          status?: string | null
           subscription_plan?: string | null
         }
         Update: {
           active_poles?: string[] | null
           created_at?: string | null
           id?: string
+          max_users?: number | null
           name?: string
+          notes_admin?: string | null
           owner_id?: string | null
+          status?: string | null
           subscription_plan?: string | null
         }
         Relationships: []
@@ -539,8 +548,11 @@ export type Database = {
           active_poles: string[] | null
           created_at: string | null
           id: string
+          max_users: number | null
           name: string
+          notes_admin: string | null
           owner_id: string | null
+          status: string | null
           subscription_plan: string | null
         }[]
         SetofOptions: {
@@ -556,8 +568,11 @@ export type Database = {
           active_poles: string[] | null
           created_at: string | null
           id: string
+          max_users: number | null
           name: string
+          notes_admin: string | null
           owner_id: string | null
+          status: string | null
           subscription_plan: string | null
         }[]
         SetofOptions: {
@@ -566,6 +581,16 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      get_all_orgs_with_stats: {
+        Args: never
+        Returns: {
+          active_poles: string[]
+          id: string
+          name: string
+          subscription_plan: string
+          user_count: number
+        }[]
       }
       get_my_org_id: { Args: never; Returns: string }
       has_role: {

@@ -105,7 +105,7 @@ interface MemberRow {
 export default function GestionMembresPage() {
   const { toast } = useToast();
   const { user: currentUser, dbRole } = useAuth();
-  const isAdmin = dbRole === "admin";
+  const isAdmin = dbRole === "admin" || dbRole === "super_admin";
 
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [poles, setPoles] = useState<PoleRow[]>([]);
