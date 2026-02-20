@@ -61,8 +61,7 @@ const PILOTAGE_BLOCKS: NavBlock[] = [
     poleIds: ["admin"],
     blockRoles: ["Admin", "Responsable"],
     items: [
-      { title: "Annuaire", url: "/membres", icon: Users, roles: ["Admin", "Responsable"] },
-      { title: "Organisation", url: "/organisation", icon: Building2, roles: ["Admin"] },
+      { title: "Structure & Membres", url: "/structure-membres", icon: Users, roles: ["Admin", "Responsable"] },
     ],
   },
 ];
@@ -287,12 +286,12 @@ export function AppSidebar() {
 
             {/* Dashboard Global SaaS */}
             <NavLink
-              to="/saas-overview"
+              to="/saas-admin"
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
               activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
             >
               <Eye className="h-3.5 w-3.5" />
-              <span>Dashboard Global SaaS</span>
+              <span>Console SaaS</span>
             </NavLink>
           </div>
         )}

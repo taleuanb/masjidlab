@@ -20,9 +20,9 @@ import MonAgendaPage from "./pages/MonAgenda";
 import MesMissionsPage from "./pages/MesMissions";
 import ApprobationsPage from "./pages/Approbations";
 import GestionOperationsPage from "./pages/GestionOperations";
-import GestionMembresPage from "./pages/GestionMembres";
 import MonEquipePage from "./pages/MonEquipe";
-import OrganisationPage from "./pages/Organisation";
+import StructureMembresPage from "./pages/StructureMembres";
+import SaasAdminPage from "./pages/SaasAdmin";
 import LoginPage from "./pages/Login";
 import SetPasswordPage from "./pages/SetPassword";
 import OnboardingPage from "./pages/Onboarding";
@@ -71,11 +71,13 @@ const AppLayout = () => {
           <Route path="/missions" element={<MesMissionsPage />} />
           <Route path="/approbations" element={<ApprobationsPage />} />
           <Route path="/operations" element={<GestionOperationsPage />} />
-          <Route path="/membres" element={<GestionMembresPage />} />
+          <Route path="/structure-membres" element={<StructureMembresPage />} />
+          <Route path="/membres" element={<StructureMembresPage />} />
+          <Route path="/organisation" element={<StructureMembresPage />} />
           <Route path="/mon-equipe" element={<MonEquipePage />} />
-          <Route path="/organisation" element={<OrganisationPage />} />
           <Route path="/configuration" element={<SettingsPage />} />
           <Route path="/finance" element={<FinancePage />} />
+          <Route path="/saas-admin" element={<SaasAdminPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
