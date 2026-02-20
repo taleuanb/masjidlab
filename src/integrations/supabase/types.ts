@@ -792,6 +792,7 @@ export type Database = {
           id: string
           module_key: string
           org_id: string | null
+          parent_key: string | null
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string | null
         }
@@ -803,6 +804,7 @@ export type Database = {
           id?: string
           module_key: string
           org_id?: string | null
+          parent_key?: string | null
           role: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
         }
@@ -814,6 +816,7 @@ export type Database = {
           id?: string
           module_key?: string
           org_id?: string | null
+          parent_key?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
         }
