@@ -790,7 +790,7 @@ export type Database = {
           can_view: boolean | null
           created_at: string | null
           id: string
-          module_key: string
+          module: string
           org_id: string | null
           parent_key: string | null
           role: Database["public"]["Enums"]["app_role"]
@@ -802,7 +802,7 @@ export type Database = {
           can_view?: boolean | null
           created_at?: string | null
           id?: string
-          module_key: string
+          module: string
           org_id?: string | null
           parent_key?: string | null
           role: Database["public"]["Enums"]["app_role"]
@@ -814,7 +814,7 @@ export type Database = {
           can_view?: boolean | null
           created_at?: string | null
           id?: string
-          module_key?: string
+          module?: string
           org_id?: string | null
           parent_key?: string | null
           role?: Database["public"]["Enums"]["app_role"]
