@@ -458,6 +458,7 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+      </SidebarContent>
 
       {/* ── Footer ── */}
       <SidebarFooter className="px-3 py-2.5 space-y-2">
