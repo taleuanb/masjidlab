@@ -122,7 +122,7 @@ export default function SettingsPage() {
       window.dispatchEvent(new CustomEvent("org-poles-updated", { detail: { active_poles: next } }));
       toast({
         title: isActive ? "Pôle désactivé" : "Pôle activé",
-        description: POLES_CONFIG.find((p) => p.id === poleId)?.label,
+        description: MODULE_MAP.get(poleId)?.label ?? poleId,
       });
     }
   };
