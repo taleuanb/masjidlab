@@ -493,7 +493,7 @@ export default function SettingsPage() {
                         <Switch
                           checked={isActive}
                           disabled={!canManageModules || polesLoading}
-                          onCheckedChange={() => togglePole(pole.id)}
+                          onCheckedChange={() => togglePole(mod.id)}
                           className="mt-0.5 shrink-0"
                         />
                       ) : (
