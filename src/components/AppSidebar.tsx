@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useRole, type UserRole, UI_ROLE_TO_DB } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
 import type { Pole } from "@/types/amm";
+import { CORE_MODULE_SET } from "@/config/plan-modules";
 
 const POLES: Pole[] = ["Imam", "École (Avenir)", "Social (ABD)", "Accueil", "Récolte", "Digital", "Com", "Parking"];
 
@@ -298,43 +299,45 @@ export function AppSidebar() {
     }
   }, [impersonatedUser, isSuperAdmin, setRole]);
 
-  // Determine which permission set to use for filtering
-  const allowedModules = useMemo(() => {
-    // Ghost mode: always use real permissions from AuthContext (resolved for ghost user)
+  // ── Resolve RBAC permission set ──
+  const rbacModules = useMemo<Set<string> | null>(() => {
     if (isGhostActive) {
       if (permissions.length > 0) {
         const set = new Set<string>();
-        for (const p of permissions) {
-          if (p.enabled) set.add(p.module);
-        }
+        for (const p of permissions) { if (p.enabled) set.add(p.module); }
         return set;
       }
-      return new Set<string>(); // ghost user with no permissions = show nothing
+      return new Set<string>();
     }
-    if (effectiveBypass) return null; // null = show all
+    if (effectiveBypass) return null; // null = show all (super admin, no preview)
     if (isPreviewingOtherRole && previewPermissions) return previewPermissions;
-    // For non-super-admin: use real permissions from AuthContext
     if (permissions.length > 0) {
       const set = new Set<string>();
-      for (const p of permissions) {
-        if (p.enabled) set.add(p.module);
-      }
+      for (const p of permissions) { if (p.enabled) set.add(p.module); }
       return set;
     }
     return previewPermissions;
   }, [isGhostActive, effectiveBypass, isPreviewingOtherRole, previewPermissions, permissions]);
 
-  // Filter metier blocks by RBAC permissions AND subscription plan
+  /**
+   * Hiérarchie de visibilité :
+   * 1. Plan filter — module absent du plan → masqué (sauf super_admin via isModuleInPlan)
+   * 2. CORE exemption — config/gouvernance/operations toujours visibles pour admin (hors RBAC)
+   * 3. RBAC filter — enabled === false pour tous les rôles cumulés → masqué
+   */
+  const isBlockVisible = useCallback((blockId: string): boolean => {
+    // 1. Plan
+    if (!isModuleInPlan(blockId)) return false;
+    // 2. CORE modules exempt from RBAC for admin-like (non-ghost)
+    if (CORE_MODULE_SET.has(blockId) && isAdminLike && !isGhostActive) return true;
+    // 3. RBAC
+    if (rbacModules !== null && !rbacModules.has(blockId)) return false;
+    return true;
+  }, [isModuleInPlan, rbacModules, isAdminLike, isGhostActive]);
+
   const filteredMetierBlocks = useMemo(() => {
-    let blocks = METIER_BLOCKS;
-    // Plan filter first
-    blocks = blocks.filter((block) => isModuleInPlan(block.id));
-    // Then RBAC filter
-    if (allowedModules) {
-      blocks = blocks.filter((block) => allowedModules.has(block.id));
-    }
-    return blocks;
-  }, [allowedModules, isModuleInPlan]);
+    return METIER_BLOCKS.filter((block) => isBlockVisible(block.id));
+  }, [isBlockVisible]);
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => navigate("/");
@@ -385,13 +388,12 @@ export function AppSidebar() {
         )}
 
         {/* ── PILOTAGE ── */}
-        {(showPilotage || (isGhostActive && allowedModules)) && (
+        {(showPilotage || isGhostActive) && (
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pilotage</p>
             <div className="space-y-px">
               {PILOTAGE_BLOCKS
-                .filter((block) => isModuleInPlan(block.id))
-                .filter((block) => !allowedModules || allowedModules.has(block.id))
+                .filter((block) => isBlockVisible(block.id))
                 .map((block) => (
                   <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
                 ))}
