@@ -451,7 +451,7 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
                                 <Switch
                                   checked={matrix[role.id]?.[child.id] ?? false}
                                   onCheckedChange={() => toggle(role.id, child.id)}
-                                  disabled={!(matrix[role.id]?.[mod.id])}
+                                  disabled={blockedByPlan || !(matrix[role.id]?.[mod.id])}
                                 />
                                 {isDifferentFromGlobal(role.id, child.id) && (
                                   <span className="text-[9px] text-primary font-medium">Modifié</span>
