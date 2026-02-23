@@ -238,7 +238,6 @@ export function AppSidebar() {
   const showPoleSelector = !effectiveBypass && !isGhostActive && ["Bénévole", "Parent d'élève"].includes(role);
   const showAdmin = !isGhostActive ? (ADMIN_ROLES.includes(role) || effectiveBypass) : false;
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
-  const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
   // ── RBAC permissions from DB ──
   const [previewPermissions, setPreviewPermissions] = useState<Set<string> | null>(null);
