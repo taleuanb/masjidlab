@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useRole, type UserRole, UI_ROLE_TO_DB } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
 import type { Pole } from "@/types/amm";
+import { CORE_MODULE_SET } from "@/config/plan-modules";
 
 const POLES: Pole[] = ["Imam", "École (Avenir)", "Social (ABD)", "Accueil", "Récolte", "Digital", "Com", "Parking"];
 
