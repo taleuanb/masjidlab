@@ -73,8 +73,9 @@ const AppLayout = () => {
         <AppSidebar />
         <RequireActivePole>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/planning" element={<PlanningPage />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Index />} />
+            <Route path="/profil" element={<Index />} /> {/* TODO: create dedicated Profile page */}
             <Route path="/evenements" element={<EvenementsPage />} />
             <Route path="/parking" element={<ParkingPage />} />
             <Route path="/maintenance" element={<MaintenancePage />} />
