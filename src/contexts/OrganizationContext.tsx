@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, typ
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { isModuleAllowedForPlan } from "@/config/plan-modules";
+import { isModuleInPlan as checkModuleInPlan } from "@/config/module-registry";
 
 interface Organization {
   id: string;
@@ -46,7 +46,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const isModuleInPlan = useCallback((moduleName: string): boolean => {
     // Super Admin bypass absolu (sauf en mode Ghost)
     if (isSuperAdmin && !impersonatedUser) return true;
-    return isModuleAllowedForPlan(moduleName, org?.subscription_plan);
+    return checkModuleInPlan(moduleName, org?.subscription_plan);
   }, [isSuperAdmin, impersonatedUser, org?.subscription_plan]);
 
   const refetch = useCallback(() => {

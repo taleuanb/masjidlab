@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, Fragment } from "react";
 import {
   Building2, Users, Globe, Loader2, RefreshCw, Check, Shield, Save,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, Lock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
@@ -21,14 +21,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Navigate } from "react-router-dom";
+import { MODULE_REGISTRY, PLAN_META, type PlanId, isPlanAtLeast } from "@/config/module-registry";
 
-const ALL_POLES = [
-  { id: "admin", label: "Gouvernance" },
-  { id: "logistics", label: "Opérations & Planning" },
-  { id: "education", label: "Éducation" },
-  { id: "social", label: "Social" },
-  { id: "comms", label: "Communication" },
-];
+const ALL_POLES = MODULE_REGISTRY
+  .filter((m) => !m.isCore)
+  .map((m) => ({ id: m.id, label: m.label }));
 
 const RBAC_ROLES = [
   { id: "admin", label: "Admin" },
@@ -67,7 +64,6 @@ const RBAC_MODULES: { id: string; label: string; children?: { id: string; label:
   { id: "comms", label: "Communication" },
 ];
 
-// Flatten all module IDs for matrix init
 function getAllModuleIds(): string[] {
   const ids: string[] = [];
   for (const mod of RBAC_MODULES) {
@@ -97,7 +93,6 @@ function DashboardTab({
 }) {
   return (
     <div className="space-y-6">
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -134,7 +129,6 @@ function DashboardTab({
         </Card>
       </div>
 
-      {/* Org table */}
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -218,6 +212,7 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const isGlobal = selectedOrgId === "global";
+  const selectedOrgPlan = (isGlobal ? null : orgs.find((o) => o.id === selectedOrgId)?.subscription_plan ?? "starter") as PlanId | null;
 
   // Load global defaults once
   useEffect(() => {
@@ -234,7 +229,6 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
     })();
   }, []);
 
-  // Load matrix when org selection changes
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -283,7 +277,6 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
     setHasOrgOverride(true);
   };
 
-  // Check if a specific cell differs from global default
   const isDifferentFromGlobal = (roleId: string, modId: string) => {
     if (isGlobal) return false;
     return (matrix[roleId]?.[modId] ?? false) !== (globalMatrix[roleId]?.[modId] ?? false);
@@ -346,7 +339,6 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
 
   return (
     <div className="space-y-4">
-      {/* Org selector */}
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
           <SelectTrigger className="w-72 h-9">
@@ -410,22 +402,36 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
                 {RBAC_MODULES.map((mod) => {
                   const isCollapsed = collapsed[mod.id];
                   const hasChildren = !!mod.children?.length;
+                  // Plan-aware: dim modules outside the selected org's plan
+                  const modMeta = MODULE_REGISTRY.find((m) => m.id === mod.id);
+                  const blockedByPlan = !isGlobal && selectedOrgPlan && modMeta
+                    ? !isPlanAtLeast(selectedOrgPlan, modMeta.minPlan)
+                    : false;
+
                   return (
                     <Fragment key={mod.id}>
-                      <TableRow className="bg-muted/30">
+                      <TableRow className={blockedByPlan ? "bg-muted/10 opacity-50" : "bg-muted/30"}>
                         <TableCell className="font-semibold">
-                          <button
-                            type="button"
-                            className="flex items-center gap-1.5 text-left w-full"
-                            onClick={() => hasChildren && toggleCollapse(mod.id)}
-                          >
-                            {hasChildren ? (
-                              isCollapsed
-                                ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                            ) : <span className="w-4" />}
-                            {mod.label}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="flex items-center gap-1.5 text-left flex-1"
+                              onClick={() => hasChildren && toggleCollapse(mod.id)}
+                            >
+                              {hasChildren ? (
+                                isCollapsed
+                                  ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                              ) : <span className="w-4" />}
+                              {mod.label}
+                            </button>
+                            {blockedByPlan && modMeta && (
+                              <Badge variant="outline" className={`gap-1 text-[9px] px-1.5 py-0 h-4 shrink-0 ${PLAN_META[modMeta.minPlan].badgeCls}`}>
+                                <Lock className="h-2.5 w-2.5" />
+                                {PLAN_META[modMeta.minPlan].label}
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         {RBAC_ROLES.map((role) => (
                           <TableCell key={role.id} className="text-center">
@@ -433,8 +439,9 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
                               <Switch
                                 checked={matrix[role.id]?.[mod.id] ?? false}
                                 onCheckedChange={() => toggle(role.id, mod.id)}
+                                disabled={blockedByPlan}
                               />
-                              {isDifferentFromGlobal(role.id, mod.id) && (
+                              {!blockedByPlan && isDifferentFromGlobal(role.id, mod.id) && (
                                 <span className="text-[9px] text-primary font-medium">Modifié</span>
                               )}
                             </div>
@@ -442,7 +449,7 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
                         ))}
                       </TableRow>
                       {hasChildren && !isCollapsed && mod.children!.map((child) => (
-                        <TableRow key={child.id}>
+                        <TableRow key={child.id} className={blockedByPlan ? "opacity-50" : ""}>
                           <TableCell className="pl-10 text-muted-foreground text-sm">{child.label}</TableCell>
                           {RBAC_ROLES.map((role) => (
                             <TableCell key={role.id} className="text-center">
@@ -450,9 +457,9 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
                                 <Switch
                                   checked={matrix[role.id]?.[child.id] ?? false}
                                   onCheckedChange={() => toggle(role.id, child.id)}
-                                  disabled={!(matrix[role.id]?.[mod.id])}
+                                  disabled={blockedByPlan || !(matrix[role.id]?.[mod.id])}
                                 />
-                                {isDifferentFromGlobal(role.id, child.id) && (
+                                {!blockedByPlan && isDifferentFromGlobal(role.id, child.id) && (
                                   <span className="text-[9px] text-primary font-medium">Modifié</span>
                                 )}
                               </div>
@@ -548,7 +555,6 @@ export default function SaasAdminPage() {
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
-        {/* Header */}
         <div className="flex items-center gap-3">
           <SidebarTrigger />
           <div>
@@ -560,7 +566,6 @@ export default function SaasAdminPage() {
           </div>
         </div>
 
-        {/* Tabs */}
         <Tabs defaultValue="dashboard" className="space-y-4">
           <TabsList>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
@@ -583,7 +588,6 @@ export default function SaasAdminPage() {
         </Tabs>
       </div>
 
-      {/* Module management dialog */}
       <Dialog open={!!editOrg} onOpenChange={() => setEditOrg(null)}>
         <DialogContent>
           <DialogHeader>

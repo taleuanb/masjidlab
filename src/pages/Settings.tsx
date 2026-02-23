@@ -5,7 +5,12 @@ import {
   Snowflake, Wifi, Mic, Monitor, Speaker, Lock,
   Landmark, Truck, BookOpen, Heart, Radio, Zap, Crown, Star, GraduationCap, Check, ArrowRight,
 } from "lucide-react";
-import { PLAN_CONFIG, type SubscriptionPlan } from "@/config/plan-modules";
+import {
+  PLAN_IDS, PLAN_META,
+  getBusinessModules, getModulesForPlan, isPlanAtLeast, MODULE_MAP,
+  type PlanId,
+} from "@/config/module-registry";
+
 import { MadrasaSettingsPanel } from "@/components/MadrasaSettingsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,31 +90,9 @@ const STATUT_STYLES: Record<string, string> = {
   maintenance:"bg-muted text-muted-foreground border-border",
 };
 
-// ─── Pôles Métiers Config ─────────────────────────────────────────────────────
+// ─── Module & Plan Config — driven by module-registry ─────────────────────────
 
-interface PoleConfig {
-  id: string;
-  label: string;
-  description: string;
-  icon: React.ElementType;
-  minPlan: "starter" | "pro" | "elite";
-}
-
-const POLES_CONFIG: PoleConfig[] = [
-  { id: "education",    label: "Éducation",     description: "Cours, inscriptions, suivi pédagogique",         icon: BookOpen, minPlan: "starter" },
-  { id: "finance",      label: "Finance",       description: "Transactions, donateurs, reçus fiscaux",         icon: Landmark, minPlan: "pro"     },
-  { id: "social",       label: "Social",        description: "Actions sociales, aides, bénéficiaires",         icon: Heart,    minPlan: "pro"     },
-  { id: "comms",        label: "Communication", description: "Newsletter, réseaux sociaux, annonces",          icon: Radio,    minPlan: "pro"     },
-  { id: "operations",   label: "Logistique",    description: "Planning, inventaire, parking, maintenance",     icon: Truck,    minPlan: "elite"   },
-  { id: "gestion-rh",   label: "Personnel",     description: "Contrats staff, documents, structure RH",        icon: Crown,    minPlan: "elite"   },
-];
-
-const PLAN_ORDER = { starter: 0, pro: 1, elite: 2 };
-const PLAN_LABELS: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
-  starter: { label: "Starter",  icon: Zap,   cls: "bg-muted text-muted-foreground border-border" },
-  pro:     { label: "Pro",      icon: Star,  cls: "bg-primary/10 text-primary border-primary/30" },
-  elite:   { label: "Elite",    icon: Crown, cls: "bg-amber-500/10 text-amber-600 border-amber-400/30" },
-};
+const BUSINESS_MODULES = getBusinessModules();
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -120,7 +103,7 @@ export default function SettingsPage() {
   const isAdmin = dbRole === "admin" || dbRole === "super_admin";
   const isResponsable = dbRole === "responsable";
   const canManageModules = isAdmin || isResponsable;
-  const currentPlan = (org?.subscription_plan ?? "starter") as SubscriptionPlan;
+  const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
   const showMadrassa = activePoles.includes("education");
 
   // ── Tab: Pôles ──
@@ -144,7 +127,7 @@ export default function SettingsPage() {
       window.dispatchEvent(new CustomEvent("org-poles-updated", { detail: { active_poles: next } }));
       toast({
         title: isActive ? "Pôle désactivé" : "Pôle activé",
-        description: POLES_CONFIG.find((p) => p.id === poleId)?.label,
+        description: MODULE_MAP.get(poleId)?.label ?? poleId,
       });
     }
   };
@@ -390,12 +373,12 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground mb-4">Comparez les plans et les modules métier inclus.</p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(["starter", "pro", "elite"] as SubscriptionPlan[]).map((plan) => {
+                {PLAN_IDS.map((plan) => {
                   const isCurrent = currentPlan === plan;
-                  const planMeta = PLAN_LABELS[plan];
+                  const planMeta = PLAN_META[plan];
                   const PlanIcon = planMeta.icon;
-                  const modules = PLAN_CONFIG[plan];
-                  const isUpgrade = PLAN_ORDER[plan] > PLAN_ORDER[currentPlan];
+                  const modules = getModulesForPlan(plan);
+                  const isUpgrade = PLAN_META[plan].order > PLAN_META[currentPlan].order;
 
                   return (
                     <Card
@@ -423,15 +406,12 @@ export default function SettingsPage() {
                       </CardHeader>
                       <CardContent className="pb-4 px-4">
                         <ul className="space-y-2">
-                          {modules.map((mod) => {
-                            const poleInfo = POLES_CONFIG.find((p) => p.id === mod);
-                            return (
-                              <li key={mod} className="flex items-center gap-2 text-xs">
-                                <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                                <span className="text-foreground">{poleInfo?.label ?? mod}</span>
-                              </li>
-                            );
-                          })}
+                          {modules.map((mod) => (
+                            <li key={mod.id} className="flex items-center gap-2 text-xs">
+                              <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                              <span className="text-foreground">{mod.label}</span>
+                            </li>
+                          ))}
                         </ul>
                         {isUpgrade && (
                           <Button size="sm" className="w-full mt-4 gap-1.5" variant="default">
@@ -457,6 +437,7 @@ export default function SettingsPage() {
             </div>
 
             {/* ── Gestion des Modules Métier ── */}
+
             <div>
               <h2 className="text-sm font-semibold mb-1">Gestion des Modules Métier</h2>
               <p className="text-xs text-muted-foreground mb-4">
@@ -464,18 +445,16 @@ export default function SettingsPage() {
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {POLES_CONFIG.map((pole) => {
-                  const isActive = activePoles.includes(pole.id);
-                  const planRank = PLAN_ORDER[currentPlan];
-                  const poleRank = PLAN_ORDER[pole.minPlan];
-                  const included = planRank >= poleRank;
-                  const PoleIcon = pole.icon;
-                  const badgePlan = PLAN_LABELS[pole.minPlan];
+                {BUSINESS_MODULES.map((mod) => {
+                  const isActive = activePoles.includes(mod.id);
+                  const included = isPlanAtLeast(currentPlan, mod.minPlan);
+                  const PoleIcon = mod.icon;
+                  const badgePlan = PLAN_META[mod.minPlan];
                   const BadgeIcon = badgePlan.icon;
 
                   return (
                     <div
-                      key={pole.id}
+                      key={mod.id}
                       className={`relative flex items-start gap-4 rounded-xl border p-4 transition-colors ${
                         included
                           ? isActive
@@ -496,11 +475,11 @@ export default function SettingsPage() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold">{pole.label}</p>
+                          <p className="text-sm font-semibold">{mod.label}</p>
                           {!included && (
                             <Badge
                               variant="outline"
-                              className={`gap-1 text-[10px] px-1.5 py-0 h-4 ${badgePlan.cls}`}
+                              className={`gap-1 text-[10px] px-1.5 py-0 h-4 ${badgePlan.badgeCls}`}
                             >
                               <Lock className="h-2.5 w-2.5" />
                               Plan {badgePlan.label}
@@ -508,7 +487,7 @@ export default function SettingsPage() {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                          {pole.description}
+                          {mod.description}
                         </p>
                         {!included && (
                           <button className="mt-1.5 text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-1">
@@ -522,7 +501,7 @@ export default function SettingsPage() {
                         <Switch
                           checked={isActive}
                           disabled={!canManageModules || polesLoading}
-                          onCheckedChange={() => togglePole(pole.id)}
+                          onCheckedChange={() => togglePole(mod.id)}
                           className="mt-0.5 shrink-0"
                         />
                       ) : (
