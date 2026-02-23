@@ -98,7 +98,7 @@ export default function SettingsPage() {
   const isAdmin = dbRole === "admin" || dbRole === "super_admin";
   const isResponsable = dbRole === "responsable";
   const canManageModules = isAdmin || isResponsable;
-  const currentPlan = (org?.subscription_plan ?? "starter") as SubscriptionPlan;
+  const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
   const showMadrassa = activePoles.includes("education");
 
   // ── Tab: Pôles ──
