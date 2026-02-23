@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, typ
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
+import { isModuleAllowedForPlan } from "@/config/plan-modules";
 
 interface Organization {
   id: string;
@@ -23,6 +24,8 @@ interface OrganizationContextType {
   setOverrideOrgId: (id: string | null) => void;
   /** Toutes les orgs (pour super-admin) */
   allOrgs: Organization[];
+  /** Vérifie si un module est autorisé pour le plan de l'org courante */
+  isModuleInPlan: (moduleName: string) => boolean;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
