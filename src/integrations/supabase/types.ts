@@ -1108,6 +1108,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clone_default_permissions: {
+        Args: { p_org_id: string }
+        Returns: undefined
+      }
       get_admin_organizations: {
         Args: never
         Returns: {
