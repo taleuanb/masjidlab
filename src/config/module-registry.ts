@@ -39,8 +39,10 @@ export interface ModuleMeta {
   icon: React.ElementType;
   /** Minimum plan required to unlock this module */
   minPlan: PlanId;
-  /** Whether this module is CORE (exempt from RBAC for admin) */
+  /** Whether this module is CORE (fixed access, excluded from RBAC matrix) */
   isCore?: boolean;
+  /** Roles that have default access to this CORE module. Use ['*'] for all roles. Only relevant when isCore is true. */
+  defaultRoles?: string[];
 }
 
 /**
@@ -48,9 +50,11 @@ export interface ModuleMeta {
  * Order matters for display in Settings page.
  */
 export const MODULE_REGISTRY: ModuleMeta[] = [
-  // CORE modules — always visible for admin/super_admin, outside RBAC
-  { id: "config",       label: "Configuration",   description: "Paramètres, espaces et inventaire du complexe",        icon: SlidersHorizontal, minPlan: "starter", isCore: true },
-  { id: "gouvernance",  label: "Membres & Rôles", description: "Gestion des membres, rôles et permissions",           icon: Users,             minPlan: "starter", isCore: true },
+  // CORE modules — fixed access based on defaultRoles, excluded from RBAC matrix
+  { id: "dashboard",    label: "Dashboard",        description: "Tableau de bord principal",                           icon: SlidersHorizontal, minPlan: "starter", isCore: true, defaultRoles: ["*"] },
+  { id: "profile",      label: "Profil",           description: "Profil utilisateur",                                 icon: Users,             minPlan: "starter", isCore: true, defaultRoles: ["*"] },
+  { id: "config",       label: "Configuration",    description: "Paramètres, espaces et inventaire du complexe",       icon: SlidersHorizontal, minPlan: "starter", isCore: true, defaultRoles: ["admin", "super_admin", "responsable"] },
+  { id: "gouvernance",  label: "Membres & Rôles",  description: "Gestion des membres, rôles et permissions",          icon: Users,             minPlan: "starter", isCore: true, defaultRoles: ["admin", "super_admin", "responsable"] },
 
   // Business modules — subject to plan + RBAC
   { id: "education",    label: "Éducation",        description: "Cours, inscriptions, suivi pédagogique",             icon: GraduationCap,     minPlan: "starter" },
