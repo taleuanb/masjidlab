@@ -320,6 +320,28 @@ export function AppSidebar() {
           </div>
         )}
 
+        {/* ── G0: CORE — Dashboard & Profil, visible to all via defaultRoles ── */}
+        {visibleCoreItems.length > 0 && (
+          <div className="py-1">
+            <SidebarMenu className="space-y-px">
+              {visibleCoreItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </div>
+        )}
+
         {/* ── G1: ADMINISTRATION — visibility via useModuleAccess (CORE defaultRoles) ── */}
         {visibleAdminItems.length > 0 && (
           <div className="py-1">
