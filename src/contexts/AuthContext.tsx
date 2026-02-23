@@ -54,24 +54,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [dbRoles, setDbRoles] = useState<string[]>([]);
   const [permissions, setPermissions] = useState<EffectivePermission[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
-  const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(null);
+  const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(() => {
+    try {
+      const stored = sessionStorage.getItem("ghost_user");
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
 
   const dbRole = pickHighestRole(dbRoles);
 
   const startImpersonating = useCallback((target: ImpersonatedUser) => {
     if (dbRoles.includes("super_admin")) {
       setImpersonatedUser(target);
+      sessionStorage.setItem("ghost_user", JSON.stringify(target));
     }
   }, [dbRoles]);
 
   const stopImpersonating = useCallback(() => {
     setImpersonatedUser(null);
+    sessionStorage.removeItem("ghost_user");
   }, []);
 
   // Auto-stop impersonation if user loses super_admin or signs out
   useEffect(() => {
     if (impersonatedUser && (!user || !dbRoles.includes("super_admin"))) {
       setImpersonatedUser(null);
+      sessionStorage.removeItem("ghost_user");
     }
   }, [user, dbRoles, impersonatedUser]);
 
@@ -95,11 +103,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPermissions([]);
       return;
     }
+    // Use impersonated user's ID when in ghost mode
+    const targetUserId = impersonatedUser?.id ?? currentUser.id;
     setPermissionsLoading(true);
     try {
       const { data, error } = await supabase.rpc("get_effective_permissions" as any, {
         p_org_id: orgId,
-        p_user_id: currentUser.id,
+        p_user_id: targetUserId,
       });
       if (error || !data) {
         console.error("Error fetching permissions:", error?.message);
@@ -118,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setPermissionsLoading(false);
     }
-  }, [user]);
+  }, [user, impersonatedUser]);
 
   useEffect(() => {
     let isMounted = true;
@@ -166,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDbRoles([]);
     setPermissions([]);
     setImpersonatedUser(null);
+    sessionStorage.removeItem("ghost_user");
   };
 
   return (
