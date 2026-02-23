@@ -240,7 +240,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { role, setRole, pole, setPole, displayName, isSuperAdmin } = useRole();
   const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
-  const { signOut, dbRole, permissions, refreshPermissions } = useAuth();
+  const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
 
   // When previewing a different role, disable the Super Admin bypass
   const isPreviewingOtherRole = isSuperAdmin && role !== "Super Admin";
@@ -284,10 +284,10 @@ export function AppSidebar() {
 
   useEffect(() => { fetchPreviewPermissions(); }, [fetchPreviewPermissions]);
 
-  // Also refresh the real user permissions when org changes
+  // Refresh permissions when org or impersonated user changes
   useEffect(() => {
     if (orgId) refreshPermissions(orgId);
-  }, [orgId, refreshPermissions]);
+  }, [orgId, refreshPermissions, impersonatedUser]);
 
   // Determine which permission set to use for filtering
   const allowedModules = useMemo(() => {

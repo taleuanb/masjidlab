@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, Pencil, Loader2, RefreshCw, Search, X, Shield, UserCheck, Tag,
   Trash2, Mail, MoreHorizontal, UserX, UserCheck2, Phone, PhoneCall, UserPlus,
-  ExternalLink, UserCog, Building2,
+  ExternalLink, UserCog, Building2, Ghost,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -96,8 +96,9 @@ interface MemberRow {
 // ─── Component ───────────────────────────────────────────────────────
 export default function StructureMembresPage() {
   const { toast } = useToast();
-  const { user: currentUser, dbRole } = useAuth();
+  const { user: currentUser, dbRole, dbRoles, startImpersonating } = useAuth();
   const isAdmin = dbRole === "admin" || dbRole === "super_admin";
+  const isSuperAdmin = dbRoles.includes("super_admin");
 
   const [loading, setLoading] = useState(true);
   const [poles, setPoles] = useState<PoleRow[]>([]);
@@ -470,6 +471,11 @@ export default function StructureMembresPage() {
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => openEditMember(m)}><Pencil className="h-3.5 w-3.5 mr-2" /> Modifier</DropdownMenuItem>
+                                  {isSuperAdmin && !isSelf(m) && (
+                                    <DropdownMenuItem onClick={() => startImpersonating({ id: m.user_id, name: m.display_name, roles: m.roles })}>
+                                      <Ghost className="h-3.5 w-3.5 mr-2" /> Se connecter en tant que
+                                    </DropdownMenuItem>
+                                  )}
                                   {!m.has_account && m.email && (
                                     <DropdownMenuItem onClick={() => handleTransformToUser(m)}><UserPlus className="h-3.5 w-3.5 mr-2" /> Inviter</DropdownMenuItem>
                                   )}
