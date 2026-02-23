@@ -95,7 +95,7 @@ const LOGISTIQUE_BLOCK: NavBlock = {
   label: "Logistique",
   icon: Truck,
   items: [
-    { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
+    { title: "Dashboard Logistique", url: "/", icon: LayoutDashboard },
     { title: "Planning", url: "/planning", icon: CalendarDays },
     { title: "Événements", url: "/evenements", icon: Calendar },
     { title: "Inventaire", url: "/inventaire", icon: Package },
