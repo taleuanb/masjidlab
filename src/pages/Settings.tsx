@@ -471,7 +471,7 @@ export default function SettingsPage() {
                           {!included && (
                             <Badge
                               variant="outline"
-                              className={`gap-1 text-[10px] px-1.5 py-0 h-4 ${badgePlan.cls}`}
+                              className={`gap-1 text-[10px] px-1.5 py-0 h-4 ${badgePlan.badgeCls}`}
                             >
                               <Lock className="h-2.5 w-2.5" />
                               Plan {badgePlan.label}
