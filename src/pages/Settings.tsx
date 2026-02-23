@@ -368,12 +368,12 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground mb-4">Comparez les plans et les modules métier inclus.</p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(["starter", "pro", "elite"] as SubscriptionPlan[]).map((plan) => {
+                {PLAN_IDS.map((plan) => {
                   const isCurrent = currentPlan === plan;
-                  const planMeta = PLAN_LABELS[plan];
+                  const planMeta = PLAN_META[plan];
                   const PlanIcon = planMeta.icon;
-                  const modules = PLAN_CONFIG[plan];
-                  const isUpgrade = PLAN_ORDER[plan] > PLAN_ORDER[currentPlan];
+                  const modules = getModulesForPlan(plan);
+                  const isUpgrade = PLAN_META[plan].order > PLAN_META[currentPlan].order;
 
                   return (
                     <Card
@@ -401,15 +401,12 @@ export default function SettingsPage() {
                       </CardHeader>
                       <CardContent className="pb-4 px-4">
                         <ul className="space-y-2">
-                          {modules.map((mod) => {
-                            const poleInfo = POLES_CONFIG.find((p) => p.id === mod);
-                            return (
-                              <li key={mod} className="flex items-center gap-2 text-xs">
-                                <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                                <span className="text-foreground">{poleInfo?.label ?? mod}</span>
-                              </li>
-                            );
-                          })}
+                          {modules.map((mod) => (
+                            <li key={mod.id} className="flex items-center gap-2 text-xs">
+                              <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                              <span className="text-foreground">{mod.label}</span>
+                            </li>
+                          ))}
                         </ul>
                         {isUpgrade && (
                           <Button size="sm" className="w-full mt-4 gap-1.5" variant="default">
@@ -431,8 +428,6 @@ export default function SettingsPage() {
                     </Card>
                   );
                 })}
-              </div>
-            </div>
 
             {/* ── Gestion des Modules Métier ── */}
             <div>
