@@ -85,31 +85,9 @@ const STATUT_STYLES: Record<string, string> = {
   maintenance:"bg-muted text-muted-foreground border-border",
 };
 
-// ─── Pôles Métiers Config ─────────────────────────────────────────────────────
+// ─── Module & Plan Config — driven by module-registry ─────────────────────────
 
-interface PoleConfig {
-  id: string;
-  label: string;
-  description: string;
-  icon: React.ElementType;
-  minPlan: "starter" | "pro" | "elite";
-}
-
-const POLES_CONFIG: PoleConfig[] = [
-  { id: "education",    label: "Éducation",     description: "Cours, inscriptions, suivi pédagogique",         icon: BookOpen, minPlan: "starter" },
-  { id: "finance",      label: "Finance",       description: "Transactions, donateurs, reçus fiscaux",         icon: Landmark, minPlan: "pro"     },
-  { id: "social",       label: "Social",        description: "Actions sociales, aides, bénéficiaires",         icon: Heart,    minPlan: "pro"     },
-  { id: "comms",        label: "Communication", description: "Newsletter, réseaux sociaux, annonces",          icon: Radio,    minPlan: "pro"     },
-  { id: "operations",   label: "Logistique",    description: "Planning, inventaire, parking, maintenance",     icon: Truck,    minPlan: "elite"   },
-  { id: "gestion-rh",   label: "Personnel",     description: "Contrats staff, documents, structure RH",        icon: Crown,    minPlan: "elite"   },
-];
-
-const PLAN_ORDER = { starter: 0, pro: 1, elite: 2 };
-const PLAN_LABELS: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
-  starter: { label: "Starter",  icon: Zap,   cls: "bg-muted text-muted-foreground border-border" },
-  pro:     { label: "Pro",      icon: Star,  cls: "bg-primary/10 text-primary border-primary/30" },
-  elite:   { label: "Elite",    icon: Crown, cls: "bg-amber-500/10 text-amber-600 border-amber-400/30" },
-};
+const BUSINESS_MODULES = getBusinessModules();
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
