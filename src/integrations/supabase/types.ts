@@ -1160,21 +1160,18 @@ export type Database = {
       }
       get_effective_permissions:
         | {
-            Args: {
-              p_org_id: string
-              p_role: Database["public"]["Enums"]["app_role"]
-            }
+            Args: { p_org_id: string; p_role: string }
             Returns: {
-              can_delete: boolean
-              can_edit: boolean
               can_view: boolean
               enabled: boolean
               module: string
             }[]
           }
         | {
-            Args: { p_org_id: string; p_role: string }
+            Args: { p_org_id: string; p_user_id: string }
             Returns: {
+              can_delete: boolean
+              can_edit: boolean
               can_view: boolean
               enabled: boolean
               module: string

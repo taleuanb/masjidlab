@@ -5,13 +5,22 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type UserRole = "Super Admin" | "Admin Mosquée" | "Responsable" | "Enseignant / Oustaz" | "Bénévole" | "Parent d'élève";
 
-const DB_ROLE_TO_UI: Record<string, UserRole> = {
+export const DB_ROLE_TO_UI: Record<string, UserRole> = {
   super_admin: "Super Admin",
   admin: "Admin Mosquée",
   responsable: "Responsable",
   enseignant: "Enseignant / Oustaz",
   benevole: "Bénévole",
   parent: "Parent d'élève",
+};
+
+export const UI_ROLE_TO_DB: Record<UserRole, string> = {
+  "Super Admin": "super_admin",
+  "Admin Mosquée": "admin",
+  "Responsable": "responsable",
+  "Enseignant / Oustaz": "enseignant",
+  "Bénévole": "benevole",
+  "Parent d'élève": "parent",
 };
 
 interface RoleContextType {
@@ -21,12 +30,14 @@ interface RoleContextType {
   setPole: (pole: Pole) => void;
   displayName: string | null;
   isSuperAdmin: boolean;
+  /** All DB roles for the current user */
+  userDbRoles: string[];
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const { user, dbRole } = useAuth();
+  const { user, dbRoles, dbRole } = useAuth();
   const [role, setRole] = useState<UserRole>("Admin Mosquée");
   const [pole, setPole] = useState<Pole>("Imam");
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -35,9 +46,9 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (dbRole) {
       setRole(DB_ROLE_TO_UI[dbRole] ?? "Bénévole");
-      setIsSuperAdmin(dbRole === "super_admin");
+      setIsSuperAdmin(dbRoles.includes("super_admin"));
     }
-  }, [dbRole]);
+  }, [dbRole, dbRoles]);
 
   useEffect(() => {
     if (!user) { setDisplayName(null); return; }
@@ -50,7 +61,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   return (
-    <RoleContext.Provider value={{ role, setRole, pole, setPole, displayName, isSuperAdmin }}>
+    <RoleContext.Provider value={{ role, setRole, pole, setPole, displayName, isSuperAdmin, userDbRoles: dbRoles }}>
       {children}
     </RoleContext.Provider>
   );

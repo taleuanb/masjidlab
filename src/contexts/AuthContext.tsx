@@ -1,25 +1,53 @@
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+
+export interface EffectivePermission {
+  module: string;
+  enabled: boolean;
+  can_view: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+}
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  /** All DB roles for the current user (multi-role) */
+  dbRoles: string[];
+  /** Highest-priority role (for backward compat) */
   dbRole: string | null;
+  /** Effective permissions resolved via RPC for current org */
+  permissions: EffectivePermission[];
+  permissionsLoading: boolean;
+  /** Refresh permissions (e.g. after org change) */
+  refreshPermissions: (orgId?: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const ROLE_PRIORITY = ["super_admin", "admin", "responsable", "imam_chef", "enseignant", "benevole", "parent", "eleve"];
+
+function pickHighestRole(roles: string[]): string | null {
+  for (const r of ROLE_PRIORITY) {
+    if (roles.includes(r)) return r;
+  }
+  return roles[0] ?? null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dbRole, setDbRole] = useState<string | null>(null);
+  const [dbRoles, setDbRoles] = useState<string[]>([]);
+  const [permissions, setPermissions] = useState<EffectivePermission[]>([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
 
-  const fetchRole = async (userId: string) => {
-    // Fetch ALL roles for this user to prioritize super_admin
+  const dbRole = pickHighestRole(dbRoles);
+
+  const fetchRoles = async (userId: string) => {
     const { data, error } = await supabase
       .from("user_roles")
       .select("role")
@@ -27,44 +55,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error("Error fetching roles:", error.message);
-      setDbRole(null);
+      setDbRoles([]);
       return;
     }
-
-    const roles = (data ?? []).map((r) => r.role);
-    // Prioritize super_admin over any other role
-    if (roles.includes("super_admin")) {
-      setDbRole("super_admin");
-    } else if (roles.includes("admin")) {
-      setDbRole("admin");
-    } else if (roles.includes("responsable")) {
-      setDbRole("responsable");
-    } else if (roles.includes("imam_chef")) {
-      setDbRole("imam_chef");
-    } else {
-      setDbRole(roles[0] ?? null);
-    }
+    setDbRoles((data ?? []).map((r) => r.role));
   };
+
+  const refreshPermissions = useCallback(async (orgId?: string) => {
+    const currentUser = user;
+    if (!currentUser || !orgId) {
+      setPermissions([]);
+      return;
+    }
+    setPermissionsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("get_effective_permissions" as any, {
+        p_org_id: orgId,
+        p_user_id: currentUser.id,
+      });
+      if (error || !data) {
+        console.error("Error fetching permissions:", error?.message);
+        setPermissions([]);
+        return;
+      }
+      setPermissions(
+        (data as any[]).map((row) => ({
+          module: row.module,
+          enabled: row.enabled ?? false,
+          can_view: row.can_view ?? false,
+          can_edit: row.can_edit ?? false,
+          can_delete: row.can_delete ?? false,
+        }))
+      );
+    } finally {
+      setPermissionsLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     let isMounted = true;
 
-    // Listen for ONGOING auth changes (does NOT control loading)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (!isMounted) return;
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // setTimeout avoids Supabase deadlock in the callback
-          setTimeout(() => fetchRole(session.user.id), 0);
+          setTimeout(() => fetchRoles(session.user.id), 0);
         } else {
-          setDbRole(null);
+          setDbRoles([]);
+          setPermissions([]);
         }
       }
     );
 
-    // INITIAL load controls the loading state
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -72,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchRole(session.user.id);
+          await fetchRoles(session.user.id);
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -91,11 +135,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
-    setDbRole(null);
+    setDbRoles([]);
+    setPermissions([]);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, dbRole, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, dbRoles, dbRole, permissions, permissionsLoading, refreshPermissions, signOut }}>
       {children}
     </AuthContext.Provider>
   );

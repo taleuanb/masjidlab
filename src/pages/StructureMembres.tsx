@@ -32,7 +32,9 @@ import {
 } from "@/components/ui/select";
 
 // ─── Types ───────────────────────────────────────────────────────────
-type AppRole = "admin" | "imam_chef" | "benevole" | "responsable" | "parent" | "eleve";
+type AppRole = "admin" | "imam_chef" | "benevole" | "responsable" | "parent" | "eleve" | "enseignant" | "super_admin";
+
+const ASSIGNABLE_ROLES: AppRole[] = ["admin", "responsable", "enseignant", "benevole", "parent"];
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin Mosquée",
@@ -85,8 +87,8 @@ interface MemberRow {
   tags: string[];
   pole_id: string | null;
   pole_nom: string | null;
-  role: string;
-  role_row_id: string | null;
+  roles: string[];
+  role_row_ids: string[];
   is_active: boolean;
   has_account: boolean;
 }
@@ -112,7 +114,7 @@ export default function StructureMembresPage() {
 
   // Member edit dialog
   const [editMember, setEditMember] = useState<MemberRow | null>(null);
-  const [memberForm, setMemberForm] = useState({ name: "", email: "", phone: "", role: "benevole", pole_id: "none", competences: "", tags: [] as string[] });
+  const [memberForm, setMemberForm] = useState({ name: "", email: "", phone: "", roles: ["benevole"] as string[], pole_id: "none", competences: "", tags: [] as string[] });
   const [memberSaving, setMemberSaving] = useState(false);
 
   // Add member dialog
@@ -134,7 +136,17 @@ export default function StructureMembresPage() {
       const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, phone, competences, pole_id, id, is_active, has_account, tags").order("display_name");
       const { data: roles } = await supabase.from("user_roles").select("id, user_id, role");
 
-      const roleMap = new Map((roles || []).map((r) => [r.user_id, { role: r.role as string, id: r.id }]));
+      // Build multi-role map: user_id -> { roles: string[], ids: string[] }
+      const roleMap = new Map<string, { roles: string[]; ids: string[] }>();
+      for (const r of (roles || [])) {
+        const existing = roleMap.get(r.user_id);
+        if (existing) {
+          existing.roles.push(r.role as string);
+          existing.ids.push(r.id);
+        } else {
+          roleMap.set(r.user_id, { roles: [r.role as string], ids: [r.id] });
+        }
+      }
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
       const poleMap = new Map((polesData || []).map((p: any) => [p.id, p.nom]));
 
@@ -152,14 +164,17 @@ export default function StructureMembresPage() {
       setPoles(enrichedPoles);
       setPolesRaw((polesData || []).map((p: any) => ({ id: p.id, nom: p.nom })));
 
-      const enrichedMembers: MemberRow[] = (profiles || []).map((p: any) => ({
-        user_id: p.user_id, profile_id: p.id, display_name: p.display_name,
-        email: p.email, phone: p.phone || null, competences: p.competences,
-        tags: p.tags ?? [], pole_id: p.pole_id, pole_nom: p.pole_id ? poleMap.get(p.pole_id) || null : null,
-        role: roleMap.get(p.user_id)?.role || "benevole",
-        role_row_id: roleMap.get(p.user_id)?.id || null,
-        is_active: p.is_active !== false, has_account: p.has_account === true,
-      }));
+      const enrichedMembers: MemberRow[] = (profiles || []).map((p: any) => {
+        const userRoles = roleMap.get(p.user_id);
+        return {
+          user_id: p.user_id, profile_id: p.id, display_name: p.display_name,
+          email: p.email, phone: p.phone || null, competences: p.competences,
+          tags: p.tags ?? [], pole_id: p.pole_id, pole_nom: p.pole_id ? poleMap.get(p.pole_id) || null : null,
+          roles: userRoles?.roles ?? ["benevole"],
+          role_row_ids: userRoles?.ids ?? [],
+          is_active: p.is_active !== false, has_account: p.has_account === true,
+        };
+      });
       setMembers(enrichedMembers);
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -212,7 +227,7 @@ export default function StructureMembresPage() {
   // ─── Member Edit ───────────────────────────────────────────────────
   const openEditMember = (m: MemberRow) => {
     setEditMember(m);
-    setMemberForm({ name: m.display_name, email: m.email || "", phone: m.phone || "", role: m.role, pole_id: m.pole_id || "none", competences: (m.competences || []).join(", "), tags: m.tags ?? [] });
+    setMemberForm({ name: m.display_name, email: m.email || "", phone: m.phone || "", roles: [...m.roles], pole_id: m.pole_id || "none", competences: (m.competences || []).join(", "), tags: m.tags ?? [] });
   };
   const handleSaveMember = async () => {
     if (!editMember) return;
@@ -225,11 +240,19 @@ export default function StructureMembresPage() {
         tags: memberForm.tags, pole_id: memberForm.pole_id === "none" ? null : memberForm.pole_id,
       } as any).eq("user_id", editMember.user_id);
 
-      if (editMember.role !== memberForm.role) {
-        if (editMember.role_row_id) {
-          await supabase.from("user_roles").update({ role: memberForm.role as any }).eq("id", editMember.role_row_id);
-        } else {
-          await supabase.from("user_roles").insert({ user_id: editMember.user_id, role: memberForm.role as any });
+      // Sync multi-roles via delete + insert
+      const oldRoles = new Set(editMember.roles);
+      const newRoles = new Set(memberForm.roles);
+      const rolesChanged = oldRoles.size !== newRoles.size || [...oldRoles].some((r) => !newRoles.has(r));
+
+      if (rolesChanged) {
+        // Delete all existing roles
+        await supabase.from("user_roles").delete().eq("user_id", editMember.user_id);
+        // Insert new roles
+        if (memberForm.roles.length > 0) {
+          await supabase.from("user_roles").insert(
+            memberForm.roles.map((r) => ({ user_id: editMember.user_id, role: r as any }))
+          );
         }
       }
       setEditMember(null);
@@ -302,7 +325,7 @@ export default function StructureMembresPage() {
   };
   const handleTransformToUser = async (m: MemberRow) => {
     if (!m.email) return;
-    const res = await supabase.functions.invoke("invite-member", { body: { email: m.email, display_name: m.display_name, role: m.role, pole_id: m.pole_id, redirect_to: `${window.location.origin}/set-password` } });
+    const res = await supabase.functions.invoke("invite-member", { body: { email: m.email, display_name: m.display_name, role: m.roles[0] ?? "benevole", pole_id: m.pole_id, redirect_to: `${window.location.origin}/set-password` } });
     if (res.error) toast({ title: "Erreur", description: res.error.message, variant: "destructive" });
     else { toast({ title: "Invitation envoyée" }); fetchAll(); }
   };
@@ -424,9 +447,13 @@ export default function StructureMembresPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className={`text-[11px] ${ROLE_STYLES[m.role] || ROLE_STYLES.benevole}`}>
-                              {ROLE_LABELS[m.role] || m.role}
-                            </Badge>
+                            <div className="flex flex-wrap gap-1">
+                              {m.roles.map((r) => (
+                                <Badge key={r} variant="outline" className={`text-[11px] ${ROLE_STYLES[r] || ROLE_STYLES.benevole}`}>
+                                  {ROLE_LABELS[r] || r}
+                                </Badge>
+                              ))}
+                            </div>
                           </TableCell>
                           <TableCell className="text-sm">{m.pole_nom || "—"}</TableCell>
                           <TableCell>
@@ -501,13 +528,22 @@ export default function StructureMembresPage() {
             <div><Label>Nom</Label><Input value={memberForm.name} onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })} /></div>
             <div><Label>Email</Label><Input value={memberForm.email} onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })} /></div>
             <div><Label>Téléphone</Label><Input value={memberForm.phone} onChange={(e) => setMemberForm({ ...memberForm, phone: e.target.value })} /></div>
-            <div><Label>Rôle</Label>
-              <Select value={memberForm.role} onValueChange={(v) => setMemberForm({ ...memberForm, role: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ROLE_LABELS).filter(([k]) => k !== "super_admin").map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div><Label>Rôles</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {ASSIGNABLE_ROLES.map((r) => (
+                  <Badge
+                    key={r}
+                    variant="outline"
+                    className={`cursor-pointer text-xs ${memberForm.roles.includes(r) ? (ROLE_STYLES[r] || ROLE_STYLES.benevole) : "opacity-40"}`}
+                    onClick={() => setMemberForm((f) => ({
+                      ...f,
+                      roles: f.roles.includes(r) ? f.roles.filter((x) => x !== r) : [...f.roles, r],
+                    }))}
+                  >
+                    {ROLE_LABELS[r] || r}
+                  </Badge>
+                ))}
+              </div>
             </div>
             <div><Label>Pôle</Label>
               <Select value={memberForm.pole_id} onValueChange={(v) => setMemberForm({ ...memberForm, pole_id: v })}>
