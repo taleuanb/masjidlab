@@ -239,7 +239,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, setRole, pole, setPole, displayName, isSuperAdmin } = useRole();
-  const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
+  const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId, isModuleInPlan } = useOrganization();
   const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
 
   // Ghost mode takes absolute priority over preview
