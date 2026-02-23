@@ -5,11 +5,15 @@
  * Les block IDs de la sidebar doivent correspondre aux clés listées ici.
  */
 
-const CORE_MODULES = [
+/** Modules CORE : toujours visibles pour admin/super_admin, hors matrice RBAC */
+export const CORE_MODULES = [
   "operations",   // dashboard + planning + events
-  "config",       // settings
+  "config",       // settings / configuration
   "gouvernance",  // members / structure
 ] as const;
+
+/** Set for O(1) lookups */
+export const CORE_MODULE_SET = new Set<string>(CORE_MODULES);
 
 const STARTER_MODULES = [
   ...CORE_MODULES,
