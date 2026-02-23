@@ -18,7 +18,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useRole, type UserRole } from "@/contexts/RoleContext";
+import { useRole, type UserRole, UI_ROLE_TO_DB } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
 import type { Pole } from "@/types/amm";
 
@@ -235,22 +235,12 @@ function SidebarBlock({
 }
 
 // ── Main Sidebar ─────────────────────────────────────────
-// Map UI role labels back to DB role identifiers for the RPC call
-const UI_ROLE_TO_DB: Record<UserRole, string> = {
-  "Super Admin": "super_admin",
-  "Admin Mosquée": "admin",
-  Responsable: "responsable",
-  "Enseignant / Oustaz": "enseignant",
-  Bénévole: "benevole",
-  "Parent d'élève": "parent",
-};
-
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, setRole, pole, setPole, displayName, isSuperAdmin } = useRole();
   const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
-  const { signOut, dbRole } = useAuth();
+  const { signOut, dbRole, permissions, refreshPermissions } = useAuth();
 
   // When previewing a different role, disable the Super Admin bypass
   const isPreviewingOtherRole = isSuperAdmin && role !== "Super Admin";
@@ -262,20 +252,19 @@ export function AppSidebar() {
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
   // ── RBAC permissions from DB ──
-  const [allowedModules, setAllowedModules] = useState<Set<string> | null>(null);
+  const [previewPermissions, setPreviewPermissions] = useState<Set<string> | null>(null);
 
   const orgId = org?.id;
-  // Use the previewed role (mapped to DB) for the RPC call
   const effectiveDbRole = UI_ROLE_TO_DB[role] ?? dbRole;
 
-  const fetchPermissions = useCallback(async () => {
-    // If Super Admin without preview → bypass, show all
+  // Fetch permissions for the previewed role (role-based RPC)
+  const fetchPreviewPermissions = useCallback(async () => {
     if (effectiveBypass) {
-      setAllowedModules(null);
+      setPreviewPermissions(null);
       return;
     }
     if (!orgId || !effectiveDbRole) {
-      setAllowedModules(null);
+      setPreviewPermissions(null);
       return;
     }
     const { data, error } = await supabase.rpc("get_effective_permissions" as any, {
@@ -283,18 +272,37 @@ export function AppSidebar() {
       p_role: effectiveDbRole,
     });
     if (error || !data) {
-      setAllowedModules(null);
+      setPreviewPermissions(null);
       return;
     }
     const allowed = new Set<string>();
     for (const row of data as any[]) {
       if (row.enabled ?? row.can_view) allowed.add(row.module);
     }
-    setAllowedModules(allowed);
+    setPreviewPermissions(allowed);
   }, [orgId, effectiveDbRole, effectiveBypass]);
 
-  // Re-fetch when role preview, org, or bypass changes
-  useEffect(() => { fetchPermissions(); }, [fetchPermissions]);
+  useEffect(() => { fetchPreviewPermissions(); }, [fetchPreviewPermissions]);
+
+  // Also refresh the real user permissions when org changes
+  useEffect(() => {
+    if (orgId) refreshPermissions(orgId);
+  }, [orgId, refreshPermissions]);
+
+  // Determine which permission set to use for filtering
+  const allowedModules = useMemo(() => {
+    if (effectiveBypass) return null; // null = show all
+    if (isPreviewingOtherRole && previewPermissions) return previewPermissions;
+    // For non-super-admin: use real permissions from AuthContext
+    if (permissions.length > 0) {
+      const set = new Set<string>();
+      for (const p of permissions) {
+        if (p.enabled) set.add(p.module);
+      }
+      return set;
+    }
+    return previewPermissions;
+  }, [effectiveBypass, isPreviewingOtherRole, previewPermissions, permissions]);
 
   // Filter metier blocks by RBAC permissions
   const filteredMetierBlocks = useMemo(() => {
@@ -335,6 +343,14 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-3 gap-0">
+        {/* ── Preview banner ── */}
+        {isPreviewingOtherRole && (
+          <div className="mx-1 mb-2 px-2 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
+            <ShieldCheck className="h-3 w-3" />
+            Mode prévisualisation : {role}
+          </div>
+        )}
+
         {/* ── PILOTAGE ── */}
         {showPilotage && (
           <div className="py-1">
