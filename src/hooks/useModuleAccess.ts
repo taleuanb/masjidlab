@@ -66,6 +66,9 @@ export function useModuleAccess(): UseModuleAccessReturn {
     return set;
   }, [permissions]);
 
+  // Build a set of activated modules from org's active_poles
+  const activePoleSet = useMemo<Set<string>>(() => new Set(activePoles), [activePoles]);
+
   const checkAccess = useCallback((moduleKey: string): ModuleAccessResult => {
     const meta = MODULE_MAP.get(moduleKey);
     const isCore = CORE_MODULE_IDS.has(moduleKey);
@@ -85,11 +88,18 @@ export function useModuleAccess(): UseModuleAccessReturn {
       return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
     }
 
-    // ── Priority 3: Triple filter (Plan + Enabled + RBAC) ──
+    // ── Priority 3: Triple filter (Plan + Activation + RBAC) ──
     // Condition A: Plan filter
     const inPlan = isModuleInPlan(moduleKey, currentPlan);
     if (!inPlan) {
       return { allowed: false, blockedByPlan: true, blockedByRbac: false, isCore };
+    }
+
+    // Condition B: Activation filter — module must be in org's active_poles
+    // Only check for parent-level module keys (not sub-modules like "education.eleves")
+    const parentKey = moduleKey.includes(".") ? moduleKey.split(".")[0] : moduleKey;
+    if (activePoleSet.size > 0 && !activePoleSet.has(parentKey)) {
+      return { allowed: false, blockedByPlan: false, blockedByRbac: false, isCore };
     }
 
     // Condition C: RBAC filter
@@ -98,7 +108,7 @@ export function useModuleAccess(): UseModuleAccessReturn {
     }
 
     return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
-  }, [isBypassing, currentPlan, isAdminLike, permissions, rbacSet, impersonatedUser, dbRole]);
+  }, [isBypassing, currentPlan, isAdminLike, permissions, rbacSet, impersonatedUser, dbRole, activePoleSet]);
 
   const hasAccess = useCallback((moduleKey: string): boolean => {
     return checkAccess(moduleKey).allowed;
