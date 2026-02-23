@@ -8,6 +8,7 @@
 import {
   BookOpen, Landmark, Heart, Radio, Truck, Crown,
   GraduationCap, SlidersHorizontal, Users, ShieldCheck,
+  LayoutDashboard, UserCircle,
 } from "lucide-react";
 import type React from "react";
 
