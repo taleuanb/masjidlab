@@ -239,7 +239,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, setRole, pole, setPole, displayName, isSuperAdmin } = useRole();
-  const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
+  const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId, isModuleInPlan } = useOrganization();
   const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
 
   // Ghost mode takes absolute priority over preview
@@ -324,11 +324,17 @@ export function AppSidebar() {
     return previewPermissions;
   }, [isGhostActive, effectiveBypass, isPreviewingOtherRole, previewPermissions, permissions]);
 
-  // Filter metier blocks by RBAC permissions
+  // Filter metier blocks by RBAC permissions AND subscription plan
   const filteredMetierBlocks = useMemo(() => {
-    if (!allowedModules) return METIER_BLOCKS;
-    return METIER_BLOCKS.filter((block) => allowedModules.has(block.id));
-  }, [allowedModules]);
+    let blocks = METIER_BLOCKS;
+    // Plan filter first
+    blocks = blocks.filter((block) => isModuleInPlan(block.id));
+    // Then RBAC filter
+    if (allowedModules) {
+      blocks = blocks.filter((block) => allowedModules.has(block.id));
+    }
+    return blocks;
+  }, [allowedModules, isModuleInPlan]);
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => navigate("/");
@@ -384,6 +390,7 @@ export function AppSidebar() {
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pilotage</p>
             <div className="space-y-px">
               {PILOTAGE_BLOCKS
+                .filter((block) => isModuleInPlan(block.id))
                 .filter((block) => !allowedModules || allowedModules.has(block.id))
                 .map((block) => (
                   <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />

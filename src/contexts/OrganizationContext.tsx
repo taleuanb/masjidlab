@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, typ
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
+import { isModuleAllowedForPlan } from "@/config/plan-modules";
 
 interface Organization {
   id: string;
@@ -23,6 +24,8 @@ interface OrganizationContextType {
   setOverrideOrgId: (id: string | null) => void;
   /** Toutes les orgs (pour super-admin) */
   allOrgs: Organization[];
+  /** Vérifie si un module est autorisé pour le plan de l'org courante */
+  isModuleInPlan: (moduleName: string) => boolean;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -37,7 +40,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [overrideOrgId, setOverrideOrgId] = useState<string | null>(null);
   const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
 
+  const { impersonatedUser } = useAuth();
   const isSuperAdmin = dbRole === "super_admin";
+
+  const isModuleInPlan = useCallback((moduleName: string): boolean => {
+    // Super Admin bypass absolu (sauf en mode Ghost)
+    if (isSuperAdmin && !impersonatedUser) return true;
+    return isModuleAllowedForPlan(moduleName, org?.subscription_plan);
+  }, [isSuperAdmin, impersonatedUser, org?.subscription_plan]);
 
   const refetch = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["userProfile"] });
@@ -150,6 +160,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         overrideOrgId,
         setOverrideOrgId,
         allOrgs,
+        isModuleInPlan,
       }}
     >
       {children}
