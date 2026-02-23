@@ -41,6 +41,12 @@ interface NavBlock {
 
 const ALL_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable", "Enseignant / Oustaz", "Bénévole", "Parent d'élève"];
 
+// ── CORE ITEMS — visible to all via useModuleAccess defaultRoles ──
+const CORE_ITEMS: (NavItem & { moduleKey: string })[] = [
+  { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard, moduleKey: "dashboard_general" },
+  { title: "Mon Profil", url: "/profil", icon: UserCircle, moduleKey: "profile_core" },
+];
+
 // ── ADMINISTRATION — CORE modules, visibility via useModuleAccess ──
 const ADMIN_ITEMS: (NavItem & { moduleKey: string })[] = [
   { title: "Configuration", url: "/configuration", icon: SlidersHorizontal, moduleKey: "config" },
