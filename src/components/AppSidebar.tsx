@@ -29,7 +29,6 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ElementType;
-  roles: UserRole[];
 }
 
 interface NavBlock {
@@ -37,19 +36,15 @@ interface NavBlock {
   id: string;
   label: string;
   icon: React.ElementType;
-  poleIds: string[];
-  blockRoles: UserRole[];
   items: NavItem[];
 }
 
 const ALL_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable", "Enseignant / Oustaz", "Bénévole", "Parent d'élève"];
-const ADMIN_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable"];
 
-// ── ADMINISTRATION ────────────────────────────────────────
-/** Maps admin nav items to their module registry IDs */
+// ── ADMINISTRATION — CORE modules, visibility via useModuleAccess ──
 const ADMIN_ITEMS: (NavItem & { moduleKey: string })[] = [
-  { title: "Configuration", url: "/configuration", icon: SlidersHorizontal, roles: ["Admin Mosquée", "Responsable"], moduleKey: "config" },
-  { title: "Membres & Rôles", url: "/structure-membres", icon: Users, roles: ["Admin Mosquée", "Responsable"], moduleKey: "gouvernance" },
+  { title: "Configuration", url: "/configuration", icon: SlidersHorizontal, moduleKey: "config" },
+  { title: "Membres & Rôles", url: "/structure-membres", icon: Users, moduleKey: "gouvernance" },
 ];
 
 // ── PÔLES MÉTIERS ─────────────────────────────────────────
@@ -58,40 +53,32 @@ const METIER_BLOCKS: NavBlock[] = [
     id: "education",
     label: "Éducation",
     icon: GraduationCap,
-    poleIds: ["education"],
-    blockRoles: ALL_ROLES,
     items: [
-      { title: "Élèves", url: "/eleves", icon: GraduationCap, roles: ALL_ROLES },
-      { title: "Classes", url: "/classes", icon: BookOpen, roles: ALL_ROLES },
-      { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList, roles: ALL_ROLES },
+      { title: "Élèves", url: "/eleves", icon: GraduationCap },
+      { title: "Classes", url: "/classes", icon: BookOpen },
+      { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList },
     ],
   },
   {
     id: "finance",
     label: "Finance",
     icon: Wallet,
-    poleIds: ["admin"],
-    blockRoles: ADMIN_ROLES,
     items: [
-      { title: "Transactions", url: "/finance", icon: CreditCard, roles: ["Admin Mosquée", "Responsable"] },
-      { title: "Donateurs", url: "/donateurs", icon: Heart, roles: ["Admin Mosquée", "Responsable"] },
-      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Transactions", url: "/finance", icon: CreditCard },
+      { title: "Donateurs", url: "/donateurs", icon: Heart },
+      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt },
     ],
   },
   {
     id: "social",
     label: "Social",
     icon: Heart,
-    poleIds: ["social"],
-    blockRoles: ALL_ROLES,
     items: [],
   },
   {
     id: "comms",
     label: "Communication",
     icon: Radio,
-    poleIds: ["comms"],
-    blockRoles: ALL_ROLES,
     items: [],
   },
 ];
@@ -101,15 +88,13 @@ const LOGISTIQUE_BLOCK: NavBlock = {
   id: "operations",
   label: "Logistique",
   icon: Truck,
-  poleIds: ["logistics"],
-  blockRoles: ALL_ROLES,
   items: [
-    { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin Mosquée", "Responsable", "Bénévole"] },
-    { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin Mosquée", "Responsable"] },
-    { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin Mosquée", "Responsable"] },
-    { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin Mosquée", "Responsable"] },
-    { title: "Parking", url: "/parking", icon: Car, roles: ["Admin Mosquée"] },
-    { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin Mosquée"] },
+    { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
+    { title: "Planning", url: "/planning", icon: CalendarDays },
+    { title: "Événements", url: "/evenements", icon: Calendar },
+    { title: "Inventaire", url: "/inventaire", icon: Package },
+    { title: "Parking", url: "/parking", icon: Car },
+    { title: "Maintenance", url: "/maintenance", icon: Wrench },
   ],
 };
 
@@ -118,17 +103,15 @@ const PERSONNEL_BLOCK: NavBlock = {
   id: "gestion-rh",
   label: "Personnel",
   icon: ShieldCheck,
-  poleIds: ["admin"],
-  blockRoles: ADMIN_ROLES,
   items: [
-    { title: "Approbations", url: "/approbations", icon: UserCheck, roles: ["Admin Mosquée", "Responsable"] },
-    { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, roles: ADMIN_ROLES },
-    { title: "Documents", url: "/documents", icon: FileText, roles: ADMIN_ROLES },
-    { title: "Structure", url: "/organisation", icon: Users, roles: ADMIN_ROLES },
+    { title: "Approbations", url: "/approbations", icon: UserCheck },
+    { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck },
+    { title: "Documents", url: "/documents", icon: FileText },
+    { title: "Structure", url: "/organisation", icon: Users },
   ],
 };
 
-const STANDALONE_ITEMS: NavItem[] = [
+const STANDALONE_ITEMS: (NavItem & { roles: UserRole[] })[] = [
   { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays, roles: ["Bénévole", "Parent d'élève"] },
   { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
   { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Responsable"] },
@@ -144,55 +127,41 @@ const roleIcons: Record<UserRole, React.ElementType> = {
 };
 
 // ── Reusable collapsible block ────────────────────────────
+// Visibility is already resolved by the parent via useModuleAccess.
+// This component only handles expand/collapse UI.
 function SidebarBlock({
-  block, role, activePoles, isAdminLike, isSuperAdmin, location,
+  block, location,
 }: {
   block: NavBlock;
-  role: UserRole;
-  activePoles: string[];
-  isAdminLike: boolean;
-  isSuperAdmin: boolean;
   location: ReturnType<typeof useLocation>;
 }) {
-  const isPoleActive = block.poleIds.length === 0 || block.poleIds.some((p) => activePoles.includes(p));
   const hasActiveRoute = block.items.some((item) =>
     item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url)
   );
   const [open, setOpen] = useState(hasActiveRoute);
 
-  if (!isPoleActive && !isSuperAdmin) return null;
-  if (!block.blockRoles.includes(role) && !isSuperAdmin) return null;
-
-  const isActive = isSuperAdmin ? isPoleActive : true;
-  const visibleItems = isSuperAdmin ? block.items : block.items.filter((i) => i.roles.includes(role));
-
   return (
-    <Collapsible open={open} onOpenChange={() => isActive && setOpen((o) => !o)}>
+    <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
         <button
           className={cn(
             "flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors",
-            isActive
-              ? "cursor-pointer hover:bg-sidebar-accent/60 text-sidebar-foreground"
-              : "cursor-default opacity-35 text-sidebar-foreground/60",
-            hasActiveRoute && isActive && "text-sidebar-primary font-medium"
+            "cursor-pointer hover:bg-sidebar-accent/60 text-sidebar-foreground",
+            hasActiveRoute && "text-sidebar-primary font-medium"
           )}
         >
-          <block.icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
+          <block.icon className="h-4 w-4 shrink-0 text-primary" />
           <span className="flex-1 text-left">{block.label}</span>
-          {isActive && block.items.length > 0 && (
+          {block.items.length > 0 && (
             <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40 transition-transform duration-200", open && "rotate-180")} />
-          )}
-          {!isActive && isSuperAdmin && (
-            <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 bg-muted/50 rounded px-1.5 py-0.5">Off</span>
           )}
         </button>
       </CollapsibleTrigger>
 
-      {isActive && visibleItems.length > 0 && (
+      {block.items.length > 0 && (
         <CollapsibleContent>
           <SidebarMenu className="ml-3 mt-0.5 border-l border-sidebar-border/40 pl-3">
-            {visibleItems.map((item) => (
+            {block.items.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild>
                   <NavLink
@@ -211,7 +180,7 @@ function SidebarBlock({
         </CollapsibleContent>
       )}
 
-      {isActive && block.items.length === 0 && (
+      {block.items.length === 0 && (
         <CollapsibleContent>
           <p className="ml-6 mt-1 mb-1 text-[11px] text-sidebar-foreground/30 italic border-l border-sidebar-border/40 pl-3 py-0.5">
             Aucun module actif
@@ -231,17 +200,13 @@ export function AppSidebar() {
   const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
   const { hasAccess, isBypassing } = useModuleAccess();
 
-  // Ghost mode takes absolute priority over preview
   const isGhostActive = !!impersonatedUser;
   const isPreviewingOtherRole = !isGhostActive && isSuperAdmin && role !== "Super Admin";
   const effectiveBypass = isBypassing && !isPreviewingOtherRole;
-
-  const isAdminLike = !isGhostActive && (role === "Admin Mosquée" || role === "Super Admin" || effectiveBypass);
   const showPoleSelector = !effectiveBypass && !isGhostActive && ["Bénévole", "Parent d'élève"].includes(role);
-  const showAdmin = !isGhostActive ? (ADMIN_ROLES.includes(role) || effectiveBypass) : false;
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
-  // ── RBAC permissions for role preview ──
+  // ── Preview permissions (for "Prévisualiser en tant que") ──
   const [previewPermissions, setPreviewPermissions] = useState<Set<string> | null>(null);
   const orgId = org?.id;
   const effectiveDbRole = UI_ROLE_TO_DB[role] ?? dbRole;
@@ -271,44 +236,31 @@ export function AppSidebar() {
     if (!impersonatedUser && isSuperAdmin) setRole("Super Admin");
   }, [impersonatedUser, isSuperAdmin, setRole]);
 
-  // ── Resolve RBAC permission set for preview mode ──
-  const rbacModules = useMemo<Set<string> | null>(() => {
-    if (isGhostActive) {
-      if (permissions.length > 0) {
-        const set = new Set<string>();
-        for (const p of permissions) { if (p.enabled) set.add(p.module); }
-        return set;
-      }
-      return new Set<string>();
-    }
-    if (effectiveBypass) return null;
-    if (isPreviewingOtherRole && previewPermissions) return previewPermissions;
-    if (permissions.length > 0) {
-      const set = new Set<string>();
-      for (const p of permissions) { if (p.enabled) set.add(p.module); }
-      return set;
-    }
-    return previewPermissions;
-  }, [isGhostActive, effectiveBypass, isPreviewingOtherRole, previewPermissions, permissions]);
-
   /**
-   * Visibility check via useModuleAccess hook.
-   * For role preview mode, we also check the preview RBAC set.
+   * Single visibility gate — delegates entirely to useModuleAccess.
+   * Only adds preview-mode RBAC overlay when super_admin is previewing another role.
    */
-  const isBlockVisible = useCallback((blockId: string): boolean => {
-    // Use the centralized hook for plan + RBAC check
-    if (!hasAccess(blockId)) return false;
-    // Additional check for role preview mode (preview-specific RBAC)
-    if (isPreviewingOtherRole && rbacModules !== null && !rbacModules.has(blockId)) return false;
+  const isModuleVisible = useCallback((moduleKey: string): boolean => {
+    if (!hasAccess(moduleKey)) return false;
+    // Preview-mode overlay: also check preview RBAC set for non-CORE modules
+    if (isPreviewingOtherRole && previewPermissions !== null && !previewPermissions.has(moduleKey)) return false;
     return true;
-  }, [hasAccess, isPreviewingOtherRole, rbacModules]);
+  }, [hasAccess, isPreviewingOtherRole, previewPermissions]);
 
-  const filteredMetierBlocks = useMemo(() => {
-    return METIER_BLOCKS.filter((block) => isBlockVisible(block.id));
-  }, [isBlockVisible]);
+  // ── Filter all blocks through the single gate ──
+  const visibleAdminItems = useMemo(
+    () => ADMIN_ITEMS.filter((item) => isModuleVisible(item.moduleKey)),
+    [isModuleVisible]
+  );
 
-  const showLogistique = isBlockVisible(LOGISTIQUE_BLOCK.id);
-  const showPersonnel = isBlockVisible(PERSONNEL_BLOCK.id);
+  const visibleMetierBlocks = useMemo(
+    () => METIER_BLOCKS.filter((block) => isModuleVisible(block.id)),
+    [isModuleVisible]
+  );
+
+  const showLogistique = isModuleVisible(LOGISTIQUE_BLOCK.id);
+  const showPersonnel = isModuleVisible(PERSONNEL_BLOCK.id);
+
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => navigate("/");
 
@@ -357,60 +309,57 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* ── G1: ADMINISTRATION ── */}
-        {(showAdmin || isGhostActive) && (
+        {/* ── G1: ADMINISTRATION — visibility via useModuleAccess (CORE defaultRoles) ── */}
+        {visibleAdminItems.length > 0 && (
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Administration</p>
             <SidebarMenu className="space-y-px">
-              {ADMIN_ITEMS
-                .filter((item) => effectiveBypass || item.roles.includes(role) || (isGhostActive && rbacModules !== null))
-                .filter((item) => isBlockVisible(item.moduleKey))
-                .map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                        activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+              {visibleAdminItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </div>
         )}
 
-        {/* ── G2: PÔLES MÉTIERS ── */}
-        {filteredMetierBlocks.length > 0 && (
+        {/* ── G2: PÔLES MÉTIERS — visibility via useModuleAccess ── */}
+        {visibleMetierBlocks.length > 0 && (
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
             <div className="space-y-px">
-              {filteredMetierBlocks.map((block) => (
-                <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+              {visibleMetierBlocks.map((block) => (
+                <SidebarBlock key={block.id} block={block} location={location} />
               ))}
             </div>
           </div>
         )}
 
-        {/* ── G3: LOGISTIQUE ── */}
+        {/* ── G3: LOGISTIQUE — visibility via useModuleAccess ── */}
         {showLogistique && (
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Logistique</p>
             <div className="space-y-px">
-              <SidebarBlock block={LOGISTIQUE_BLOCK} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+              <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} />
             </div>
           </div>
         )}
 
-        {/* ── G4: PERSONNEL ── */}
+        {/* ── G4: PERSONNEL — visibility via useModuleAccess ── */}
         {showPersonnel && (
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Personnel</p>
             <div className="space-y-px">
-              <SidebarBlock block={PERSONNEL_BLOCK} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+              <SidebarBlock block={PERSONNEL_BLOCK} location={location} />
             </div>
           </div>
         )}
