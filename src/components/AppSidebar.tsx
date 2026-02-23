@@ -254,6 +254,11 @@ export function AppSidebar() {
   }, [hasAccess, isPreviewingOtherRole, previewPermissions]);
 
   // ── Filter all blocks through the single gate ──
+  const visibleCoreItems = useMemo(
+    () => CORE_ITEMS.filter((item) => isModuleVisible(item.moduleKey)),
+    [isModuleVisible]
+  );
+
   const visibleAdminItems = useMemo(
     () => ADMIN_ITEMS.filter((item) => isModuleVisible(item.moduleKey)),
     [isModuleVisible]
