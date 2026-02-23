@@ -242,13 +242,15 @@ export function AppSidebar() {
   const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
   const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
 
-  // When previewing a different role, disable the Super Admin bypass
-  const isPreviewingOtherRole = isSuperAdmin && role !== "Super Admin";
-  const effectiveBypass = isSuperAdmin && !isPreviewingOtherRole;
+  // Ghost mode takes absolute priority over preview
+  const isGhostActive = !!impersonatedUser;
+  // When previewing a different role, disable the Super Admin bypass (but NOT during ghost)
+  const isPreviewingOtherRole = !isGhostActive && isSuperAdmin && role !== "Super Admin";
+  const effectiveBypass = !isGhostActive && isSuperAdmin && !isPreviewingOtherRole;
 
-  const isAdminLike = role === "Admin Mosquée" || role === "Super Admin" || effectiveBypass;
-  const showPoleSelector = !effectiveBypass && ["Bénévole", "Parent d'élève"].includes(role);
-  const showPilotage = ADMIN_ROLES.includes(role) || effectiveBypass;
+  const isAdminLike = !isGhostActive && (role === "Admin Mosquée" || role === "Super Admin" || effectiveBypass);
+  const showPoleSelector = !effectiveBypass && !isGhostActive && ["Bénévole", "Parent d'élève"].includes(role);
+  const showPilotage = !isGhostActive ? (ADMIN_ROLES.includes(role) || effectiveBypass) : false;
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
   // ── RBAC permissions from DB ──
@@ -289,8 +291,26 @@ export function AppSidebar() {
     if (orgId) refreshPermissions(orgId);
   }, [orgId, refreshPermissions, impersonatedUser]);
 
+  // Reset role selector when ghost mode is deactivated
+  useEffect(() => {
+    if (!impersonatedUser && isSuperAdmin) {
+      setRole("Super Admin");
+    }
+  }, [impersonatedUser, isSuperAdmin, setRole]);
+
   // Determine which permission set to use for filtering
   const allowedModules = useMemo(() => {
+    // Ghost mode: always use real permissions from AuthContext (resolved for ghost user)
+    if (isGhostActive) {
+      if (permissions.length > 0) {
+        const set = new Set<string>();
+        for (const p of permissions) {
+          if (p.enabled) set.add(p.module);
+        }
+        return set;
+      }
+      return new Set<string>(); // ghost user with no permissions = show nothing
+    }
     if (effectiveBypass) return null; // null = show all
     if (isPreviewingOtherRole && previewPermissions) return previewPermissions;
     // For non-super-admin: use real permissions from AuthContext
@@ -302,7 +322,7 @@ export function AppSidebar() {
       return set;
     }
     return previewPermissions;
-  }, [effectiveBypass, isPreviewingOtherRole, previewPermissions, permissions]);
+  }, [isGhostActive, effectiveBypass, isPreviewingOtherRole, previewPermissions, permissions]);
 
   // Filter metier blocks by RBAC permissions
   const filteredMetierBlocks = useMemo(() => {
@@ -343,8 +363,15 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-3 gap-0">
+        {/* ── Ghost mode banner ── */}
+        {isGhostActive && (
+          <div className="mx-1 mb-2 px-2 py-1.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-[10px] text-orange-700 dark:text-orange-400 font-medium flex items-center gap-1.5">
+            <ShieldCheck className="h-3 w-3" />
+            Mode Ghost : {impersonatedUser.name}
+          </div>
+        )}
         {/* ── Preview banner ── */}
-        {isPreviewingOtherRole && (
+        {!isGhostActive && isPreviewingOtherRole && (
           <div className="mx-1 mb-2 px-2 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
             <ShieldCheck className="h-3 w-3" />
             Mode prévisualisation : {role}
@@ -352,13 +379,15 @@ export function AppSidebar() {
         )}
 
         {/* ── PILOTAGE ── */}
-        {showPilotage && (
+        {(showPilotage || (isGhostActive && allowedModules)) && (
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pilotage</p>
             <div className="space-y-px">
-              {PILOTAGE_BLOCKS.map((block) => (
-                <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
-              ))}
+              {PILOTAGE_BLOCKS
+                .filter((block) => !allowedModules || allowedModules.has(block.id))
+                .map((block) => (
+                  <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+                ))}
             </div>
           </div>
         )}
@@ -412,11 +441,13 @@ export function AppSidebar() {
         )}
 
         {/* Role preview switcher */}
-        <div className="space-y-1">
+        <div className={cn("space-y-1", isGhostActive && "opacity-40 pointer-events-none")}>
           <label className="text-[9px] uppercase tracking-wider text-sidebar-foreground/30 font-medium px-1">
-            {isSuperAdmin ? "Prévisualiser en tant que" : "Rôle actif"}
+            {isGhostActive
+              ? "Désactivé (Mode Ghost)"
+              : isSuperAdmin ? "Prévisualiser en tant que" : "Rôle actif"}
           </label>
-          <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
+          <Select value={role} onValueChange={(v) => setRole(v as UserRole)} disabled={isGhostActive}>
             <SelectTrigger className="h-8 text-[11px] bg-sidebar-accent/30 border-sidebar-accent/50 text-sidebar-foreground/70">
               <div className="flex items-center gap-2">
                 {React.createElement(roleIcons[role], { className: "h-3 w-3 text-sidebar-foreground/40" })}
