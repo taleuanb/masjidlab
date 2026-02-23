@@ -17,10 +17,12 @@ import { WeatherPrayerWidget } from "@/components/WeatherPrayerWidget";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useRole } from "@/contexts/RoleContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Dashboard() {
   const [selectedEtage, setSelectedEtage] = useState<Etage>('RDC');
   const { role, pole, isSuperAdmin } = useRole();
+  const { impersonatedUser } = useAuth();
   const isAdmin = role === "Admin Mosquée" || role === "Super Admin" || isSuperAdmin;
   const isChef = role === "Responsable";
 
@@ -31,11 +33,15 @@ export default function Dashboard() {
         <div className="flex items-center gap-3 px-6 py-4">
           <SidebarTrigger />
           <div className="flex-1">
-            <h2 className="text-xl font-semibold tracking-tight">Tableau de bord</h2>
+            <h2 className="text-xl font-semibold tracking-tight">
+              {impersonatedUser ? `Tableau de bord — ${impersonatedUser.name}` : "Tableau de bord"}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              {isChef
-                ? `Vue Pôle ${pole} — Mes activités`
-                : "Bienvenue au service de la Maison d'Allah"}
+              {impersonatedUser
+                ? "Mode Ghost actif — Vue utilisateur"
+                : isChef
+                  ? `Vue Pôle ${pole} — Mes activités`
+                  : "Bienvenue au service de la Maison d'Allah"}
             </p>
           </div>
           <div className="flex items-center gap-3">
