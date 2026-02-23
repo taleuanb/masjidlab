@@ -467,7 +467,7 @@ export default function SettingsPage() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold">{pole.label}</p>
+                          <p className="text-sm font-semibold">{mod.label}</p>
                           {!included && (
                             <Badge
                               variant="outline"
