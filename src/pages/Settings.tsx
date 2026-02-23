@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Building2, Plus, Trash2, Pencil, Loader2, Save,
   Layers, Tag, Package, RefreshCw, X, CheckCircle2,
-  Snowflake, Wifi, Mic, Monitor, Speaker,
-  Landmark, Truck, BookOpen, Heart, Radio, Zap, Crown, Star, GraduationCap,
+  Snowflake, Wifi, Mic, Monitor, Speaker, Lock,
+  Landmark, Truck, BookOpen, Heart, Radio, Zap, Crown, Star, GraduationCap, Check, ArrowRight,
 } from "lucide-react";
+import { PLAN_CONFIG, type SubscriptionPlan } from "@/config/plan-modules";
 import { MadrasaSettingsPanel } from "@/components/MadrasaSettingsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
