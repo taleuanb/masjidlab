@@ -449,14 +449,14 @@ export function AppSidebar() {
 
         {/* User identity + sign out */}
         <div className="flex items-center gap-2 pt-1 border-t border-sidebar-border/30">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sidebar-accent/50 text-sidebar-foreground/60">
+          <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sidebar-foreground/60", impersonatedUser ? "bg-orange-500/20" : "bg-sidebar-accent/50")}>
             <Users className="h-3.5 w-3.5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-medium text-sidebar-foreground truncate">
-              {displayName ?? "—"} <span className="text-sidebar-foreground/25 font-normal">· v1.0</span>
+              {impersonatedUser ? impersonatedUser.name : (displayName ?? "—")} <span className="text-sidebar-foreground/25 font-normal">· v1.0</span>
             </p>
-            <p className="text-[10px] text-sidebar-foreground/40 truncate">{org?.name ?? "—"}</p>
+            <p className="text-[10px] text-sidebar-foreground/40 truncate">{impersonatedUser ? "Mode Ghost" : (org?.name ?? "—")}</p>
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-sidebar-foreground/30 hover:text-destructive" onClick={handleSignOut}>
             <LogOut className="h-3.5 w-3.5" />

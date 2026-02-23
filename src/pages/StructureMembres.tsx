@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, Pencil, Loader2, RefreshCw, Search, X, Shield, UserCheck, Tag,
@@ -97,6 +98,7 @@ interface MemberRow {
 export default function StructureMembresPage() {
   const { toast } = useToast();
   const { user: currentUser, dbRole, dbRoles, startImpersonating } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = dbRole === "admin" || dbRole === "super_admin";
   const isSuperAdmin = dbRoles.includes("super_admin");
 
@@ -472,7 +474,7 @@ export default function StructureMembresPage() {
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => openEditMember(m)}><Pencil className="h-3.5 w-3.5 mr-2" /> Modifier</DropdownMenuItem>
                                   {isSuperAdmin && !isSelf(m) && (
-                                    <DropdownMenuItem onClick={() => startImpersonating({ id: m.user_id, name: m.display_name, roles: m.roles })}>
+                                    <DropdownMenuItem onClick={() => { startImpersonating({ id: m.user_id, name: m.display_name, roles: m.roles }); navigate("/"); }}>
                                       <Ghost className="h-3.5 w-3.5 mr-2" /> Se connecter en tant que
                                     </DropdownMenuItem>
                                   )}
