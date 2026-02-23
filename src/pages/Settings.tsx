@@ -437,13 +437,11 @@ export default function SettingsPage() {
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {POLES_CONFIG.map((pole) => {
-                  const isActive = activePoles.includes(pole.id);
-                  const planRank = PLAN_ORDER[currentPlan];
-                  const poleRank = PLAN_ORDER[pole.minPlan];
-                  const included = planRank >= poleRank;
-                  const PoleIcon = pole.icon;
-                  const badgePlan = PLAN_LABELS[pole.minPlan];
+                {BUSINESS_MODULES.map((mod) => {
+                  const isActive = activePoles.includes(mod.id);
+                  const included = isPlanAtLeast(currentPlan, mod.minPlan);
+                  const PoleIcon = mod.icon;
+                  const badgePlan = PLAN_META[mod.minPlan];
                   const BadgeIcon = badgePlan.icon;
 
                   return (
