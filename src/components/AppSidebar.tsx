@@ -7,7 +7,7 @@ import {
   Building2, LayoutDashboard, CalendarDays, Users, Calendar, Car, Wrench,
   ClipboardList, UserCheck, SlidersHorizontal, ChevronDown,
   BookOpen, Heart, Radio, Globe, LogOut, Wallet, CreditCard,
-  GraduationCap, ShieldCheck, FileText, Receipt, Package, Truck,
+  GraduationCap, ShieldCheck, FileText, Receipt, Package, Truck, UserCircle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
