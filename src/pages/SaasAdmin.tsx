@@ -217,6 +217,8 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const isGlobal = selectedOrgId === "global";
+  // Resolve selected org's plan for plan-aware matrix
+  const selectedOrgPlan = (isGlobal ? null : orgs.find((o) => o.id === selectedOrgId)?.subscription_plan ?? "starter") as PlanId | null;
 
   // Load global defaults once
   useEffect(() => {
