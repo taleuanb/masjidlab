@@ -39,8 +39,10 @@ export interface ModuleMeta {
   icon: React.ElementType;
   /** Minimum plan required to unlock this module */
   minPlan: PlanId;
-  /** Whether this module is CORE (exempt from RBAC for admin) */
+  /** Whether this module is CORE (fixed access, excluded from RBAC matrix) */
   isCore?: boolean;
+  /** Roles that have default access to this CORE module. Use ['*'] for all roles. Only relevant when isCore is true. */
+  defaultRoles?: string[];
 }
 
 /**
