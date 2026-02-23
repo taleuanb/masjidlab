@@ -380,86 +380,164 @@ export default function SettingsPage() {
             )}
           </TabsList>
 
-          {/* ═══════════ PÔLES ═══════════ */}
-          <TabsContent value="poles" className="space-y-4">
-            {/* Plan actuel */}
-            <div className="flex items-center justify-between rounded-xl border bg-card p-4">
-              <div>
-                <p className="text-sm font-semibold">Plan actuel</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Activez les pôles inclus dans votre abonnement
-                </p>
+          {/* ═══════════ PLAN & MODULES ═══════════ */}
+          <TabsContent value="poles" className="space-y-6">
+
+            {/* ── Cartes de Plan ── */}
+            <div>
+              <h2 className="text-sm font-semibold mb-1">Abonnement</h2>
+              <p className="text-xs text-muted-foreground mb-4">Comparez les plans et les modules métier inclus.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(["starter", "pro", "elite"] as SubscriptionPlan[]).map((plan) => {
+                  const isCurrent = currentPlan === plan;
+                  const planMeta = PLAN_LABELS[plan];
+                  const PlanIcon = planMeta.icon;
+                  const modules = PLAN_CONFIG[plan];
+                  const isUpgrade = PLAN_ORDER[plan] > PLAN_ORDER[currentPlan];
+
+                  return (
+                    <Card
+                      key={plan}
+                      className={`relative transition-all ${
+                        isCurrent
+                          ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                          : "border-border"
+                      }`}
+                    >
+                      {isCurrent && (
+                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                          <Badge className="bg-primary text-primary-foreground text-[10px] px-2.5 py-0.5 shadow-sm">
+                            Plan Actuel
+                          </Badge>
+                        </div>
+                      )}
+                      <CardHeader className="pb-3 pt-5 text-center">
+                        <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full ${
+                          isCurrent ? "gradient-emerald" : "bg-muted"
+                        }`}>
+                          <PlanIcon className={`h-5 w-5 ${isCurrent ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                        </div>
+                        <CardTitle className="text-base mt-2">{planMeta.label}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pb-4 px-4">
+                        <ul className="space-y-2">
+                          {modules.map((mod) => {
+                            const poleInfo = POLES_CONFIG.find((p) => p.id === mod);
+                            return (
+                              <li key={mod} className="flex items-center gap-2 text-xs">
+                                <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <span className="text-foreground">{poleInfo?.label ?? mod}</span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        {isUpgrade && (
+                          <Button size="sm" className="w-full mt-4 gap-1.5" variant="default">
+                            Passer à {planMeta.label}
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {isCurrent && (
+                          <p className="text-center text-[11px] text-muted-foreground mt-4">
+                            Votre plan actif
+                          </p>
+                        )}
+                        {!isCurrent && !isUpgrade && (
+                          <p className="text-center text-[11px] text-muted-foreground mt-4">
+                            Inclus dans votre plan
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
-              {(() => {
-                const plan = PLAN_LABELS[currentPlan];
-                const PlanIcon = plan.icon;
-                return (
-                  <Badge variant="outline" className={`gap-1.5 px-3 py-1 text-xs font-semibold ${plan.cls}`}>
-                    <PlanIcon className="h-3.5 w-3.5" />
-                    {plan.label}
-                  </Badge>
-                );
-              })()}
             </div>
 
-            {/* Cartes pôles */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {POLES_CONFIG.map((pole) => {
-                const isActive = activePoles.includes(pole.id);
-                const planRank = PLAN_ORDER[currentPlan];
-                const poleRank = PLAN_ORDER[pole.minPlan];
-                const included = planRank >= poleRank;
-                const PoleIcon = pole.icon;
-                const badgePlan = PLAN_LABELS[pole.minPlan];
-                const BadgeIcon = badgePlan.icon;
-
-                return (
-                  <div
-                    key={pole.id}
-                    className={`relative flex items-start gap-4 rounded-xl border p-4 transition-colors ${
-                      isActive
-                        ? "bg-primary/5 border-primary/25"
-                        : "bg-card border-border"
-                    } ${!included ? "opacity-60" : ""}`}
-                  >
-                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                      isActive ? "gradient-emerald" : "bg-muted"
-                    }`}>
-                      <PoleIcon className={`h-4 w-4 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold">{pole.label}</p>
-                        <Badge
-                          variant="outline"
-                          className={`gap-1 text-[10px] px-1.5 py-0 h-4 ${badgePlan.cls}`}
-                        >
-                          <BadgeIcon className="h-2.5 w-2.5" />
-                          {included ? "Inclus" : `Nécessite ${badgePlan.label}`}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                        {pole.description}
-                      </p>
-                    </div>
-
-                    <Switch
-                      checked={isActive}
-                      disabled={!isAdmin || !included || polesLoading}
-                      onCheckedChange={() => togglePole(pole.id)}
-                      className="mt-0.5 shrink-0"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-
-            {!isAdmin && (
-              <p className="text-xs text-muted-foreground text-center pt-2">
-                Seul un administrateur peut modifier les pôles actifs.
+            {/* ── Gestion des Modules Métier ── */}
+            <div>
+              <h2 className="text-sm font-semibold mb-1">Gestion des Modules Métier</h2>
+              <p className="text-xs text-muted-foreground mb-4">
+                Activez ou désactivez les modules inclus dans votre abonnement.
               </p>
-            )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {POLES_CONFIG.map((pole) => {
+                  const isActive = activePoles.includes(pole.id);
+                  const planRank = PLAN_ORDER[currentPlan];
+                  const poleRank = PLAN_ORDER[pole.minPlan];
+                  const included = planRank >= poleRank;
+                  const PoleIcon = pole.icon;
+                  const badgePlan = PLAN_LABELS[pole.minPlan];
+                  const BadgeIcon = badgePlan.icon;
+
+                  return (
+                    <div
+                      key={pole.id}
+                      className={`relative flex items-start gap-4 rounded-xl border p-4 transition-colors ${
+                        included
+                          ? isActive
+                            ? "bg-primary/5 border-primary/25"
+                            : "bg-card border-border"
+                          : "bg-muted/30 border-border opacity-70"
+                      }`}
+                    >
+                      <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                        included && isActive ? "gradient-emerald" : "bg-muted"
+                      }`}>
+                        {included ? (
+                          <PoleIcon className={`h-4 w-4 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                        ) : (
+                          <Lock className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold">{pole.label}</p>
+                          {!included && (
+                            <Badge
+                              variant="outline"
+                              className={`gap-1 text-[10px] px-1.5 py-0 h-4 ${badgePlan.cls}`}
+                            >
+                              <Lock className="h-2.5 w-2.5" />
+                              Plan {badgePlan.label}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                          {pole.description}
+                        </p>
+                        {!included && (
+                          <button className="mt-1.5 text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-1">
+                            <ArrowRight className="h-3 w-3" />
+                            Débloquer avec le plan {badgePlan.label}
+                          </button>
+                        )}
+                      </div>
+
+                      {included ? (
+                        <Switch
+                          checked={isActive}
+                          disabled={!canManageModules || polesLoading}
+                          onCheckedChange={() => togglePole(pole.id)}
+                          className="mt-0.5 shrink-0"
+                        />
+                      ) : (
+                        <Lock className="h-4 w-4 text-muted-foreground/40 mt-1.5 shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {!canManageModules && (
+                <p className="text-xs text-muted-foreground text-center pt-3">
+                  Seul un administrateur ou responsable peut gérer les modules métier.
+                </p>
+              )}
+            </div>
           </TabsContent>
 
           {/* ═══════════ ESPACES ═══════════ */}
