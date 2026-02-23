@@ -7,7 +7,6 @@
 
 /** Modules CORE : toujours visibles pour admin/super_admin, hors matrice RBAC */
 export const CORE_MODULES = [
-  "operations",   // dashboard + planning + events
   "config",       // settings / configuration
   "gouvernance",  // members / structure
 ] as const;
@@ -29,7 +28,8 @@ const PRO_MODULES = [
 
 const ELITE_MODULES = [
   ...PRO_MODULES,
-  "gestion-rh",
+  "operations",   // Logistique (planning, inventaire, parking, maintenance)
+  "gestion-rh",   // Personnel (staff, contrats, documents)
   "advanced_rbac", // Ghost Mode, RBAC avancé
 ] as const;
 
