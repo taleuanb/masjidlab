@@ -479,7 +479,7 @@ export default function SettingsPage() {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                          {pole.description}
+                          {mod.description}
                         </p>
                         {!included && (
                           <button className="mt-1.5 text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-1">
