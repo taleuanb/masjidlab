@@ -5,9 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, LayoutDashboard, CalendarDays, Users, Calendar, Car, Wrench,
-  ClipboardList, UserCheck, Settings2, SlidersHorizontal, ChevronDown,
+  ClipboardList, UserCheck, SlidersHorizontal, ChevronDown,
   BookOpen, Heart, Radio, Globe, LogOut, Wallet, CreditCard,
-  GraduationCap, ShieldCheck, FileText, Receipt, Package,
+  GraduationCap, ShieldCheck, FileText, Receipt, Package, Truck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -44,47 +44,14 @@ interface NavBlock {
 const ALL_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable", "Enseignant / Oustaz", "Bénévole", "Parent d'élève"];
 const ADMIN_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable"];
 
-// ── PILOTAGE ──────────────────────────────────────────────
-const PILOTAGE_BLOCKS: NavBlock[] = [
-  {
-    id: "config",
-    label: "Configuration",
-    icon: SlidersHorizontal,
-    poleIds: [],
-    blockRoles: ["Admin Mosquée", "Responsable"],
-    items: [
-      { title: "Espaces & Pôles", url: "/configuration", icon: SlidersHorizontal, roles: ["Admin Mosquée", "Responsable"] },
-    ],
-  },
-  {
-    id: "gouvernance",
-    label: "Structure & Membres",
-    icon: Users,
-    poleIds: ["admin"],
-    blockRoles: ["Admin Mosquée", "Responsable"],
-    items: [
-      { title: "Structure & Membres", url: "/structure-membres", icon: Users, roles: ["Admin Mosquée", "Responsable"] },
-    ],
-  },
+// ── ADMINISTRATION (ex-Pilotage) ──────────────────────────
+const ADMIN_ITEMS: NavItem[] = [
+  { title: "Configuration", url: "/configuration", icon: SlidersHorizontal, roles: ["Admin Mosquée", "Responsable"] },
+  { title: "Membres & Rôles", url: "/structure-membres", icon: Users, roles: ["Admin Mosquée", "Responsable"] },
 ];
 
-// ── MÉTIERS ───────────────────────────────────────────────
+// ── PÔLES MÉTIERS ─────────────────────────────────────────
 const METIER_BLOCKS: NavBlock[] = [
-  {
-    id: "operations",
-    label: "Opérations & Planning",
-    icon: CalendarDays,
-    poleIds: ["logistics"],
-    blockRoles: ALL_ROLES,
-    items: [
-      { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin Mosquée", "Responsable", "Bénévole"] },
-      { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin Mosquée", "Responsable"] },
-      { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin Mosquée", "Responsable"] },
-      { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin Mosquée", "Responsable"] },
-      { title: "Parking", url: "/parking", icon: Car, roles: ["Admin Mosquée"] },
-      { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin Mosquée"] },
-    ],
-  },
   {
     id: "education",
     label: "Éducation",
@@ -95,18 +62,6 @@ const METIER_BLOCKS: NavBlock[] = [
       { title: "Élèves", url: "/eleves", icon: GraduationCap, roles: ALL_ROLES },
       { title: "Classes", url: "/classes", icon: BookOpen, roles: ALL_ROLES },
       { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList, roles: ALL_ROLES },
-    ],
-  },
-  {
-    id: "gestion-rh",
-    label: "Gestion & RH",
-    icon: ShieldCheck,
-    poleIds: ["admin"],
-    blockRoles: ADMIN_ROLES,
-    items: [
-      { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, roles: ADMIN_ROLES },
-      { title: "Documents", url: "/documents", icon: FileText, roles: ADMIN_ROLES },
-      { title: "Structure", url: "/organisation", icon: Users, roles: ADMIN_ROLES },
     ],
   },
   {
@@ -139,9 +94,39 @@ const METIER_BLOCKS: NavBlock[] = [
   },
 ];
 
+// ── LOGISTIQUE (Elite) ────────────────────────────────────
+const LOGISTIQUE_BLOCK: NavBlock = {
+  id: "operations",
+  label: "Logistique",
+  icon: Truck,
+  poleIds: ["logistics"],
+  blockRoles: ALL_ROLES,
+  items: [
+    { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin Mosquée", "Responsable", "Bénévole"] },
+    { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin Mosquée", "Responsable"] },
+    { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin Mosquée", "Responsable"] },
+    { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin Mosquée", "Responsable"] },
+    { title: "Parking", url: "/parking", icon: Car, roles: ["Admin Mosquée"] },
+    { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin Mosquée"] },
+  ],
+};
+
+// ── PERSONNEL (Elite) ─────────────────────────────────────
+const PERSONNEL_BLOCK: NavBlock = {
+  id: "gestion-rh",
+  label: "Personnel",
+  icon: ShieldCheck,
+  poleIds: ["admin"],
+  blockRoles: ADMIN_ROLES,
+  items: [
+    { title: "Approbations", url: "/approbations", icon: UserCheck, roles: ["Admin Mosquée", "Responsable"] },
+    { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, roles: ADMIN_ROLES },
+    { title: "Documents", url: "/documents", icon: FileText, roles: ADMIN_ROLES },
+    { title: "Structure", url: "/organisation", icon: Users, roles: ADMIN_ROLES },
+  ],
+};
+
 const STANDALONE_ITEMS: NavItem[] = [
-  { title: "Approbations", url: "/approbations", icon: UserCheck, roles: ["Admin Mosquée", "Responsable"] },
-  { title: "Opérations", url: "/operations", icon: Settings2, roles: ["Admin Mosquée", "Responsable"] },
   { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays, roles: ["Bénévole", "Parent d'élève"] },
   { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
   { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Responsable"] },
@@ -251,7 +236,7 @@ export function AppSidebar() {
 
   const isAdminLike = !isGhostActive && (role === "Admin Mosquée" || role === "Super Admin" || effectiveBypass);
   const showPoleSelector = !effectiveBypass && !isGhostActive && ["Bénévole", "Parent d'élève"].includes(role);
-  const showPilotage = !isGhostActive ? (ADMIN_ROLES.includes(role) || effectiveBypass) : false;
+  const showAdmin = !isGhostActive ? (ADMIN_ROLES.includes(role) || effectiveBypass) : false;
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
   // ── RBAC permissions from DB ──
@@ -339,6 +324,8 @@ export function AppSidebar() {
     return METIER_BLOCKS.filter((block) => isBlockVisible(block.id));
   }, [isBlockVisible]);
 
+  const showLogistique = isBlockVisible("operations");
+  const showPersonnel = isBlockVisible("gestion-rh");
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => navigate("/");
 
@@ -387,24 +374,73 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* ── PILOTAGE ── */}
-        {(showPilotage || isGhostActive) && (
+        {/* ── G1: ADMINISTRATION ── */}
+        {(showAdmin || isGhostActive) && (
           <div className="py-1">
-            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pilotage</p>
-            <div className="space-y-px">
-              {PILOTAGE_BLOCKS
-                .filter((block) => isBlockVisible(block.id))
-                .map((block) => (
-                  <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Administration</p>
+            <SidebarMenu className="space-y-px">
+              {ADMIN_ITEMS
+                .filter((item) => effectiveBypass || item.roles.includes(role) || (isGhostActive && rbacModules !== null))
+                .filter((item) => {
+                  // Map admin items to block IDs for visibility check
+                  const blockMap: Record<string, string> = { "/configuration": "config", "/structure-membres": "gouvernance" };
+                  const blockId = blockMap[item.url];
+                  return blockId ? isBlockVisible(blockId) : true;
+                })
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 ))}
+            </SidebarMenu>
+          </div>
+        )}
+
+        {/* ── G2: PÔLES MÉTIERS ── */}
+        {filteredMetierBlocks.length > 0 && (
+          <div className="py-1">
+            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
+            <div className="space-y-px">
+              {filteredMetierBlocks.map((block) => (
+                <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+              ))}
             </div>
           </div>
         )}
 
-        {/* ── PERSONNEL ── */}
+        {/* ── G3: LOGISTIQUE (Elite) ── */}
+        {showLogistique && (
+          <div className="py-1">
+            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Logistique</p>
+            <div className="space-y-px">
+              <SidebarBlock block={LOGISTIQUE_BLOCK} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+            </div>
+          </div>
+        )}
+
+        {/* ── G4: PERSONNEL (Elite) ── */}
+        {showPersonnel && (
+          <div className="py-1">
+            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Personnel</p>
+            <div className="space-y-px">
+              <SidebarBlock block={PERSONNEL_BLOCK} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+            </div>
+          </div>
+        )}
+
+        {/* ── ESPACE PERSO ── */}
         {standaloneVisible.length > 0 && (
           <SidebarGroup className="py-1">
-            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5">Personnel</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5">Mon Espace</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {standaloneVisible.map((item) => (
@@ -421,16 +457,6 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-
-        {/* ── MÉTIERS ── */}
-        <div className="py-1">
-          <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
-          <div className="space-y-px">
-            {filteredMetierBlocks.map((block) => (
-              <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
-            ))}
-          </div>
-        </div>
       </SidebarContent>
 
       {/* ── Footer ── */}

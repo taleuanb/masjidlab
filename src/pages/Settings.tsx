@@ -96,11 +96,12 @@ interface PoleConfig {
 }
 
 const POLES_CONFIG: PoleConfig[] = [
-  { id: "gouvernance",   label: "Gouvernance",   description: "Dashboard, organisation, récoltes financières", icon: Landmark, minPlan: "starter" },
-  { id: "logistique",   label: "Logistique",    description: "Planning, événements, parking, maintenance",     icon: Truck,    minPlan: "starter" },
-  { id: "education",    label: "Éducation",     description: "Cours, inscriptions, suivi pédagogique",         icon: BookOpen, minPlan: "pro"     },
-  { id: "social",       label: "Social",         description: "Actions sociales, aides, bénéficiaires",         icon: Heart,    minPlan: "pro"     },
-  { id: "communication",label: "Communication", description: "Newsletter, réseaux sociaux, annonces",          icon: Radio,    minPlan: "elite"   },
+  { id: "education",    label: "Éducation",     description: "Cours, inscriptions, suivi pédagogique",         icon: BookOpen, minPlan: "starter" },
+  { id: "finance",      label: "Finance",       description: "Transactions, donateurs, reçus fiscaux",         icon: Landmark, minPlan: "pro"     },
+  { id: "social",       label: "Social",        description: "Actions sociales, aides, bénéficiaires",         icon: Heart,    minPlan: "pro"     },
+  { id: "comms",        label: "Communication", description: "Newsletter, réseaux sociaux, annonces",          icon: Radio,    minPlan: "pro"     },
+  { id: "operations",   label: "Logistique",    description: "Planning, inventaire, parking, maintenance",     icon: Truck,    minPlan: "elite"   },
+  { id: "gestion-rh",   label: "Personnel",     description: "Contrats staff, documents, structure RH",        icon: Crown,    minPlan: "elite"   },
 ];
 
 const PLAN_ORDER = { starter: 0, pro: 1, elite: 2 };
