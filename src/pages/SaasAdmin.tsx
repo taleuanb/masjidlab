@@ -20,8 +20,15 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Navigate } from "react-router-dom";
 import { MODULE_REGISTRY, PLAN_META, type PlanId, isPlanAtLeast } from "@/config/module-registry";
+import {
+  RBAC_MODULE_HIERARCHY, getAllRbacModuleIds, getRegistryMeta,
+  CATEGORY_LABELS, type RbacModuleGroup,
+} from "@/config/rbac-modules";
 
 const ALL_POLES = MODULE_REGISTRY
   .filter((m) => !m.isCore)
@@ -29,49 +36,20 @@ const ALL_POLES = MODULE_REGISTRY
 
 const RBAC_ROLES = [
   { id: "admin", label: "Admin" },
+  { id: "responsable", label: "Responsable" },
   { id: "enseignant", label: "Enseignant" },
   { id: "benevole", label: "Bénévole" },
-  { id: "responsable", label: "Responsable" },
   { id: "parent", label: "Parent" },
 ];
 
-const RBAC_MODULES: { id: string; label: string; children?: { id: string; label: string }[] }[] = [
-  {
-    id: "education", label: "Éducation",
-    children: [
-      { id: "education.classes", label: "Classes" },
-      { id: "education.eleves", label: "Élèves" },
-      { id: "education.inscriptions", label: "Inscriptions" },
-    ],
-  },
-  {
-    id: "admin", label: "Finance / RH",
-    children: [
-      { id: "admin.finance", label: "Finance" },
-      { id: "admin.contrats", label: "Contrats Staff" },
-      { id: "admin.donateurs", label: "Donateurs" },
-    ],
-  },
-  {
-    id: "logistics", label: "Opérations",
-    children: [
-      { id: "logistics.planning", label: "Planning" },
-      { id: "logistics.maintenance", label: "Maintenance" },
-      { id: "logistics.parking", label: "Parking" },
-    ],
-  },
-  { id: "social", label: "Social" },
-  { id: "comms", label: "Communication" },
-];
-
-function getAllModuleIds(): string[] {
-  const ids: string[] = [];
-  for (const mod of RBAC_MODULES) {
-    ids.push(mod.id);
-    if (mod.children) ids.push(...mod.children.map((c) => c.id));
-  }
-  return ids;
-}
+// ── Permission keys per sub-module ────────────────────────
+const PERM_COLS = ["can_view", "can_edit", "can_delete"] as const;
+type PermCol = (typeof PERM_COLS)[number];
+const PERM_LABELS: Record<PermCol, string> = {
+  can_view: "Voir",
+  can_edit: "Modifier",
+  can_delete: "Supprimer",
+};
 
 interface OrgRow {
   id: string;
@@ -188,78 +166,90 @@ function DashboardTab({
 }
 
 // ── Permissions Tab ────────────────────────────────────────
-type PermMatrix = Record<string, Record<string, boolean>>;
+/**
+ * Permission value per module per role.
+ * Key format: `${roleId}::${moduleId}::${permCol}`
+ */
+type PermMatrix = Record<string, boolean>;
 
-function buildEmptyMatrix(allIds: string[]): PermMatrix {
+function permKey(roleId: string, moduleId: string, col: PermCol | "enabled"): string {
+  return `${roleId}::${moduleId}::${col}`;
+}
+
+function buildEmptyMatrix(): PermMatrix {
   const m: PermMatrix = {};
+  const allIds = getAllRbacModuleIds();
   for (const role of RBAC_ROLES) {
-    m[role.id] = {};
-    for (const modId of allIds) m[role.id][modId] = false;
+    for (const modId of allIds) {
+      m[permKey(role.id, modId, "enabled")] = false;
+      for (const col of PERM_COLS) {
+        m[permKey(role.id, modId, col)] = false;
+      }
+    }
   }
   return m;
 }
 
 function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
   const { toast } = useToast();
-  const allIds = getAllModuleIds();
 
   const [selectedOrgId, setSelectedOrgId] = useState<string>("global");
-  const [matrix, setMatrix] = useState<PermMatrix>(buildEmptyMatrix(allIds));
-  const [globalMatrix, setGlobalMatrix] = useState<PermMatrix>(buildEmptyMatrix(allIds));
+  const [matrix, setMatrix] = useState<PermMatrix>(buildEmptyMatrix);
+  const [globalMatrix, setGlobalMatrix] = useState<PermMatrix>(buildEmptyMatrix);
   const [hasOrgOverride, setHasOrgOverride] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const isGlobal = selectedOrgId === "global";
   const selectedOrgPlan = (isGlobal ? null : orgs.find((o) => o.id === selectedOrgId)?.subscription_plan ?? "starter") as PlanId | null;
 
-  // Load global defaults once
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("role_permissions" as any)
-        .select("role, module, enabled, can_view")
-        .is("org_id", null);
-      const m = buildEmptyMatrix(allIds);
-      for (const row of (data ?? []) as any[]) {
-        if (m[row.role]) m[row.role][row.module] = !!(row.enabled ?? row.can_view);
-      }
-      setGlobalMatrix(m);
-    })();
+  // ── Load permissions from DB ──
+  const loadMatrix = useCallback(async (orgId: string | null): Promise<PermMatrix> => {
+    const m = buildEmptyMatrix();
+    const query = supabase
+      .from("role_permissions" as any)
+      .select("role, module, enabled, can_view, can_edit, can_delete");
+
+    const { data, error } = orgId
+      ? await query.eq("org_id", orgId)
+      : await query.is("org_id", null);
+
+    if (error) throw error;
+
+    for (const row of (data ?? []) as any[]) {
+      const r = row.role as string;
+      const mod = row.module as string;
+      if (!RBAC_ROLES.some((role) => role.id === r)) continue;
+      m[permKey(r, mod, "enabled")] = !!(row.enabled ?? row.can_view);
+      m[permKey(r, mod, "can_view")] = !!row.can_view;
+      m[permKey(r, mod, "can_edit")] = !!row.can_edit;
+      m[permKey(r, mod, "can_delete")] = !!row.can_delete;
+    }
+    return m;
   }, []);
 
+  // Load global defaults
+  useEffect(() => {
+    loadMatrix(null).then(setGlobalMatrix).catch(() => {});
+  }, [loadMatrix]);
+
+  // Load current selection
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
         if (isGlobal) {
-          const { data, error } = await supabase
-            .from("role_permissions" as any)
-            .select("role, module, enabled, can_view")
-            .is("org_id", null);
-          if (error) throw error;
-          const m = buildEmptyMatrix(allIds);
-          for (const row of (data ?? []) as any[]) {
-            if (m[row.role]) m[row.role][row.module] = !!(row.enabled ?? row.can_view);
-          }
+          const m = await loadMatrix(null);
           setMatrix(m);
           setGlobalMatrix(m);
           setHasOrgOverride(false);
         } else {
-          const { data, error } = await supabase
-            .from("role_permissions" as any)
-            .select("role, module, enabled, can_view")
-            .eq("org_id", selectedOrgId);
-          if (error) throw error;
-          if (!data || data.length === 0) {
-            setMatrix(JSON.parse(JSON.stringify(globalMatrix)));
+          const m = await loadMatrix(selectedOrgId);
+          const hasData = Object.values(m).some(Boolean);
+          if (!hasData) {
+            setMatrix({ ...globalMatrix });
             setHasOrgOverride(false);
           } else {
-            const m = buildEmptyMatrix(allIds);
-            for (const row of (data as any[])) {
-              if (m[row.role]) m[row.role][row.module] = !!(row.enabled ?? row.can_view);
-            }
             setMatrix(m);
             setHasOrgOverride(true);
           }
@@ -270,49 +260,117 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
         setLoading(false);
       }
     })();
-  }, [selectedOrgId, toast]);
+  }, [selectedOrgId, loadMatrix, toast]);
 
   const copyDefaults = () => {
-    setMatrix(JSON.parse(JSON.stringify(globalMatrix)));
+    setMatrix({ ...globalMatrix });
     setHasOrgOverride(true);
   };
 
-  const isDifferentFromGlobal = (roleId: string, modId: string) => {
+  const isDiff = (roleId: string, modId: string, col: PermCol | "enabled") => {
     if (isGlobal) return false;
-    return (matrix[roleId]?.[modId] ?? false) !== (globalMatrix[roleId]?.[modId] ?? false);
+    const k = permKey(roleId, modId, col);
+    return (matrix[k] ?? false) !== (globalMatrix[k] ?? false);
   };
 
-  const toggle = (role: string, moduleId: string) => {
+  // ── Toggle logic ──
+  const toggleEnabled = (roleId: string, groupId: string) => {
     if (!isGlobal && !hasOrgOverride) setHasOrgOverride(true);
     setMatrix((prev) => {
-      const next = { ...prev, [role]: { ...prev[role] } };
-      const newVal = !next[role][moduleId];
-      next[role][moduleId] = newVal;
+      const next = { ...prev };
+      const k = permKey(roleId, groupId, "enabled");
+      const newVal = !next[k];
+      next[k] = newVal;
 
-      const parent = RBAC_MODULES.find((m) => m.id === moduleId);
-      if (parent?.children && !newVal) {
-        for (const child of parent.children) next[role][child.id] = false;
+      // If disabling parent, disable all children
+      const group = RBAC_MODULE_HIERARCHY.find((g) => g.id === groupId);
+      if (group && !newVal) {
+        for (const child of group.children) {
+          next[permKey(roleId, child.id, "enabled")] = false;
+          for (const col of PERM_COLS) {
+            next[permKey(roleId, child.id, col)] = false;
+          }
+        }
       }
+      // If enabling child, auto-enable parent
       if (newVal) {
-        const parentMod = RBAC_MODULES.find((m) => m.children?.some((c) => c.id === moduleId));
-        if (parentMod) next[role][parentMod.id] = true;
+        const parentGroup = RBAC_MODULE_HIERARCHY.find((g) => g.children.some((c) => c.id === groupId));
+        if (parentGroup) {
+          next[permKey(roleId, parentGroup.id, "enabled")] = true;
+        }
+      }
+      // Sync can_view with enabled for parent
+      next[permKey(roleId, groupId, "can_view")] = newVal;
+      return next;
+    });
+  };
+
+  const toggleChildEnabled = (roleId: string, childId: string, parentId: string) => {
+    if (!isGlobal && !hasOrgOverride) setHasOrgOverride(true);
+    setMatrix((prev) => {
+      const next = { ...prev };
+      const k = permKey(roleId, childId, "enabled");
+      const newVal = !next[k];
+      next[k] = newVal;
+      next[permKey(roleId, childId, "can_view")] = newVal;
+
+      // If enabling child, ensure parent is enabled
+      if (newVal) {
+        next[permKey(roleId, parentId, "enabled")] = true;
+        next[permKey(roleId, parentId, "can_view")] = true;
+      }
+      // If disabling child & no siblings left, disable parent
+      if (!newVal) {
+        const group = RBAC_MODULE_HIERARCHY.find((g) => g.id === parentId);
+        if (group) {
+          const anyChildEnabled = group.children.some(
+            (c) => c.id !== childId && next[permKey(roleId, c.id, "enabled")]
+          );
+          if (!anyChildEnabled) {
+            // Keep parent enabled state — user can choose to disable manually
+          }
+        }
+      }
+      // Reset granular perms when disabling
+      if (!newVal) {
+        for (const col of PERM_COLS) {
+          next[permKey(roleId, childId, col)] = false;
+        }
       }
       return next;
     });
   };
 
-  const toggleCollapse = (id: string) =>
-    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
+  const togglePerm = (roleId: string, modId: string, col: PermCol) => {
+    if (!isGlobal && !hasOrgOverride) setHasOrgOverride(true);
+    setMatrix((prev) => {
+      const next = { ...prev };
+      next[permKey(roleId, modId, col)] = !next[permKey(roleId, modId, col)];
+      return next;
+    });
+  };
 
+  // ── Save ──
   const handleSave = async () => {
     setSaving(true);
     try {
       const orgId = isGlobal ? null : selectedOrgId;
+      const allIds = getAllRbacModuleIds();
       const rows: any[] = [];
       for (const role of RBAC_ROLES) {
         for (const modId of allIds) {
-          const val = matrix[role.id]?.[modId] ?? false;
-          rows.push({ org_id: orgId, role: role.id, module: modId, enabled: val, can_view: val });
+          const parentGroup = RBAC_MODULE_HIERARCHY.find((g) => g.id === modId);
+          const parentOfChild = RBAC_MODULE_HIERARCHY.find((g) => g.children.some((c) => c.id === modId));
+          rows.push({
+            org_id: orgId,
+            role: role.id,
+            module: modId,
+            parent_key: parentOfChild ? parentOfChild.id : null,
+            enabled: matrix[permKey(role.id, modId, "enabled")] ?? false,
+            can_view: matrix[permKey(role.id, modId, "can_view")] ?? false,
+            can_edit: matrix[permKey(role.id, modId, "can_edit")] ?? false,
+            can_delete: matrix[permKey(role.id, modId, "can_delete")] ?? false,
+          });
         }
       }
       const { error } = await supabase
@@ -320,7 +378,7 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
         .upsert(rows, { onConflict: "org_id,role,module" });
       if (error) throw error;
 
-      if (isGlobal) setGlobalMatrix(JSON.parse(JSON.stringify(matrix)));
+      if (isGlobal) setGlobalMatrix({ ...matrix });
       setHasOrgOverride(true);
       toast({
         title: "Configuration sauvegardée",
@@ -337,8 +395,12 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
 
   const selectedOrgName = orgs.find((o) => o.id === selectedOrgId)?.name;
 
+  // ── Group by category ──
+  const categories = ["metiers", "logistique", "personnel"] as const;
+
   return (
     <div className="space-y-4">
+      {/* Org selector */}
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
           <SelectTrigger className="w-72 h-9">
@@ -357,7 +419,6 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
             Copier les réglages par défaut
           </Button>
         )}
-
         {!isGlobal && hasOrgOverride && (
           <Badge variant="secondary" className="text-xs">Personnalisé</Badge>
         )}
@@ -388,94 +449,178 @@ function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
               Sauvegarder
             </Button>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-56">Module</TableHead>
-                  {RBAC_ROLES.map((r) => (
-                    <TableHead key={r.id} className="text-center">{r.label}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {RBAC_MODULES.map((mod) => {
-                  const isCollapsed = collapsed[mod.id];
-                  const hasChildren = !!mod.children?.length;
-                  // Plan-aware: dim modules outside the selected org's plan
-                  const modMeta = MODULE_REGISTRY.find((m) => m.id === mod.id);
-                  const blockedByPlan = !isGlobal && selectedOrgPlan && modMeta
-                    ? !isPlanAtLeast(selectedOrgPlan, modMeta.minPlan)
-                    : false;
+          <CardContent className="p-0 sm:p-4">
+            <Accordion type="multiple" defaultValue={categories.map(String)} className="space-y-3">
+              {categories.map((cat) => {
+                const groups = RBAC_MODULE_HIERARCHY.filter((g) => g.category === cat);
+                if (groups.length === 0) return null;
 
-                  return (
-                    <Fragment key={mod.id}>
-                      <TableRow className={blockedByPlan ? "bg-muted/10 opacity-50" : "bg-muted/30"}>
-                        <TableCell className="font-semibold">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="flex items-center gap-1.5 text-left flex-1"
-                              onClick={() => hasChildren && toggleCollapse(mod.id)}
-                            >
-                              {hasChildren ? (
-                                isCollapsed
-                                  ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                              ) : <span className="w-4" />}
-                              {mod.label}
-                            </button>
-                            {blockedByPlan && modMeta && (
-                              <Badge variant="outline" className={`gap-1 text-[9px] px-1.5 py-0 h-4 shrink-0 ${PLAN_META[modMeta.minPlan].badgeCls}`}>
-                                <Lock className="h-2.5 w-2.5" />
-                                {PLAN_META[modMeta.minPlan].label}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        {RBAC_ROLES.map((role) => (
-                          <TableCell key={role.id} className="text-center">
-                            <div className="flex flex-col items-center gap-0.5">
-                              <Switch
-                                checked={matrix[role.id]?.[mod.id] ?? false}
-                                onCheckedChange={() => toggle(role.id, mod.id)}
-                                disabled={blockedByPlan}
+                return (
+                  <AccordionItem key={cat} value={cat} className="border rounded-lg overflow-hidden">
+                    <AccordionTrigger className="px-4 py-2.5 hover:no-underline bg-muted/30">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {CATEGORY_LABELS[cat]}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-48 min-w-[12rem]">Module</TableHead>
+                              {RBAC_ROLES.map((r) => (
+                                <TableHead key={r.id} className="text-center min-w-[5rem]">{r.label}</TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {groups.map((group) => (
+                              <ModuleGroupRows
+                                key={group.id}
+                                group={group}
+                                matrix={matrix}
+                                isGlobal={isGlobal}
+                                selectedOrgPlan={selectedOrgPlan}
+                                isDiff={isDiff}
+                                toggleEnabled={toggleEnabled}
+                                toggleChildEnabled={toggleChildEnabled}
+                                togglePerm={togglePerm}
                               />
-                              {!blockedByPlan && isDifferentFromGlobal(role.id, mod.id) && (
-                                <span className="text-[9px] text-primary font-medium">Modifié</span>
-                              )}
-                            </div>
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                      {hasChildren && !isCollapsed && mod.children!.map((child) => (
-                        <TableRow key={child.id} className={blockedByPlan ? "opacity-50" : ""}>
-                          <TableCell className="pl-10 text-muted-foreground text-sm">{child.label}</TableCell>
-                          {RBAC_ROLES.map((role) => (
-                            <TableCell key={role.id} className="text-center">
-                              <div className="flex flex-col items-center gap-0.5">
-                                <Switch
-                                  checked={matrix[role.id]?.[child.id] ?? false}
-                                  onCheckedChange={() => toggle(role.id, child.id)}
-                                  disabled={blockedByPlan || !(matrix[role.id]?.[mod.id])}
-                                />
-                                {!blockedByPlan && isDifferentFromGlobal(role.id, child.id) && (
-                                  <span className="text-[9px] text-primary font-medium">Modifié</span>
-                                )}
-                              </div>
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           </CardContent>
         </Card>
       )}
     </div>
+  );
+}
+
+// ── Module Group Rows (Parent + Children) ─────────────────
+function ModuleGroupRows({
+  group, matrix, isGlobal, selectedOrgPlan, isDiff,
+  toggleEnabled, toggleChildEnabled, togglePerm,
+}: {
+  group: RbacModuleGroup;
+  matrix: PermMatrix;
+  isGlobal: boolean;
+  selectedOrgPlan: PlanId | null;
+  isDiff: (roleId: string, modId: string, col: PermCol | "enabled") => boolean;
+  toggleEnabled: (roleId: string, groupId: string) => void;
+  toggleChildEnabled: (roleId: string, childId: string, parentId: string) => void;
+  togglePerm: (roleId: string, modId: string, col: PermCol) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const meta = getRegistryMeta(group.id);
+  const blockedByPlan = !isGlobal && selectedOrgPlan && meta
+    ? !isPlanAtLeast(selectedOrgPlan, meta.minPlan)
+    : false;
+  const hasChildren = group.children.length > 0;
+
+  return (
+    <Fragment>
+      {/* ── Parent row ── */}
+      <TableRow className={blockedByPlan ? "bg-muted/10 opacity-50" : "bg-muted/20"}>
+        <TableCell className="font-semibold">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-left flex-1"
+              onClick={() => hasChildren && setExpanded((o) => !o)}
+            >
+              {hasChildren ? (
+                expanded
+                  ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                  : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              ) : <span className="w-4" />}
+              {meta?.icon && <meta.icon className="h-4 w-4 text-muted-foreground" />}
+              {group.label}
+            </button>
+            {blockedByPlan && meta && (
+              <Badge variant="outline" className={`gap-1 text-[9px] px-1.5 py-0 h-4 shrink-0 ${PLAN_META[meta.minPlan].badgeCls}`}>
+                <Lock className="h-2.5 w-2.5" />
+                Upgrade Requis — {PLAN_META[meta.minPlan].label}
+              </Badge>
+            )}
+          </div>
+        </TableCell>
+        {RBAC_ROLES.map((role) => (
+          <TableCell key={role.id} className="text-center">
+            <div className="flex flex-col items-center gap-0.5">
+              <Switch
+                checked={matrix[permKey(role.id, group.id, "enabled")] ?? false}
+                onCheckedChange={() => toggleEnabled(role.id, group.id)}
+                disabled={blockedByPlan}
+              />
+              {!blockedByPlan && isDiff(role.id, group.id, "enabled") && (
+                <span className="text-[9px] text-primary font-medium">Modifié</span>
+              )}
+            </div>
+          </TableCell>
+        ))}
+      </TableRow>
+
+      {/* ── Children rows ── */}
+      {hasChildren && expanded && group.children.map((child) => {
+        const isChildRow = true;
+        return (
+          <TableRow key={child.id} className={blockedByPlan ? "opacity-40" : ""}>
+            <TableCell className="pl-10">
+              <span className="text-sm text-muted-foreground">{child.label}</span>
+            </TableCell>
+            {RBAC_ROLES.map((role) => {
+              const parentEnabled = matrix[permKey(role.id, group.id, "enabled")] ?? false;
+              const childEnabled = matrix[permKey(role.id, child.id, "enabled")] ?? false;
+              const disabled = blockedByPlan || !parentEnabled;
+
+              return (
+                <TableCell key={role.id} className="text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    {/* Enabled toggle */}
+                    <Switch
+                      checked={childEnabled}
+                      onCheckedChange={() => toggleChildEnabled(role.id, child.id, group.id)}
+                      disabled={disabled}
+                      className="scale-90"
+                    />
+                    {/* Granular perms */}
+                    {childEnabled && !disabled && (
+                      <div className="flex gap-1.5 mt-0.5">
+                        {PERM_COLS.map((col) => (
+                          <label
+                            key={col}
+                            className="flex items-center gap-0.5 cursor-pointer"
+                            title={PERM_LABELS[col]}
+                          >
+                            <Checkbox
+                              checked={matrix[permKey(role.id, child.id, col)] ?? false}
+                              onCheckedChange={() => togglePerm(role.id, child.id, col)}
+                              className="h-3 w-3"
+                            />
+                            <span className="text-[8px] text-muted-foreground select-none">
+                              {col === "can_view" ? "V" : col === "can_edit" ? "E" : "D"}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {!blockedByPlan && isDiff(role.id, child.id, "enabled") && (
+                      <span className="text-[9px] text-primary font-medium">Modifié</span>
+                    )}
+                  </div>
+                </TableCell>
+              );
+            })}
+          </TableRow>
+        );
+      })}
+    </Fragment>
   );
 }
 
