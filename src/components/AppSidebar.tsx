@@ -325,6 +325,8 @@ export function AppSidebar() {
     return METIER_BLOCKS.filter((block) => isBlockVisible(block.id));
   }, [isBlockVisible]);
 
+  const showLogistique = isBlockVisible("operations");
+  const showPersonnel = isBlockVisible("gestion-rh");
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => navigate("/");
 
