@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { useAuth, type EffectivePermission } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, LayoutDashboard, CalendarDays, Users, Calendar, Car, Wrench,
@@ -24,27 +24,24 @@ import type { Pole } from "@/types/amm";
 
 const POLES: Pole[] = ["Imam", "École (Avenir)", "Social (ABD)", "Accueil", "Récolte", "Digital", "Com", "Parking"];
 
-/* ─────────────────────────────────────────────────────────
-   Each nav item & block has a `moduleKey` that maps to the
-   `module` field returned by the RPC `get_effective_permissions`.
-   This is the ONLY thing that decides visibility.
-   ───────────────────────────────────────────────────────── */
-
 interface NavItem {
   title: string;
   url: string;
   icon: React.ElementType;
-  moduleKey: string; // maps to permissions.module
+  roles: UserRole[];
 }
 
 interface NavBlock {
   id: string;
   label: string;
   icon: React.ElementType;
-  moduleKey: string; // parent module key
   poleIds: string[];
+  blockRoles: UserRole[];
   items: NavItem[];
 }
+
+const ALL_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable", "Enseignant / Oustaz", "Bénévole", "Parent d'élève"];
+const ADMIN_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable"];
 
 // ── PILOTAGE ──────────────────────────────────────────────
 const PILOTAGE_BLOCKS: NavBlock[] = [
@@ -52,20 +49,20 @@ const PILOTAGE_BLOCKS: NavBlock[] = [
     id: "config",
     label: "Configuration",
     icon: SlidersHorizontal,
-    moduleKey: "admin",
     poleIds: [],
+    blockRoles: ["Admin Mosquée", "Responsable"],
     items: [
-      { title: "Espaces & Pôles", url: "/configuration", icon: SlidersHorizontal, moduleKey: "admin" },
+      { title: "Espaces & Pôles", url: "/configuration", icon: SlidersHorizontal, roles: ["Admin Mosquée", "Responsable"] },
     ],
   },
   {
     id: "gouvernance",
     label: "Structure & Membres",
     icon: Users,
-    moduleKey: "admin",
     poleIds: ["admin"],
+    blockRoles: ["Admin Mosquée", "Responsable"],
     items: [
-      { title: "Structure & Membres", url: "/structure-membres", icon: Users, moduleKey: "admin" },
+      { title: "Structure & Membres", url: "/structure-membres", icon: Users, roles: ["Admin Mosquée", "Responsable"] },
     ],
   },
 ];
@@ -76,80 +73,78 @@ const METIER_BLOCKS: NavBlock[] = [
     id: "operations",
     label: "Opérations & Planning",
     icon: CalendarDays,
-    moduleKey: "logistics",
     poleIds: ["logistics"],
+    blockRoles: ALL_ROLES,
     items: [
-      { title: "Tableau de bord", url: "/", icon: LayoutDashboard, moduleKey: "logistics" },
-      { title: "Planning", url: "/planning", icon: CalendarDays, moduleKey: "logistics.planning" },
-      { title: "Événements", url: "/evenements", icon: Calendar, moduleKey: "logistics" },
-      { title: "Inventaire", url: "/inventaire", icon: Package, moduleKey: "logistics" },
-      { title: "Parking", url: "/parking", icon: Car, moduleKey: "logistics.parking" },
-      { title: "Maintenance", url: "/maintenance", icon: Wrench, moduleKey: "logistics.maintenance" },
+      { title: "Tableau de bord", url: "/", icon: LayoutDashboard, roles: ["Admin Mosquée", "Responsable", "Bénévole"] },
+      { title: "Planning", url: "/planning", icon: CalendarDays, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Événements", url: "/evenements", icon: Calendar, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Inventaire", url: "/inventaire", icon: Package, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Parking", url: "/parking", icon: Car, roles: ["Admin Mosquée"] },
+      { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["Admin Mosquée"] },
     ],
   },
   {
     id: "education",
     label: "Éducation",
     icon: GraduationCap,
-    moduleKey: "education",
     poleIds: ["education"],
+    blockRoles: ALL_ROLES,
     items: [
-      { title: "Élèves", url: "/eleves", icon: GraduationCap, moduleKey: "education.eleves" },
-      { title: "Classes", url: "/classes", icon: BookOpen, moduleKey: "education.classes" },
-      { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList, moduleKey: "education.inscriptions" },
+      { title: "Élèves", url: "/eleves", icon: GraduationCap, roles: ALL_ROLES },
+      { title: "Classes", url: "/classes", icon: BookOpen, roles: ALL_ROLES },
+      { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList, roles: ALL_ROLES },
     ],
   },
   {
     id: "gestion-rh",
     label: "Gestion & RH",
     icon: ShieldCheck,
-    moduleKey: "admin",
     poleIds: ["admin"],
+    blockRoles: ADMIN_ROLES,
     items: [
-      { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, moduleKey: "admin.contrats" },
-      { title: "Documents", url: "/documents", icon: FileText, moduleKey: "admin" },
-      { title: "Structure", url: "/organisation", icon: Users, moduleKey: "admin" },
+      { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, roles: ADMIN_ROLES },
+      { title: "Documents", url: "/documents", icon: FileText, roles: ADMIN_ROLES },
+      { title: "Structure", url: "/organisation", icon: Users, roles: ADMIN_ROLES },
     ],
   },
   {
     id: "finance",
     label: "Finance",
     icon: Wallet,
-    moduleKey: "admin.finance",
     poleIds: ["admin"],
+    blockRoles: ADMIN_ROLES,
     items: [
-      { title: "Transactions", url: "/finance", icon: CreditCard, moduleKey: "admin.finance" },
-      { title: "Donateurs", url: "/donateurs", icon: Heart, moduleKey: "admin.donateurs" },
-      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt, moduleKey: "admin.finance" },
+      { title: "Transactions", url: "/finance", icon: CreditCard, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Donateurs", url: "/donateurs", icon: Heart, roles: ["Admin Mosquée", "Responsable"] },
+      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt, roles: ["Admin Mosquée", "Responsable"] },
     ],
   },
   {
     id: "social",
     label: "Social",
     icon: Heart,
-    moduleKey: "social",
     poleIds: ["social"],
+    blockRoles: ALL_ROLES,
     items: [],
   },
   {
     id: "comms",
     label: "Communication",
     icon: Radio,
-    moduleKey: "comms",
     poleIds: ["comms"],
+    blockRoles: ALL_ROLES,
     items: [],
   },
 ];
 
 const STANDALONE_ITEMS: NavItem[] = [
-  { title: "Approbations", url: "/approbations", icon: UserCheck, moduleKey: "admin" },
-  { title: "Opérations", url: "/operations", icon: Settings2, moduleKey: "admin" },
-  { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays, moduleKey: "logistics" },
-  { title: "Mes Missions", url: "/missions", icon: ClipboardList, moduleKey: "logistics" },
-  { title: "Mon Équipe", url: "/mon-equipe", icon: Users, moduleKey: "admin" },
+  { title: "Approbations", url: "/approbations", icon: UserCheck, roles: ["Admin Mosquée", "Responsable"] },
+  { title: "Opérations", url: "/operations", icon: Settings2, roles: ["Admin Mosquée", "Responsable"] },
+  { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays, roles: ["Bénévole", "Parent d'élève"] },
+  { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
+  { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Responsable"] },
 ];
-
-const ALL_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable", "Enseignant / Oustaz", "Bénévole", "Parent d'élève"];
 
 const roleIcons: Record<UserRole, React.ElementType> = {
   "Super Admin": Globe,
@@ -160,28 +155,15 @@ const roleIcons: Record<UserRole, React.ElementType> = {
   "Parent d'élève": Users,
 };
 
-/* ─────────────────────────────────────────────────────────
-   Helper: check if a module key is enabled in the
-   resolved permission set (a Set<string> of enabled modules).
-   Returns true if the set is null (= bypass / show all).
-   ───────────────────────────────────────────────────────── */
-function isModuleAllowed(moduleKey: string, allowedModules: Set<string> | null): boolean {
-  if (!allowedModules) return true; // null = show everything (super admin bypass)
-  // Check exact match OR parent match (e.g. "logistics" enables "logistics.planning")
-  if (allowedModules.has(moduleKey)) return true;
-  const parent = moduleKey.split(".")[0];
-  if (parent !== moduleKey && allowedModules.has(parent)) return true;
-  return false;
-}
-
 // ── Reusable collapsible block ────────────────────────────
 function SidebarBlock({
-  block, activePoles, isSuperAdminBypass, allowedModules, location,
+  block, role, activePoles, isAdminLike, isSuperAdmin, location,
 }: {
   block: NavBlock;
+  role: UserRole;
   activePoles: string[];
-  isSuperAdminBypass: boolean;
-  allowedModules: Set<string> | null;
+  isAdminLike: boolean;
+  isSuperAdmin: boolean;
   location: ReturnType<typeof useLocation>;
 }) {
   const isPoleActive = block.poleIds.length === 0 || block.poleIds.some((p) => activePoles.includes(p));
@@ -190,14 +172,11 @@ function SidebarBlock({
   );
   const [open, setOpen] = useState(hasActiveRoute);
 
-  // Permission check: block visible only if its moduleKey is allowed
-  if (!isModuleAllowed(block.moduleKey, allowedModules)) return null;
-  // Pole check: hide if pole is off (unless super admin bypass shows it with badge)
-  if (!isPoleActive && !isSuperAdminBypass) return null;
+  if (!isPoleActive && !isSuperAdmin) return null;
+  if (!block.blockRoles.includes(role) && !isSuperAdmin) return null;
 
-  const isActive = isSuperAdminBypass ? isPoleActive : true;
-  // Filter items by their individual moduleKey
-  const visibleItems = block.items.filter((i) => isModuleAllowed(i.moduleKey, allowedModules));
+  const isActive = isSuperAdmin ? isPoleActive : true;
+  const visibleItems = isSuperAdmin ? block.items : block.items.filter((i) => i.roles.includes(role));
 
   return (
     <Collapsible open={open} onOpenChange={() => isActive && setOpen((o) => !o)}>
@@ -213,10 +192,10 @@ function SidebarBlock({
         >
           <block.icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
           <span className="flex-1 text-left">{block.label}</span>
-          {isActive && visibleItems.length > 0 && (
+          {isActive && block.items.length > 0 && (
             <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40 transition-transform duration-200", open && "rotate-180")} />
           )}
-          {!isActive && isSuperAdminBypass && (
+          {!isActive && isSuperAdmin && (
             <span className="text-[9px] uppercase tracking-wide text-muted-foreground/60 bg-muted/50 rounded px-1.5 py-0.5">Off</span>
           )}
         </button>
@@ -244,7 +223,7 @@ function SidebarBlock({
         </CollapsibleContent>
       )}
 
-      {isActive && visibleItems.length === 0 && block.items.length === 0 && (
+      {isActive && block.items.length === 0 && (
         <CollapsibleContent>
           <p className="ml-6 mt-1 mb-1 text-[11px] text-sidebar-foreground/30 italic border-l border-sidebar-border/40 pl-3 py-0.5">
             Aucun module actif
@@ -255,40 +234,38 @@ function SidebarBlock({
   );
 }
 
-/* ─────────────────────────────────────────────────────────
-   Build a Set<string> of enabled module keys from a
-   permission array. This is the SINGLE source of truth.
-   ───────────────────────────────────────────────────────── */
-function buildModuleSet(perms: EffectivePermission[]): Set<string> {
-  const set = new Set<string>();
-  for (const p of perms) {
-    if (p.enabled) set.add(p.module);
-  }
-  return set;
-}
-
 // ── Main Sidebar ─────────────────────────────────────────
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, setRole, pole, setPole, displayName, isSuperAdmin } = useRole();
   const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
-  const { signOut, permissions, refreshPermissions, impersonatedUser } = useAuth();
+  const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
 
+  // Ghost mode takes absolute priority over preview
   const isGhostActive = !!impersonatedUser;
-
-  // When NOT ghost and NOT previewing another role, Super Admin sees everything
+  // When previewing a different role, disable the Super Admin bypass (but NOT during ghost)
   const isPreviewingOtherRole = !isGhostActive && isSuperAdmin && role !== "Super Admin";
-  const isSuperAdminBypass = !isGhostActive && isSuperAdmin && !isPreviewingOtherRole;
+  const effectiveBypass = !isGhostActive && isSuperAdmin && !isPreviewingOtherRole;
 
-  const orgId = org?.id;
-  const effectiveDbRole = UI_ROLE_TO_DB[role];
+  const isAdminLike = !isGhostActive && (role === "Admin Mosquée" || role === "Super Admin" || effectiveBypass);
+  const showPoleSelector = !effectiveBypass && !isGhostActive && ["Bénévole", "Parent d'élève"].includes(role);
+  const showPilotage = !isGhostActive ? (ADMIN_ROLES.includes(role) || effectiveBypass) : false;
+  const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
-  // ── Preview-mode permissions (role-based RPC, only for role preview) ──
+  // ── RBAC permissions from DB ──
   const [previewPermissions, setPreviewPermissions] = useState<Set<string> | null>(null);
 
+  const orgId = org?.id;
+  const effectiveDbRole = UI_ROLE_TO_DB[role] ?? dbRole;
+
+  // Fetch permissions for the previewed role (role-based RPC)
   const fetchPreviewPermissions = useCallback(async () => {
-    if (!isPreviewingOtherRole || !orgId || !effectiveDbRole) {
+    if (effectiveBypass) {
+      setPreviewPermissions(null);
+      return;
+    }
+    if (!orgId || !effectiveDbRole) {
       setPreviewPermissions(null);
       return;
     }
@@ -296,57 +273,62 @@ export function AppSidebar() {
       p_org_id: orgId,
       p_role: effectiveDbRole,
     });
-    if (error || !data) { setPreviewPermissions(null); return; }
-    const set = new Set<string>();
-    for (const row of data as any[]) {
-      if (row.enabled ?? row.can_view) set.add(row.module);
+    if (error || !data) {
+      setPreviewPermissions(null);
+      return;
     }
-    setPreviewPermissions(set);
-  }, [orgId, effectiveDbRole, isPreviewingOtherRole]);
+    const allowed = new Set<string>();
+    for (const row of data as any[]) {
+      if (row.enabled ?? row.can_view) allowed.add(row.module);
+    }
+    setPreviewPermissions(allowed);
+  }, [orgId, effectiveDbRole, effectiveBypass]);
 
   useEffect(() => { fetchPreviewPermissions(); }, [fetchPreviewPermissions]);
 
-  // ── Refresh real permissions when org or ghost changes ──
+  // Refresh permissions when org or impersonated user changes
   useEffect(() => {
     if (orgId) refreshPermissions(orgId);
   }, [orgId, refreshPermissions, impersonatedUser]);
 
-  // ── Reset role selector when ghost deactivates ──
+  // Reset role selector when ghost mode is deactivated
   useEffect(() => {
-    if (!impersonatedUser && isSuperAdmin) setRole("Super Admin");
+    if (!impersonatedUser && isSuperAdmin) {
+      setRole("Super Admin");
+    }
   }, [impersonatedUser, isSuperAdmin, setRole]);
 
-  /* ─────────────────────────────────────────────────────
-     THE SINGLE SOURCE OF TRUTH for module visibility.
-     Priority:
-     1. Ghost → use AuthContext.permissions (resolved for ghost user)
-     2. Preview role → use previewPermissions
-     3. Super Admin (no preview) → null (show all)
-     4. Normal user → use AuthContext.permissions
-     ───────────────────────────────────────────────────── */
-  const allowedModules = useMemo<Set<string> | null>(() => {
+  // Determine which permission set to use for filtering
+  const allowedModules = useMemo(() => {
+    // Ghost mode: always use real permissions from AuthContext (resolved for ghost user)
     if (isGhostActive) {
-      return permissions.length > 0 ? buildModuleSet(permissions) : new Set<string>();
+      if (permissions.length > 0) {
+        const set = new Set<string>();
+        for (const p of permissions) {
+          if (p.enabled) set.add(p.module);
+        }
+        return set;
+      }
+      return new Set<string>(); // ghost user with no permissions = show nothing
     }
-    if (isSuperAdminBypass) return null;
+    if (effectiveBypass) return null; // null = show all
     if (isPreviewingOtherRole && previewPermissions) return previewPermissions;
-    if (permissions.length > 0) return buildModuleSet(permissions);
+    // For non-super-admin: use real permissions from AuthContext
+    if (permissions.length > 0) {
+      const set = new Set<string>();
+      for (const p of permissions) {
+        if (p.enabled) set.add(p.module);
+      }
+      return set;
+    }
     return previewPermissions;
-  }, [isGhostActive, isSuperAdminBypass, isPreviewingOtherRole, previewPermissions, permissions]);
+  }, [isGhostActive, effectiveBypass, isPreviewingOtherRole, previewPermissions, permissions]);
 
-  // ── Filter blocks by permissions (data-driven) ──
-  const filteredPilotageBlocks = useMemo(
-    () => PILOTAGE_BLOCKS.filter((b) => isModuleAllowed(b.moduleKey, allowedModules)),
-    [allowedModules]
-  );
-  const filteredMetierBlocks = useMemo(
-    () => METIER_BLOCKS.filter((b) => isModuleAllowed(b.moduleKey, allowedModules)),
-    [allowedModules]
-  );
-  const filteredStandalone = useMemo(
-    () => STANDALONE_ITEMS.filter((i) => isModuleAllowed(i.moduleKey, allowedModules)),
-    [allowedModules]
-  );
+  // Filter metier blocks by RBAC permissions
+  const filteredMetierBlocks = useMemo(() => {
+    if (!allowedModules) return METIER_BLOCKS;
+    return METIER_BLOCKS.filter((block) => allowedModules.has(block.id));
+  }, [allowedModules]);
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => navigate("/");
@@ -397,24 +379,26 @@ export function AppSidebar() {
         )}
 
         {/* ── PILOTAGE ── */}
-        {filteredPilotageBlocks.length > 0 && (
+        {(showPilotage || (isGhostActive && allowedModules)) && (
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pilotage</p>
             <div className="space-y-px">
-              {filteredPilotageBlocks.map((block) => (
-                <SidebarBlock key={block.id} block={block} activePoles={activePoles} isSuperAdminBypass={isSuperAdminBypass} allowedModules={allowedModules} location={location} />
-              ))}
+              {PILOTAGE_BLOCKS
+                .filter((block) => !allowedModules || allowedModules.has(block.id))
+                .map((block) => (
+                  <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+                ))}
             </div>
           </div>
         )}
 
         {/* ── PERSONNEL ── */}
-        {filteredStandalone.length > 0 && (
+        {standaloneVisible.length > 0 && (
           <SidebarGroup className="py-1">
             <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5">Personnel</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {filteredStandalone.map((item) => (
+                {standaloneVisible.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink to={item.url} end={item.url === "/"} className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
@@ -434,7 +418,7 @@ export function AppSidebar() {
           <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
           <div className="space-y-px">
             {filteredMetierBlocks.map((block) => (
-              <SidebarBlock key={block.id} block={block} activePoles={activePoles} isSuperAdminBypass={isSuperAdminBypass} allowedModules={allowedModules} location={location} />
+              <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
             ))}
           </div>
         </div>
@@ -442,7 +426,7 @@ export function AppSidebar() {
 
       {/* ── Footer ── */}
       <SidebarFooter className="px-3 py-2.5 space-y-2">
-        {/* Console SaaS — super admin only */}
+        {/* Console SaaS — bottom, super admin only */}
         {isSuperAdmin && (
           <SidebarMenu>
             <SidebarMenuItem>
@@ -478,7 +462,7 @@ export function AppSidebar() {
           </Select>
         </div>
 
-        {!isGhostActive && !isSuperAdmin && (
+        {showPoleSelector && (
           <div className="space-y-1">
             <label className="text-[9px] uppercase tracking-wider text-sidebar-foreground/30 font-medium px-1">Mon Pôle</label>
             <Select value={pole} onValueChange={(v) => setPole(v as Pole)}>

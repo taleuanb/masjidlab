@@ -116,15 +116,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPermissions([]);
         return;
       }
-      const resolved = (data as any[]).map((row) => ({
-        module: row.module,
-        enabled: row.enabled ?? false,
-        can_view: row.can_view ?? false,
-        can_edit: row.can_edit ?? false,
-        can_delete: row.can_delete ?? false,
-      }));
-      console.log("Permissions consolidées pour l'utilisateur :", targetUserId, resolved);
-      setPermissions(resolved);
+      setPermissions(
+        (data as any[]).map((row) => ({
+          module: row.module,
+          enabled: row.enabled ?? false,
+          can_view: row.can_view ?? false,
+          can_edit: row.can_edit ?? false,
+          can_delete: row.can_delete ?? false,
+        }))
+      );
     } finally {
       setPermissionsLoading(false);
     }
