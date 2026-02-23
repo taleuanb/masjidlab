@@ -160,6 +160,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         overrideOrgId,
         setOverrideOrgId,
         allOrgs,
+        isModuleInPlan,
       }}
     >
       {children}
