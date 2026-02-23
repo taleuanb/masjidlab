@@ -54,7 +54,10 @@ export default function PendingAffectation() {
 
       if (orgErr || !newOrg) throw orgErr ?? new Error("Création impossible");
 
-      // 2. Rattacher le profil à l'organisation
+      // 2. Cloner les permissions par défaut pour la nouvelle org
+      await supabase.rpc("clone_default_permissions" as any, { p_org_id: newOrg.id });
+
+      // 3. Rattacher le profil à l'organisation
       const { error: profileErr } = await supabase
         .from("profiles")
         .update({ org_id: newOrg.id })
@@ -62,7 +65,7 @@ export default function PendingAffectation() {
 
       if (profileErr) throw profileErr;
 
-      // 3. Nommer Super-Admin dans user_roles
+      // 4. Nommer Admin dans user_roles
       const { error: roleErr } = await supabase
         .from("user_roles")
         .update({ role: "admin" })
