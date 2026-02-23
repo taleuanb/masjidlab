@@ -5,9 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, LayoutDashboard, CalendarDays, Users, Calendar, Car, Wrench,
-  ClipboardList, UserCheck, Settings2, SlidersHorizontal, ChevronDown,
+  ClipboardList, UserCheck, SlidersHorizontal, ChevronDown,
   BookOpen, Heart, Radio, Globe, LogOut, Wallet, CreditCard,
-  GraduationCap, ShieldCheck, FileText, Receipt, Package,
+  GraduationCap, ShieldCheck, FileText, Receipt, Package, Truck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
