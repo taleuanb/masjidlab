@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, typ
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { isModuleAllowedForPlan } from "@/config/plan-modules";
+import { isModuleInPlan } from "@/config/module-registry";
 
 interface Organization {
   id: string;
