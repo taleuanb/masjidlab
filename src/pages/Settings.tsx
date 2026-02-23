@@ -433,8 +433,11 @@ export default function SettingsPage() {
                     </Card>
                   );
                 })}
+              </div>
+            </div>
 
             {/* ── Gestion des Modules Métier ── */}
+
             <div>
               <h2 className="text-sm font-semibold mb-1">Gestion des Modules Métier</h2>
               <p className="text-xs text-muted-foreground mb-4">
