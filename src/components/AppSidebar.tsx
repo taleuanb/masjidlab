@@ -324,11 +324,17 @@ export function AppSidebar() {
     return previewPermissions;
   }, [isGhostActive, effectiveBypass, isPreviewingOtherRole, previewPermissions, permissions]);
 
-  // Filter metier blocks by RBAC permissions
+  // Filter metier blocks by RBAC permissions AND subscription plan
   const filteredMetierBlocks = useMemo(() => {
-    if (!allowedModules) return METIER_BLOCKS;
-    return METIER_BLOCKS.filter((block) => allowedModules.has(block.id));
-  }, [allowedModules]);
+    let blocks = METIER_BLOCKS;
+    // Plan filter first
+    blocks = blocks.filter((block) => isModuleInPlan(block.id));
+    // Then RBAC filter
+    if (allowedModules) {
+      blocks = blocks.filter((block) => allowedModules.has(block.id));
+    }
+    return blocks;
+  }, [allowedModules, isModuleInPlan]);
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => navigate("/");
