@@ -206,6 +206,7 @@ function buildEmptyMatrix(allIds: string[]): PermMatrix {
 function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
   const { toast } = useToast();
   const allIds = getAllModuleIds();
+  const Lock = (await import("lucide-react")).Lock;
 
   const [selectedOrgId, setSelectedOrgId] = useState<string>("global");
   const [matrix, setMatrix] = useState<PermMatrix>(buildEmptyMatrix(allIds));
