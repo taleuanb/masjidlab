@@ -7,7 +7,7 @@ import {
   Building2, LayoutDashboard, CalendarDays, Users, Calendar, Car, Wrench,
   ClipboardList, UserCheck, SlidersHorizontal, ChevronDown,
   BookOpen, Heart, Radio, Globe, LogOut, Wallet, CreditCard,
-  GraduationCap, ShieldCheck, FileText, Receipt, Package, Truck,
+  GraduationCap, ShieldCheck, FileText, Receipt, Package, Truck, UserCircle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -40,6 +40,12 @@ interface NavBlock {
 }
 
 const ALL_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable", "Enseignant / Oustaz", "Bénévole", "Parent d'élève"];
+
+// ── CORE ITEMS — visible to all via useModuleAccess defaultRoles ──
+const CORE_ITEMS: (NavItem & { moduleKey: string })[] = [
+  { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard, moduleKey: "dashboard_general" },
+  { title: "Mon Profil", url: "/profil", icon: UserCircle, moduleKey: "profile_core" },
+];
 
 // ── ADMINISTRATION — CORE modules, visibility via useModuleAccess ──
 const ADMIN_ITEMS: (NavItem & { moduleKey: string })[] = [
@@ -89,7 +95,7 @@ const LOGISTIQUE_BLOCK: NavBlock = {
   label: "Logistique",
   icon: Truck,
   items: [
-    { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
+    { title: "Dashboard Logistique", url: "/", icon: LayoutDashboard },
     { title: "Planning", url: "/planning", icon: CalendarDays },
     { title: "Événements", url: "/evenements", icon: Calendar },
     { title: "Inventaire", url: "/inventaire", icon: Package },
@@ -248,6 +254,11 @@ export function AppSidebar() {
   }, [hasAccess, isPreviewingOtherRole, previewPermissions]);
 
   // ── Filter all blocks through the single gate ──
+  const visibleCoreItems = useMemo(
+    () => CORE_ITEMS.filter((item) => isModuleVisible(item.moduleKey)),
+    [isModuleVisible]
+  );
+
   const visibleAdminItems = useMemo(
     () => ADMIN_ITEMS.filter((item) => isModuleVisible(item.moduleKey)),
     [isModuleVisible]
@@ -306,6 +317,28 @@ export function AppSidebar() {
           <div className="mx-1 mb-2 px-2 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5">
             <ShieldCheck className="h-3 w-3" />
             Mode prévisualisation : {role}
+          </div>
+        )}
+
+        {/* ── G0: CORE — Dashboard & Profil, visible to all via defaultRoles ── */}
+        {visibleCoreItems.length > 0 && (
+          <div className="py-1">
+            <SidebarMenu className="space-y-px">
+              {visibleCoreItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
           </div>
         )}
 

@@ -8,6 +8,7 @@
 import {
   BookOpen, Landmark, Heart, Radio, Truck, Crown,
   GraduationCap, SlidersHorizontal, Users, ShieldCheck,
+  LayoutDashboard, UserCircle,
 } from "lucide-react";
 import type React from "react";
 
@@ -51,10 +52,10 @@ export interface ModuleMeta {
  */
 export const MODULE_REGISTRY: ModuleMeta[] = [
   // CORE modules — fixed access based on defaultRoles, excluded from RBAC matrix
-  { id: "dashboard",    label: "Dashboard",        description: "Tableau de bord principal",                           icon: SlidersHorizontal, minPlan: "starter", isCore: true, defaultRoles: ["*"] },
-  { id: "profile",      label: "Profil",           description: "Profil utilisateur",                                 icon: Users,             minPlan: "starter", isCore: true, defaultRoles: ["*"] },
-  { id: "config",       label: "Configuration",    description: "Paramètres, espaces et inventaire du complexe",       icon: SlidersHorizontal, minPlan: "starter", isCore: true, defaultRoles: ["admin", "super_admin", "responsable"] },
-  { id: "gouvernance",  label: "Membres & Rôles",  description: "Gestion des membres, rôles et permissions",          icon: Users,             minPlan: "starter", isCore: true, defaultRoles: ["admin", "super_admin", "responsable"] },
+  { id: "dashboard_general", label: "Tableau de bord", description: "Tableau de bord général de l'application",       icon: LayoutDashboard,   minPlan: "starter", isCore: true, defaultRoles: ["*"] },
+  { id: "profile_core",      label: "Mon Profil",      description: "Profil utilisateur personnel",                   icon: UserCircle,        minPlan: "starter", isCore: true, defaultRoles: ["*"] },
+  { id: "config",             label: "Configuration",   description: "Paramètres, espaces et inventaire du complexe",  icon: SlidersHorizontal, minPlan: "starter", isCore: true, defaultRoles: ["admin", "super_admin", "responsable"] },
+  { id: "gouvernance",        label: "Membres & Rôles", description: "Gestion des membres, rôles et permissions",     icon: Users,             minPlan: "starter", isCore: true, defaultRoles: ["admin", "super_admin", "responsable"] },
 
   // Business modules — subject to plan + RBAC
   { id: "education",    label: "Éducation",        description: "Cours, inscriptions, suivi pédagogique",             icon: GraduationCap,     minPlan: "starter" },
