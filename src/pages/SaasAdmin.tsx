@@ -22,13 +22,11 @@ import {
 } from "@/components/ui/dialog";
 import { Navigate } from "react-router-dom";
 
-const ALL_POLES = [
-  { id: "admin", label: "Gouvernance" },
-  { id: "logistics", label: "Opérations & Planning" },
-  { id: "education", label: "Éducation" },
-  { id: "social", label: "Social" },
-  { id: "comms", label: "Communication" },
-];
+import { MODULE_REGISTRY, PLAN_META, type PlanId, isPlanAtLeast } from "@/config/module-registry";
+
+const ALL_POLES = MODULE_REGISTRY
+  .filter((m) => !m.isCore)
+  .map((m) => ({ id: m.id, label: m.label }));
 
 const RBAC_ROLES = [
   { id: "admin", label: "Admin" },
