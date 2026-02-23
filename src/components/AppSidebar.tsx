@@ -390,6 +390,7 @@ export function AppSidebar() {
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pilotage</p>
             <div className="space-y-px">
               {PILOTAGE_BLOCKS
+                .filter((block) => isModuleInPlan(block.id))
                 .filter((block) => !allowedModules || allowedModules.has(block.id))
                 .map((block) => (
                   <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
