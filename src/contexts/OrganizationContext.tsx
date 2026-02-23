@@ -40,7 +40,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [overrideOrgId, setOverrideOrgId] = useState<string | null>(null);
   const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
 
+  const { impersonatedUser } = useAuth();
   const isSuperAdmin = dbRole === "super_admin";
+
+  const isModuleInPlan = useCallback((moduleName: string): boolean => {
+    // Super Admin bypass absolu (sauf en mode Ghost)
+    if (isSuperAdmin && !impersonatedUser) return true;
+    return isModuleAllowedForPlan(moduleName, org?.subscription_plan);
+  }, [isSuperAdmin, impersonatedUser, org?.subscription_plan]);
 
   const refetch = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["userProfile"] });
