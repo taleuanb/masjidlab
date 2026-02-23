@@ -446,7 +446,7 @@ export default function SettingsPage() {
 
                   return (
                     <div
-                      key={pole.id}
+                      key={mod.id}
                       className={`relative flex items-start gap-4 rounded-xl border p-4 transition-colors ${
                         included
                           ? isActive
