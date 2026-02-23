@@ -5,7 +5,12 @@ import {
   Snowflake, Wifi, Mic, Monitor, Speaker, Lock,
   Landmark, Truck, BookOpen, Heart, Radio, Zap, Crown, Star, GraduationCap, Check, ArrowRight,
 } from "lucide-react";
-import { PLAN_CONFIG, type SubscriptionPlan } from "@/config/plan-modules";
+import {
+  PLAN_IDS, PLAN_META,
+  getBusinessModules, getModulesForPlan, isPlanAtLeast, MODULE_MAP,
+  type PlanId,
+} from "@/config/module-registry";
+
 import { MadrasaSettingsPanel } from "@/components/MadrasaSettingsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
