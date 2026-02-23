@@ -70,30 +70,35 @@ export function useModuleAccess(): UseModuleAccessReturn {
     const meta = MODULE_MAP.get(moduleKey);
     const isCore = CORE_MODULE_IDS.has(moduleKey);
 
-    // Super admin bypass (non-ghost)
+    // ── Priority 1: CORE modules — resolved via defaultRoles ──
+    if (isCore && meta) {
+      const defaultRoles = meta.defaultRoles ?? [];
+      const hasWildcard = defaultRoles.includes("*");
+      // Effective role: in ghost mode use impersonated roles, otherwise use dbRole
+      const effectiveRoles = impersonatedUser?.roles ?? (dbRole ? [dbRole] : []);
+      const allowed = hasWildcard || effectiveRoles.some((r) => defaultRoles.includes(r));
+      return { allowed, blockedByPlan: false, blockedByRbac: !allowed, isCore };
+    }
+
+    // ── Priority 2: super_admin bypass (non-ghost) ──
     if (isBypassing) {
       return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
     }
 
+    // ── Priority 3: Triple filter (Plan + Enabled + RBAC) ──
     // Condition A: Plan filter
     const inPlan = isModuleInPlan(moduleKey, currentPlan);
     if (!inPlan) {
       return { allowed: false, blockedByPlan: true, blockedByRbac: false, isCore };
     }
 
-    // CORE modules bypass RBAC for admin-like roles (non-ghost)
-    if (isCore && isAdminLike) {
-      return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
-    }
-
     // Condition C: RBAC filter
-    // If permissions are loaded and this module isn't enabled, block it
     if (permissions.length > 0 && !rbacSet.has(moduleKey)) {
       return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
     }
 
     return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
-  }, [isBypassing, currentPlan, isAdminLike, permissions, rbacSet]);
+  }, [isBypassing, currentPlan, isAdminLike, permissions, rbacSet, impersonatedUser, dbRole]);
 
   const hasAccess = useCallback((moduleKey: string): boolean => {
     return checkAccess(moduleKey).allowed;
