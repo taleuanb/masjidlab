@@ -46,7 +46,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const isModuleInPlan = useCallback((moduleName: string): boolean => {
     // Super Admin bypass absolu (sauf en mode Ghost)
     if (isSuperAdmin && !impersonatedUser) return true;
-    return isModuleInPlan(moduleName, org?.subscription_plan);
+    return checkModuleInPlan(moduleName, org?.subscription_plan);
   }, [isSuperAdmin, impersonatedUser, org?.subscription_plan]);
 
   const refetch = useCallback(() => {
