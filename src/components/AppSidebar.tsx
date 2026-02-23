@@ -236,7 +236,8 @@ export function AppSidebar() {
 
   const isAdminLike = !isGhostActive && (role === "Admin Mosquée" || role === "Super Admin" || effectiveBypass);
   const showPoleSelector = !effectiveBypass && !isGhostActive && ["Bénévole", "Parent d'élève"].includes(role);
-  const showPilotage = !isGhostActive ? (ADMIN_ROLES.includes(role) || effectiveBypass) : false;
+  const showAdmin = !isGhostActive ? (ADMIN_ROLES.includes(role) || effectiveBypass) : false;
+  const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
   const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
   // ── RBAC permissions from DB ──
