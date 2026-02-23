@@ -375,24 +375,73 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* ── PILOTAGE ── */}
-        {(showPilotage || isGhostActive) && (
+        {/* ── G1: ADMINISTRATION ── */}
+        {(showAdmin || isGhostActive) && (
           <div className="py-1">
-            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pilotage</p>
-            <div className="space-y-px">
-              {PILOTAGE_BLOCKS
-                .filter((block) => isBlockVisible(block.id))
-                .map((block) => (
-                  <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Administration</p>
+            <SidebarMenu className="space-y-px">
+              {ADMIN_ITEMS
+                .filter((item) => effectiveBypass || item.roles.includes(role) || (isGhostActive && rbacModules !== null))
+                .filter((item) => {
+                  // Map admin items to block IDs for visibility check
+                  const blockMap: Record<string, string> = { "/configuration": "config", "/structure-membres": "gouvernance" };
+                  const blockId = blockMap[item.url];
+                  return blockId ? isBlockVisible(blockId) : true;
+                })
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 ))}
+            </SidebarMenu>
+          </div>
+        )}
+
+        {/* ── G2: PÔLES MÉTIERS ── */}
+        {filteredMetierBlocks.length > 0 && (
+          <div className="py-1">
+            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
+            <div className="space-y-px">
+              {filteredMetierBlocks.map((block) => (
+                <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+              ))}
             </div>
           </div>
         )}
 
-        {/* ── PERSONNEL ── */}
+        {/* ── G3: LOGISTIQUE (Elite) ── */}
+        {showLogistique && (
+          <div className="py-1">
+            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Logistique</p>
+            <div className="space-y-px">
+              <SidebarBlock block={LOGISTIQUE_BLOCK} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+            </div>
+          </div>
+        )}
+
+        {/* ── G4: PERSONNEL (Elite) ── */}
+        {showPersonnel && (
+          <div className="py-1">
+            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Personnel</p>
+            <div className="space-y-px">
+              <SidebarBlock block={PERSONNEL_BLOCK} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
+            </div>
+          </div>
+        )}
+
+        {/* ── ESPACE PERSO ── */}
         {standaloneVisible.length > 0 && (
           <SidebarGroup className="py-1">
-            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5">Personnel</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5">Mon Espace</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {standaloneVisible.map((item) => (
@@ -409,17 +458,6 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-
-        {/* ── MÉTIERS ── */}
-        <div className="py-1">
-          <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
-          <div className="space-y-px">
-            {filteredMetierBlocks.map((block) => (
-              <SidebarBlock key={block.id} block={block} role={role} activePoles={activePoles} isAdminLike={isAdminLike} isSuperAdmin={effectiveBypass} location={location} />
-            ))}
-          </div>
-        </div>
-      </SidebarContent>
 
       {/* ── Footer ── */}
       <SidebarFooter className="px-3 py-2.5 space-y-2">
