@@ -9,6 +9,7 @@ import { RoleProvider } from "@/contexts/RoleContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { OrganizationProvider, useOrganization } from "@/contexts/OrganizationContext";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import PendingAffectation from "@/pages/PendingAffectation";
 import { RequireActivePole } from "@/components/RequireActivePole";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -67,6 +68,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 const AppLayout = () => {
   return (
     <SidebarProvider>
+      <ImpersonationBanner />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <RequireActivePole>

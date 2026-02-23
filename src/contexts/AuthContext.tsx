@@ -10,6 +10,12 @@ export interface EffectivePermission {
   can_delete: boolean;
 }
 
+export interface ImpersonatedUser {
+  id: string;
+  name: string;
+  roles: string[];
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -24,6 +30,10 @@ interface AuthContextType {
   /** Refresh permissions (e.g. after org change) */
   refreshPermissions: (orgId?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Ghost mode / User impersonation */
+  impersonatedUser: ImpersonatedUser | null;
+  startImpersonating: (target: ImpersonatedUser) => void;
+  stopImpersonating: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,8 +54,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [dbRoles, setDbRoles] = useState<string[]>([]);
   const [permissions, setPermissions] = useState<EffectivePermission[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
+  const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(null);
 
   const dbRole = pickHighestRole(dbRoles);
+
+  const startImpersonating = useCallback((target: ImpersonatedUser) => {
+    if (dbRoles.includes("super_admin")) {
+      setImpersonatedUser(target);
+    }
+  }, [dbRoles]);
+
+  const stopImpersonating = useCallback(() => {
+    setImpersonatedUser(null);
+  }, []);
+
+  // Auto-stop impersonation if user loses super_admin or signs out
+  useEffect(() => {
+    if (impersonatedUser && (!user || !dbRoles.includes("super_admin"))) {
+      setImpersonatedUser(null);
+    }
+  }, [user, dbRoles, impersonatedUser]);
 
   const fetchRoles = async (userId: string) => {
     const { data, error } = await supabase
@@ -137,10 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setDbRoles([]);
     setPermissions([]);
+    setImpersonatedUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, dbRoles, dbRole, permissions, permissionsLoading, refreshPermissions, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, dbRoles, dbRole, permissions, permissionsLoading, refreshPermissions, signOut, impersonatedUser, startImpersonating, stopImpersonating }}>
       {children}
     </AuthContext.Provider>
   );
