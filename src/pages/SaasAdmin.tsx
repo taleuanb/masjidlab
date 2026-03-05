@@ -55,8 +55,15 @@ interface OrgRow {
   name: string;
   active_poles: string[];
   subscription_plan: string | null;
+  status: string | null;
   member_count: number;
 }
+
+const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
+  pending:   { cls: "bg-amber-500/10 text-amber-600 border-amber-400/30", label: "En attente" },
+  active:    { cls: "bg-green-500/10 text-green-700 border-green-400/30", label: "Active" },
+  suspended: { cls: "bg-destructive/10 text-destructive border-destructive/30", label: "Suspendue" },
+};
 
 // ── Dashboard Tab ──────────────────────────────────────────
 function DashboardTab({
