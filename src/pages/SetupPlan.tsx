@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,50 +15,58 @@ import {
 
 export default function SetupPlanPage() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState<PlanId | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
 
-  // Setup pages are publicly accessible — no auth redirect
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login?redirect=/setup/plan", { replace: true });
+    }
+  }, [authLoading, user]);
+
+  // Get org ID from sessionStorage (set by SetupIdentity)
+  useEffect(() => {
+    const storedOrgId = sessionStorage.getItem("setup_org_id");
+    if (storedOrgId) {
+      setOrgId(storedOrgId);
+    } else if (!authLoading && user) {
+      // If no org ID in session, user might have come directly — redirect to identity
+      navigate("/setup/identity", { replace: true });
+    }
+  }, [authLoading, user]);
 
   const handleChoosePlan = async (plan: PlanId) => {
+    if (!orgId) {
+      toast({ title: "Erreur", description: "Organisation introuvable. Retournez à l'étape précédente.", variant: "destructive" });
+      return;
+    }
     setLoading(plan);
 
     try {
-      // Retrieve identity from sessionStorage
-      const raw = sessionStorage.getItem("setup_identity");
-      if (!raw) {
-        toast({ title: "Erreur", description: "Données d'identité manquantes. Retournez à l'étape précédente.", variant: "destructive" });
-        setLoading(null);
-        return;
-      }
-      const identity = JSON.parse(raw);
-
-      console.log("[SetupPlan] Calling handle_onboarding RPC with:", { name: identity.name, city: identity.city, plan });
-
-      // Use security definer RPC — bypasses RLS for role assignment
-      const { data: orgId, error } = await supabase.rpc("handle_onboarding" as any, {
-        p_name: identity.name,
-        p_city: identity.city,
-        p_postal_code: identity.postal_code || null,
-        p_phone: identity.phone || null,
-        p_siret: identity.siret || null,
-        p_plan: plan,
-      });
+      // Update the organization with the chosen plan
+      const { error } = await supabase
+        .from("organizations")
+        .update({ chosen_plan: plan, subscription_plan: plan })
+        .eq("id", orgId);
 
       if (error) {
-        console.error("[SetupPlan] handle_onboarding error:", error);
+        console.error("[SetupPlan] update error:", error);
         throw error;
       }
 
-      console.log("[SetupPlan] Organization created with ID:", orgId);
+      console.log("[SetupPlan] Plan updated to:", plan, "for org:", orgId);
 
       // Cleanup
+      sessionStorage.removeItem("setup_org_id");
       sessionStorage.removeItem("setup_identity");
 
       navigate("/setup/success", { replace: true });
     } catch (err: any) {
       console.error("[SetupPlan] Error:", err);
-      toast({ title: "Erreur lors de la création", description: err.message || "Une erreur inattendue est survenue.", variant: "destructive" });
+      toast({ title: "Erreur lors de la mise à jour", description: err.message || "Une erreur inattendue est survenue.", variant: "destructive" });
     } finally {
       setLoading(null);
     }
@@ -68,6 +77,14 @@ export default function SetupPlanPage() {
     pro: "29€/mois",
     elite: "59€/mois",
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "hsl(222 68% 6%)" }}>
+        <Loader2 className="h-8 w-8 animate-spin text-brand-cyan" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col p-4" style={{ background: "hsl(222 68% 6%)" }}>
@@ -85,8 +102,8 @@ export default function SetupPlanPage() {
           <h1 className="text-xl font-bold text-white">Choisissez votre plan</h1>
           <p className="text-sm text-white/50">Vous pourrez changer de plan à tout moment.</p>
           <div className="flex justify-center gap-2 pt-1">
-            <div className="h-1.5 w-12 rounded-full bg-primary" />
-            <div className="h-1.5 w-12 rounded-full bg-primary" />
+            <div className="h-1.5 w-12 rounded-full bg-brand-emerald" />
+            <div className="h-1.5 w-12 rounded-full bg-brand-emerald" />
           </div>
         </div>
 
@@ -105,7 +122,7 @@ export default function SetupPlanPage() {
               >
                 {planId === "pro" && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground text-[10px]">Recommandé</Badge>
+                    <Badge className="bg-brand-emerald text-white border-0 text-[10px]">Recommandé</Badge>
                   </div>
                 )}
                 <CardHeader className="text-center pb-3">
@@ -119,13 +136,13 @@ export default function SetupPlanPage() {
                   <ul className="space-y-1.5 text-xs text-white/50">
                     {modules.map((m) => (
                       <li key={m.id} className="flex items-start gap-2">
-                        <Check className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                        <Check className="h-3.5 w-3.5 text-brand-emerald mt-0.5 shrink-0" />
                         <span>{m.label}</span>
                       </li>
                     ))}
                     {modules.length === 0 && (
                       <li className="flex items-start gap-2">
-                        <Check className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                        <Check className="h-3.5 w-3.5 text-brand-emerald mt-0.5 shrink-0" />
                         <span>Modules de base inclus</span>
                       </li>
                     )}

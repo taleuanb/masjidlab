@@ -50,7 +50,7 @@ const queryClient = new QueryClient();
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const { loading: orgLoading, pendingAffectation } = useOrganization();
+  const { loading: orgLoading, pendingAffectation, org } = useOrganization();
 
   if (loading || orgLoading) {
     return (
@@ -62,6 +62,43 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // If org exists but is pending, force user to the success/waiting page
+  // Super admins bypass this restriction
+  if (org && org.status === "pending") {
+    const isSuperAdmin = false; // Will be checked below
+    return <Navigate to="/setup/success" replace />;
+  }
+
+  if (pendingAffectation) {
+    return <PendingAffectation />;
+  }
+
+  return <>{children}</>;
+}
+
+/** Wrapper that checks super_admin bypass for pending org guard */
+function RequireAuthWithOrgGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading, dbRoles } = useAuth();
+  const { loading: orgLoading, pendingAffectation, org } = useOrganization();
+  const isSuperAdmin = dbRoles.includes("super_admin");
+
+  if (loading || orgLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // If org exists but is pending → redirect to waiting page (super_admin bypasses)
+  if (org && org.status === "pending" && !isSuperAdmin) {
+    return <Navigate to="/setup/success" replace />;
   }
 
   if (pendingAffectation) {
@@ -81,7 +118,7 @@ const AppLayout = () => {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Index />} />
-            <Route path="/profil" element={<Index />} /> {/* TODO: create dedicated Profile page */}
+            <Route path="/profil" element={<Index />} />
             <Route path="/evenements" element={<EvenementsPage />} />
             <Route path="/parking" element={<ParkingPage />} />
             <Route path="/maintenance" element={<MaintenancePage />} />
@@ -96,7 +133,6 @@ const AppLayout = () => {
             <Route path="/configuration" element={<SettingsPage />} />
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/saas-admin" element={<SaasAdminPage />} />
-            {/* New skeleton routes */}
             <Route path="/eleves" element={<ElevesPage />} />
             <Route path="/classes" element={<ClassesPage />} />
             <Route path="/inscriptions" element={<InscriptionsPage />} />
@@ -124,9 +160,6 @@ const App = () => {
         <BrowserRouter>
           {vitrine ? (
             <Routes>
-              <Route path="/setup/identity" element={<SetupIdentityPage />} />
-              <Route path="/setup/plan" element={<SetupPlanPage />} />
-              <Route path="/setup/success" element={<SetupSuccessPage />} />
               <Route path="*" element={<LandingPage />} />
             </Routes>
           ) : (
@@ -140,15 +173,16 @@ const App = () => {
                       <Route path="/set-password" element={<SetPasswordPage />} />
                       <Route path="/onboarding" element={<OnboardingPage />} />
                       <Route path="/welcome" element={<WelcomePage />} />
+                      {/* Setup wizard — requires auth but NOT full org guard */}
                       <Route path="/setup/identity" element={<SetupIdentityPage />} />
                       <Route path="/setup/plan" element={<SetupPlanPage />} />
                       <Route path="/setup/success" element={<SetupSuccessPage />} />
                       <Route
                         path="/*"
                         element={
-                          <RequireAuth>
+                          <RequireAuthWithOrgGuard>
                             <AppLayout />
-                          </RequireAuth>
+                          </RequireAuthWithOrgGuard>
                         }
                       />
                     </Routes>

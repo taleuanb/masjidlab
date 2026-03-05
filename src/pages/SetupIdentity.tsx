@@ -1,14 +1,20 @@
 import { useState, useEffect } from "react";
 import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 
 export default function SetupIdentityPage() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     city: "",
@@ -17,25 +23,74 @@ export default function SetupIdentityPage() {
     siret: "",
   });
 
-  // Setup pages are publicly accessible — no auth redirect
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      // Save form data before redirecting so user can come back
+      if (form.name || form.city) {
+        sessionStorage.setItem("setup_identity", JSON.stringify(form));
+      }
+      navigate("/login?redirect=/setup/identity", { replace: true });
+    }
+  }, [authLoading, user]);
 
-  // Restore form state from sessionStorage when returning from /setup/plan
+  // Restore form state from sessionStorage
   useEffect(() => {
     const saved = sessionStorage.getItem("setup_identity");
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        setForm(parsed);
+        setForm(JSON.parse(saved));
       } catch { /* ignore */ }
     }
   }, []);
 
   const canContinue = form.name.trim().length > 0 && form.city.trim().length > 0;
 
-  const handleNext = () => {
-    sessionStorage.setItem("setup_identity", JSON.stringify(form));
-    navigate("/setup/plan");
+  const handleNext = async () => {
+    if (!user) return;
+    setSubmitting(true);
+
+    try {
+      // Create the organization via handle_onboarding RPC with default plan
+      const { data: orgId, error } = await supabase.rpc("handle_onboarding" as any, {
+        p_name: form.name.trim(),
+        p_city: form.city.trim(),
+        p_postal_code: form.postal_code || null,
+        p_phone: form.phone || null,
+        p_siret: form.siret || null,
+        p_plan: "starter", // Default plan, will be updated in SetupPlan
+      });
+
+      if (error) {
+        console.error("[SetupIdentity] handle_onboarding error:", error);
+        throw error;
+      }
+
+      console.log("[SetupIdentity] Organization created with ID:", orgId);
+
+      // Store org ID for the plan step
+      sessionStorage.setItem("setup_org_id", orgId);
+      sessionStorage.removeItem("setup_identity");
+
+      navigate("/setup/plan");
+    } catch (err: any) {
+      toast({
+        title: "Erreur",
+        description: err.message || "Impossible de créer l'organisation.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "hsl(222 68% 6%)" }}>
+        <Loader2 className="h-8 w-8 animate-spin text-brand-cyan" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col p-4" style={{ background: "hsl(222 68% 6%)" }}>
@@ -53,8 +108,8 @@ export default function SetupIdentityPage() {
           <CardTitle className="text-xl font-bold text-white">Identité de votre mosquée</CardTitle>
           <CardDescription className="text-white/50">Renseignez les informations de base. Vous pourrez les modifier plus tard.</CardDescription>
           <div className="flex justify-center gap-2 pt-2">
-            <div className="h-1.5 w-12 rounded-full bg-primary" />
-            <div className="h-1.5 w-12 rounded-full bg-muted" />
+            <div className="h-1.5 w-12 rounded-full bg-brand-emerald" />
+            <div className="h-1.5 w-12 rounded-full bg-white/10" />
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -84,13 +139,11 @@ export default function SetupIdentityPage() {
             <Input value={form.siret} onChange={(e) => setForm((f) => ({ ...f, siret: e.target.value }))} placeholder="W123456789 ou 123 456 789 00012" className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/30" />
           </div>
 
-          <Button className="w-full mt-2 bg-brand-emerald hover:bg-brand-emerald/90 text-white" onClick={handleNext} disabled={!canContinue}>
+          <Button className="w-full mt-2 bg-brand-emerald hover:bg-brand-emerald/90 text-white" onClick={handleNext} disabled={!canContinue || submitting}>
+            {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Suivant
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
-
-          <div className="text-center pt-1">
-          </div>
         </CardContent>
       </Card>
       </div>
