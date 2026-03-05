@@ -9,6 +9,7 @@ interface Organization {
   name: string;
   active_poles: string[];
   subscription_plan: string | null;
+  status: string | null;
 }
 
 interface OrganizationContextType {
@@ -64,6 +65,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           name: o.name,
           active_poles: o.active_poles ?? [],
           subscription_plan: o.subscription_plan,
+          status: o.status ?? null,
         }))
       );
     });
@@ -102,7 +104,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
       const { data: orgData, error: orgError } = await supabase
         .from("organizations")
-        .select("id, name, active_poles, subscription_plan")
+        .select("id, name, active_poles, subscription_plan, status")
         .eq("id", profile.org_id)
         .maybeSingle();
 
@@ -112,6 +114,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           name: orgData.name,
           active_poles: orgData.active_poles ?? [],
           subscription_plan: orgData.subscription_plan,
+          status: orgData.status,
         });
         setPendingAffectation(false);
       } else {

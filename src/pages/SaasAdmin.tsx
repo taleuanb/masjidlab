@@ -55,18 +55,26 @@ interface OrgRow {
   name: string;
   active_poles: string[];
   subscription_plan: string | null;
+  status: string | null;
   member_count: number;
 }
 
+const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
+  pending:   { cls: "bg-amber-500/10 text-amber-600 border-amber-400/30", label: "En attente" },
+  active:    { cls: "bg-green-500/10 text-green-700 border-green-400/30", label: "Active" },
+  suspended: { cls: "bg-destructive/10 text-destructive border-destructive/30", label: "Suspendue" },
+};
+
 // ── Dashboard Tab ──────────────────────────────────────────
 function DashboardTab({
-  orgs, totalUsers, loading, fetchAll, openModules,
+  orgs, totalUsers, loading, fetchAll, openModules, onValidate,
 }: {
   orgs: OrgRow[];
   totalUsers: number;
   loading: boolean;
   fetchAll: () => void;
   openModules: (o: OrgRow) => void;
+  onValidate: (o: OrgRow) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -122,7 +130,8 @@ function DashboardTab({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mosquée</TableHead>
+                 <TableHead>Mosquée</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Membres</TableHead>
                   <TableHead>Modules Actifs</TableHead>
@@ -133,6 +142,16 @@ function DashboardTab({
                 {orgs.map((o) => (
                   <TableRow key={o.id}>
                     <TableCell className="font-medium">{o.name}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const s = STATUS_BADGE[o.status ?? "active"] ?? STATUS_BADGE.active;
+                        return (
+                          <Badge variant="outline" className={`text-[10px] ${s.cls}`}>
+                            {s.label}
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
                         {o.subscription_plan ?? "starter"}
@@ -149,9 +168,17 @@ function DashboardTab({
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => openModules(o)}>
-                        Gérer les modules
-                      </Button>
+                      <div className="flex gap-1.5 justify-end">
+                        {(o.status === "pending" || !o.status) && o.status !== "active" && (
+                          <Button size="sm" variant="default" onClick={() => onValidate(o)} className="gap-1">
+                            <Check className="h-3.5 w-3.5" />
+                            Valider
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => openModules(o)}>
+                          Modules
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -579,6 +606,7 @@ export default function SaasAdminPage() {
         name: o.name,
         active_poles: o.active_poles ?? [],
         subscription_plan: o.subscription_plan,
+        status: o.status ?? "active",
         member_count: orgCounts.get(o.id) ?? 0,
       }));
       setOrgs(rows);
@@ -595,6 +623,20 @@ export default function SaasAdminPage() {
   const openModules = (o: OrgRow) => {
     setEditOrg(o);
     setEditPoles([...o.active_poles]);
+  };
+
+  const handleValidateOrg = async (o: OrgRow) => {
+    try {
+      const { error } = await supabase
+        .from("organizations")
+        .update({ status: "active" } as any)
+        .eq("id", o.id);
+      if (error) throw error;
+      toast({ title: "Mosquée validée ✅", description: `${o.name} est maintenant active.` });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
   };
 
   const togglePole = (poleId: string) => {
@@ -651,6 +693,7 @@ export default function SaasAdminPage() {
               loading={loading}
               fetchAll={fetchAll}
               openModules={openModules}
+              onValidate={handleValidateOrg}
             />
           </TabsContent>
 
