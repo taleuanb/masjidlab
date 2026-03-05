@@ -1,6 +1,6 @@
 import { VitrineHeader } from "@/components/vitrine/VitrineHeader";
 import { VitrineFooter } from "@/components/vitrine/VitrineFooter";
-import BentoPolesGrid from "@/components/vitrine/BentoPolesGrid";
+import HumanCentricPoles from "@/components/vitrine/HumanCentricPoles";
 import TrustSection from "@/components/vitrine/TrustSection";
 import PricingSection from "@/components/vitrine/PricingSection";
 import { Button } from "@/components/ui/button";
@@ -194,7 +194,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════ BENTO PÔLES ═══════════════════ */}
-      <BentoPolesGrid />
+      <HumanCentricPoles />
 
       {/* ═══════════════════ CONFIANCE & SÉCURITÉ ═══════════════════ */}
       <TrustSection />
