@@ -49,8 +49,8 @@ export default function WelcomePage() {
 
           <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm font-semibold text-foreground">J'ai déjà une équipe</p>
+              <Users className="h-4 w-4 text-white/50" />
+              <p className="text-sm font-semibold text-white">J'ai déjà une équipe</p>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Demandez une invitation à votre administrateur de mosquée.
