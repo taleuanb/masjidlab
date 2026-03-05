@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,12 @@ export default function SetupPlanPage() {
   const navigate = useNavigate();
   const { refetch } = useOrganization();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState<PlanId | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) navigate("/login", { replace: true });
+  }, [authLoading, user, navigate]);
 
   const handleChoosePlan = async (plan: PlanId) => {
     setLoading(plan);

@@ -1,10 +1,17 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Building2, Users, ChevronRight } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function WelcomePage() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/login", { replace: true });
+  }, [loading, user, navigate]);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">

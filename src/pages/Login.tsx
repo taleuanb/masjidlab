@@ -28,7 +28,7 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -38,13 +38,20 @@ export default function LoginPage() {
         });
         if (error) throw error;
 
-        if (inviteToken) {
-          // Invitation flow: redirect directly, the token will be handled server-side
-          toast({ title: "Compte créé", description: "Bienvenue dans votre équipe !" });
-          navigate("/", { replace: true });
+        if (data.session) {
+          // Session exists (email auto-confirmed or confirmation disabled)
+          if (inviteToken) {
+            toast({ title: "Compte créé", description: "Bienvenue dans votre équipe !" });
+            navigate("/", { replace: true });
+          } else {
+            navigate("/welcome", { replace: true });
+          }
         } else {
-          // Free signup: redirect to welcome page
-          navigate("/welcome", { replace: true });
+          // Email confirmation required — stay on login
+          toast({
+            title: "Vérifiez votre email",
+            description: "Un lien de confirmation vous a été envoyé. Cliquez dessus puis connectez-vous.",
+          });
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
