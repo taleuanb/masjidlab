@@ -52,7 +52,7 @@ export default function WelcomePage() {
               <Users className="h-4 w-4 text-white/50" />
               <p className="text-sm font-semibold text-white">J'ai déjà une équipe</p>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-xs text-white/40 leading-relaxed">
               Demandez une invitation à votre administrateur de mosquée.
               Il pourra vous ajouter depuis l'espace "Membres & Rôles".
             </p>

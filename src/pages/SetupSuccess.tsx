@@ -36,7 +36,7 @@ export default function SetupSuccessPage() {
             En attendant, vous pouvez accéder à votre profil et explorer le tableau de bord.
           </p>
 
-          <Button className="w-full" onClick={() => navigate("/dashboard", { replace: true })}>
+          <Button className="w-full bg-brand-emerald hover:bg-brand-emerald/90 text-white" onClick={() => navigate("/dashboard", { replace: true })}>
             Accéder à mon espace
           </Button>
         </CardContent>

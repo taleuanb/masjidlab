@@ -142,7 +142,7 @@ export default function SetupPlanPage() {
                     )}
                   </ul>
                   <Button
-                    className="w-full"
+                    className={`w-full ${planId === "pro" ? "bg-brand-emerald hover:bg-brand-emerald/90 text-white" : "border-white/20 text-white hover:bg-white/10 bg-transparent"}`}
                     variant={planId === "pro" ? "default" : "outline"}
                     onClick={() => handleChoosePlan(planId)}
                     disabled={loading !== null}

@@ -82,12 +82,12 @@ export function VitrineHeader() {
               ))}
               <div className="pt-4 border-t border-white/10 space-y-3">
                 <a
-                  href="https://app.masjidlab.com/login"
+                  href="/login"
                   className="block text-sm font-medium text-brand-cyan text-center py-2"
                 >
                   Connexion
                 </a>
-                <a href="https://app.masjidlab.com/register" className="block">
+                <a href="/setup/identity" className="block">
                   <Button className="w-full bg-brand-emerald hover:bg-brand-emerald/90 text-white">
                     Démarrer
                   </Button>

@@ -205,7 +205,7 @@ export default function LandingPage() {
             <p className="text-white/50 mb-8 max-w-lg mx-auto">
               Rejoignez les institutions qui font confiance à MASJIDLAB pour leur gestion quotidienne.
             </p>
-            <a href="https://app.masjidlab.com/register">
+            <a href="/setup/identity">
               <Button size="lg" className="bg-brand-emerald hover:bg-brand-emerald/90 text-white shadow-[0_0_30px_hsl(161_84%_39%/0.3)] gap-2 px-8">
                 Créer mon espace
                 <ArrowRight className="h-4 w-4" />

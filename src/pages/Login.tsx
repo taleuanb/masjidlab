@@ -98,6 +98,7 @@ export default function LoginPage() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   autoComplete="name"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                 />
               </div>
             )}
