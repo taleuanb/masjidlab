@@ -127,7 +127,7 @@ export default function SetupPlanPage() {
                   <p className="text-2xl font-bold text-white">{PLAN_PRICES[planId]}</p>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <ul className="space-y-1.5 text-xs text-muted-foreground">
+                  <ul className="space-y-1.5 text-xs text-white/50">
                     {modules.map((m) => (
                       <li key={m.id} className="flex items-start gap-2">
                         <Check className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
