@@ -966,7 +966,7 @@ export default function OrganisationPage() {
           )}
           {addMode === "invite" && (
             <p className="text-xs text-muted-foreground bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
-              Un email d'invitation sera envoyé. Une fois le mot de passe créé, le membre aura accès à MASJIDI et passera en badge <strong>Actif</strong>.
+              Un email d'invitation sera envoyé. Une fois le mot de passe créé, le membre aura accès à MASJIDLAB et passera en badge <strong>Actif</strong>.
             </p>
           )}
 
