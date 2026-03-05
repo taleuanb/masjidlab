@@ -103,7 +103,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
       const { data: orgData, error: orgError } = await supabase
         .from("organizations")
-        .select("id, name, active_poles, subscription_plan")
+        .select("id, name, active_poles, subscription_plan, status")
         .eq("id", profile.org_id)
         .maybeSingle();
 
