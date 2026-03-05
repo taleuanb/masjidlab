@@ -190,18 +190,13 @@ function buildEmptyMatrix(): PermMatrix {
   return m;
 }
 
-function PermissionsTab({ orgs }: { orgs: OrgRow[] }) {
+function PermissionsTab() {
   const { toast } = useToast();
 
-  const [selectedOrgId, setSelectedOrgId] = useState<string>("global");
   const [matrix, setMatrix] = useState<PermMatrix>(buildEmptyMatrix);
-  const [globalMatrix, setGlobalMatrix] = useState<PermMatrix>(buildEmptyMatrix);
-  const [hasOrgOverride, setHasOrgOverride] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const isGlobal = selectedOrgId === "global";
-  const selectedOrgPlan = (isGlobal ? null : orgs.find((o) => o.id === selectedOrgId)?.subscription_plan ?? "starter") as PlanId | null;
+  const [resetting, setResetting] = useState(false);
 
   // ── Load permissions from DB ──
   const loadMatrix = useCallback(async (orgId: string | null): Promise<PermMatrix> => {

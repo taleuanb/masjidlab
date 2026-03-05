@@ -12,9 +12,10 @@
  * CORE modules bypass RBAC for admin-like roles (non-ghost).
  */
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect, useState } from "react";
 import { useAuth, type EffectivePermission } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   isModuleInPlan,
   CORE_MODULE_IDS,
@@ -23,50 +24,61 @@ import {
   MODULE_MAP,
 } from "@/config/module-registry";
 
-export interface ModuleAccessResult {
-  /** Whether the module is fully accessible (passes all 3 filters) */
-  allowed: boolean;
-  /** Whether the module is blocked by plan (upgrade required) */
-  blockedByPlan: boolean;
-  /** Whether the module is blocked by RBAC */
-  blockedByRbac: boolean;
-  /** Whether the module is a CORE module */
-  isCore: boolean;
-}
-
-interface UseModuleAccessReturn {
-  /** Check full access for a single module */
-  checkAccess: (moduleKey: string) => ModuleAccessResult;
-  /** Simple boolean check (convenience) */
-  hasAccess: (moduleKey: string) => boolean;
-  /** Current plan of the org */
-  currentPlan: PlanId;
-  /** Whether user has super_admin bypass */
-  isBypassing: boolean;
+/**
+ * Global permissions row from role_permissions where org_id IS NULL.
+ */
+interface GlobalPermRow {
+  module: string;
+  enabled: boolean;
 }
 
 export function useModuleAccess(): UseModuleAccessReturn {
-  const { dbRole, permissions, impersonatedUser } = useAuth();
+  const { dbRole, dbRoles, impersonatedUser } = useAuth();
   const { org, activePoles } = useOrganization();
 
   const isSuperAdmin = dbRole === "super_admin";
   const isGhostActive = !!impersonatedUser;
-  // Super admin bypass only when NOT in ghost mode
   const isBypassing = isSuperAdmin && !isGhostActive;
-  const isAdminLike = !isGhostActive && (dbRole === "admin" || dbRole === "super_admin");
 
   const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
 
-  // Build a set of RBAC-enabled modules from permissions
-  const rbacSet = useMemo<Set<string>>(() => {
-    const set = new Set<string>();
-    for (const p of permissions) {
-      if (p.enabled) set.add(p.module);
-    }
-    return set;
-  }, [permissions]);
+  // ── Fetch GLOBAL permissions (org_id IS NULL) for effective roles ──
+  const effectiveRoles = useMemo(() => {
+    if (isGhostActive && impersonatedUser?.roles) return impersonatedUser.roles;
+    return dbRoles.length > 0 ? dbRoles : (dbRole ? [dbRole] : []);
+  }, [dbRoles, dbRole, isGhostActive, impersonatedUser]);
 
-  // Build a set of activated modules from org's active_poles
+  const [globalPerms, setGlobalPerms] = useState<Map<string, boolean>>(new Map());
+
+  useEffect(() => {
+    if (effectiveRoles.length === 0) {
+      setGlobalPerms(new Map());
+      return;
+    }
+    // Query global permissions (org_id IS NULL) for all effective roles, union permissive
+    (async () => {
+      const { data, error } = await supabase
+        .from("role_permissions")
+        .select("module, enabled, role")
+        .is("org_id", null)
+        .in("role", effectiveRoles as any);
+
+      if (error || !data) {
+        console.error("useModuleAccess: error fetching global perms", error?.message);
+        setGlobalPerms(new Map());
+        return;
+      }
+      // BOOL_OR: if any role has enabled=true for a module, it's enabled
+      const map = new Map<string, boolean>();
+      for (const row of data as any[]) {
+        const current = map.get(row.module) ?? false;
+        map.set(row.module, current || !!(row.enabled));
+      }
+      setGlobalPerms(map);
+    })();
+  }, [effectiveRoles]);
+
+  // Build activation set from org's active_poles
   const activePoleSet = useMemo<Set<string>>(() => new Set(activePoles), [activePoles]);
 
   const checkAccess = useCallback((moduleKey: string): ModuleAccessResult => {
@@ -77,8 +89,6 @@ export function useModuleAccess(): UseModuleAccessReturn {
     if (isCore && meta) {
       const defaultRoles = meta.defaultRoles ?? [];
       const hasWildcard = defaultRoles.includes("*");
-      // Effective role: in ghost mode use impersonated roles, otherwise use dbRole
-      const effectiveRoles = impersonatedUser?.roles ?? (dbRole ? [dbRole] : []);
       const allowed = hasWildcard || effectiveRoles.some((r) => defaultRoles.includes(r));
       return { allowed, blockedByPlan: false, blockedByRbac: !allowed, isCore };
     }
@@ -88,27 +98,27 @@ export function useModuleAccess(): UseModuleAccessReturn {
       return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
     }
 
-    // ── Priority 3: Triple filter (Plan + Activation + RBAC) ──
-    // Condition A: Plan filter
+    // ── Priority 3: Triple filter (Plan + Activation + Global RBAC) ──
+
+    // A) Plan filter
     const inPlan = isModuleInPlan(moduleKey, currentPlan);
     if (!inPlan) {
       return { allowed: false, blockedByPlan: true, blockedByRbac: false, isCore };
     }
 
-    // Condition B: Activation filter — module must be in org's active_poles
-    // Only check for parent-level module keys (not sub-modules like "education.eleves")
+    // B) Activation filter — module's parent must be in org's active_poles
     const parentKey = moduleKey.includes(".") ? moduleKey.split(".")[0] : moduleKey;
     if (activePoleSet.size > 0 && !activePoleSet.has(parentKey)) {
       return { allowed: false, blockedByPlan: false, blockedByRbac: false, isCore };
     }
 
-    // Condition C: RBAC filter
-    if (permissions.length > 0 && !rbacSet.has(moduleKey)) {
+    // C) Global RBAC filter — check global permissions (org_id IS NULL)
+    if (globalPerms.size > 0 && !globalPerms.get(moduleKey)) {
       return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
     }
 
     return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
-  }, [isBypassing, currentPlan, isAdminLike, permissions, rbacSet, impersonatedUser, dbRole, activePoleSet]);
+  }, [isBypassing, currentPlan, effectiveRoles, globalPerms, activePoleSet]);
 
   const hasAccess = useCallback((moduleKey: string): boolean => {
     return checkAccess(moduleKey).allowed;
