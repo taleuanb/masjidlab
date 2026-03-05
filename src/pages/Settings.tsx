@@ -147,7 +147,7 @@ export default function SettingsPage() {
   const [polesLoading, setPolesLoading] = useState(false);
 
   const togglePole = async (poleId: string) => {
-    if (!orgId || !isAdmin) return;
+    if (!orgId || !canManageModules) return;
     const isActive = activePoles.includes(poleId);
     const next = isActive
       ? activePoles.filter((p) => p !== poleId)
