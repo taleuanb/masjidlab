@@ -47,6 +47,7 @@ export function useModuleAccess(): UseModuleAccessReturn {
   const isBypassing = isSuperAdmin && !isGhostActive;
 
   const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
+  const orgStatus = org?.status ?? "active";
 
   // ── Fetch GLOBAL permissions (org_id IS NULL) for effective roles ──
   const effectiveRoles = useMemo(() => {
