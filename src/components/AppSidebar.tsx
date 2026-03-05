@@ -380,7 +380,7 @@ export function AppSidebar() {
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
             <div className="space-y-px">
               {visibleMetierBlocks.map((block) => (
-                <SidebarBlock key={block.id} block={block} location={location} />
+                <SidebarBlock key={block.id} block={block} location={location} isModuleVisible={isModuleVisible} />
               ))}
             </div>
           </div>
