@@ -301,9 +301,7 @@ export function AppSidebar() {
       {/* ── Header: logo + org ── */}
       <SidebarHeader className="px-4 py-3">
         <button onClick={handleLogoClick} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md gradient-emerald">
-            <Building2 className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <img src={masjidLabLogo} alt="MasjidLab" className="h-8 w-8 shrink-0 rounded-md object-contain" />
           <div className="min-w-0 text-left">
             <h1 className="text-sm font-bold text-sidebar-primary-foreground tracking-tight truncate">
               {org?.name ?? "MasjidLab"}
