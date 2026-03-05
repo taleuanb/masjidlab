@@ -87,14 +87,14 @@ export default function SetupPlanPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
       <div className="w-full max-w-4xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-xl flex items-center justify-center mb-2">
-            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-14 w-14 object-contain" />
+          <div className="mx-auto mb-2">
+            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-16 w-16 object-contain drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
           </div>
-          <h1 className="text-xl font-bold text-foreground">Choisissez votre plan</h1>
-          <p className="text-sm text-muted-foreground">Vous pourrez changer de plan à tout moment.</p>
+          <h1 className="text-xl font-bold text-white">Choisissez votre plan</h1>
+          <p className="text-sm text-white/50">Vous pourrez changer de plan à tout moment.</p>
           <div className="flex justify-center gap-2 pt-1">
             <div className="h-1.5 w-12 rounded-full bg-primary" />
             <div className="h-1.5 w-12 rounded-full bg-primary" />
