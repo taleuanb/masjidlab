@@ -2,6 +2,7 @@ import { VitrineHeader } from "@/components/vitrine/VitrineHeader";
 import { VitrineFooter } from "@/components/vitrine/VitrineFooter";
 import BentoPolesGrid from "@/components/vitrine/BentoPolesGrid";
 import TrustSection from "@/components/vitrine/TrustSection";
+import PricingSection from "@/components/vitrine/PricingSection";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ArrowRight, Building2, Users, BookOpen, BarChart3, Shield, Zap, Lock, Server, ShieldCheck } from "lucide-react";
