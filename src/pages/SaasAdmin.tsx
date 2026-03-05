@@ -71,6 +71,125 @@ const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
   suspended: { cls: "bg-destructive/10 text-destructive border-destructive/30", label: "Suspendue" },
 };
 
+// ── Pending Approvals Tab ──────────────────────────────────
+function PendingApprovalsTab({
+  orgs, loading, onValidate, validatingId,
+}: {
+  orgs: OrgRow[];
+  loading: boolean;
+  onValidate: (o: OrgRow) => void;
+  validatingId: string | null;
+}) {
+  const pendingOrgs = orgs.filter((o) => o.status === "pending");
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (pendingOrgs.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-500/10 mb-4">
+            <Check className="h-7 w-7 text-green-600" />
+          </div>
+          <h3 className="text-base font-semibold">Aucune demande en attente</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Toutes les mosquées ont été traitées.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="h-4 w-4 text-amber-500" />
+          {pendingOrgs.length} demande{pendingOrgs.length > 1 ? "s" : ""} en attente
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Mosquée</TableHead>
+              <TableHead>Ville</TableHead>
+              <TableHead>Responsable (Email)</TableHead>
+              <TableHead>Plan choisi</TableHead>
+              <TableHead>Date d'inscription</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pendingOrgs.map((o) => {
+              const plan = (o.chosen_plan ?? "starter") as PlanId;
+              const planMeta = PLAN_META[plan] ?? PLAN_META.starter;
+              const isValidating = validatingId === o.id;
+
+              return (
+                <TableRow key={o.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      {o.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      {o.city ?? "—"}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-sm truncate max-w-[200px]">{o.owner_email ?? "—"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`capitalize text-[10px] ${planMeta.badgeCls}`}>
+                      {planMeta.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
+                      <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                      {o.created_at
+                        ? format(new Date(o.created_at), "dd MMM yyyy", { locale: fr })
+                        : "—"}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      onClick={() => onValidate(o)}
+                      disabled={isValidating}
+                      className="gap-1.5"
+                    >
+                      {isValidating ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                      {isValidating ? "Activation…" : "Valider la Mosquée"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Dashboard Tab ──────────────────────────────────────────
 function DashboardTab({
   orgs, totalUsers, loading, fetchAll, openModules, onValidate,
