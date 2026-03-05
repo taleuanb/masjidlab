@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, Fragment } from "react";
 import {
   Building2, Users, Globe, Loader2, RefreshCw, Check, Shield, Save,
-  ChevronDown, ChevronRight, Lock,
+  ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
 } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { useToast } from "@/hooks/use-toast";
@@ -53,10 +55,14 @@ const PERM_LABELS: Record<PermCol, string> = {
 interface OrgRow {
   id: string;
   name: string;
+  city: string | null;
   active_poles: string[];
   subscription_plan: string | null;
+  chosen_plan: string | null;
   status: string | null;
   member_count: number;
+  owner_email: string | null;
+  created_at: string | null;
 }
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
@@ -64,6 +70,125 @@ const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
   active:    { cls: "bg-green-500/10 text-green-700 border-green-400/30", label: "Active" },
   suspended: { cls: "bg-destructive/10 text-destructive border-destructive/30", label: "Suspendue" },
 };
+
+// ── Pending Approvals Tab ──────────────────────────────────
+function PendingApprovalsTab({
+  orgs, loading, onValidate, validatingId,
+}: {
+  orgs: OrgRow[];
+  loading: boolean;
+  onValidate: (o: OrgRow) => void;
+  validatingId: string | null;
+}) {
+  const pendingOrgs = orgs.filter((o) => o.status === "pending");
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (pendingOrgs.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-500/10 mb-4">
+            <Check className="h-7 w-7 text-green-600" />
+          </div>
+          <h3 className="text-base font-semibold">Aucune demande en attente</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Toutes les mosquées ont été traitées.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="h-4 w-4 text-amber-500" />
+          {pendingOrgs.length} demande{pendingOrgs.length > 1 ? "s" : ""} en attente
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Mosquée</TableHead>
+              <TableHead>Ville</TableHead>
+              <TableHead>Responsable (Email)</TableHead>
+              <TableHead>Plan choisi</TableHead>
+              <TableHead>Date d'inscription</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pendingOrgs.map((o) => {
+              const plan = (o.chosen_plan ?? "starter") as PlanId;
+              const planMeta = PLAN_META[plan] ?? PLAN_META.starter;
+              const isValidating = validatingId === o.id;
+
+              return (
+                <TableRow key={o.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      {o.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      {o.city ?? "—"}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-sm truncate max-w-[200px]">{o.owner_email ?? "—"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`capitalize text-[10px] ${planMeta.badgeCls}`}>
+                      {planMeta.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
+                      <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                      {o.created_at
+                        ? format(new Date(o.created_at), "dd MMM yyyy", { locale: fr })
+                        : "—"}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      onClick={() => onValidate(o)}
+                      disabled={isValidating}
+                      className="gap-1.5"
+                    >
+                      {isValidating ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                      {isValidating ? "Activation…" : "Valider la Mosquée"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
 
 // ── Dashboard Tab ──────────────────────────────────────────
 function DashboardTab({
@@ -589,25 +714,39 @@ export default function SaasAdminPage() {
   const [editOrg, setEditOrg] = useState<OrgRow | null>(null);
   const [editPoles, setEditPoles] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [validatingId, setValidatingId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       const { data: orgsData } = await supabase.rpc("get_all_organizations");
-      const { data: profiles } = await supabase.from("profiles").select("org_id");
+      const { data: profiles } = await supabase.from("profiles").select("org_id, email, user_id");
 
       const orgCounts = new Map<string, number>();
+      const ownerEmails = new Map<string, string>();
       (profiles ?? []).forEach((p: any) => {
         if (p.org_id) orgCounts.set(p.org_id, (orgCounts.get(p.org_id) ?? 0) + 1);
       });
 
+      // Map owner_id → email
+      for (const o of (orgsData ?? []) as any[]) {
+        if (o.owner_id) {
+          const ownerProfile = (profiles ?? []).find((p: any) => p.user_id === o.owner_id);
+          if (ownerProfile) ownerEmails.set(o.id, (ownerProfile as any).email ?? null);
+        }
+      }
+
       const rows: OrgRow[] = (orgsData ?? []).map((o: any) => ({
         id: o.id,
         name: o.name,
+        city: o.city ?? null,
         active_poles: o.active_poles ?? [],
         subscription_plan: o.subscription_plan,
+        chosen_plan: o.chosen_plan ?? o.subscription_plan,
         status: o.status ?? "active",
         member_count: orgCounts.get(o.id) ?? 0,
+        owner_email: ownerEmails.get(o.id) ?? null,
+        created_at: o.created_at ?? null,
       }));
       setOrgs(rows);
       setTotalUsers((profiles ?? []).length);
@@ -626,35 +765,36 @@ export default function SaasAdminPage() {
   };
 
   const handleValidateOrg = async (o: OrgRow) => {
+    setValidatingId(o.id);
     try {
-      // 1. Set status to active
-      const { error } = await supabase
-        .from("organizations")
-        .update({ status: "active" } as any)
-        .eq("id", o.id);
-      if (error) throw error;
-
-      // 2. Auto-activate modules included in the org's chosen_plan
-      const plan = (o.subscription_plan ?? "starter") as PlanId;
+      const plan = (o.chosen_plan ?? o.subscription_plan ?? "starter") as PlanId;
       const { PLAN_FEATURE_MAPPING } = await import("@/config/module-registry");
       const planModules = PLAN_FEATURE_MAPPING[plan] ?? PLAN_FEATURE_MAPPING.starter;
-      // Filter to only non-CORE business modules
       const businessModuleIds = planModules.filter(
         (id: string) => !MODULE_REGISTRY.find((m) => m.id === id)?.isCore
       );
 
-      if (businessModuleIds.length > 0) {
-        const { error: polesError } = await supabase
-          .from("organizations")
-          .update({ active_poles: businessModuleIds })
-          .eq("id", o.id);
-        if (polesError) throw polesError;
-      }
+      // 1. Set status to active + subscription_plan from chosen_plan + activate modules
+      const { error } = await supabase
+        .from("organizations")
+        .update({
+          status: "active",
+          subscription_plan: plan,
+          active_poles: businessModuleIds,
+        } as any)
+        .eq("id", o.id);
+      if (error) throw error;
 
-      toast({ title: "Mosquée validée ✅", description: `${o.name} est maintenant active avec ${businessModuleIds.length} modules activés.` });
+      const planLabel = PLAN_META[plan]?.label ?? plan;
+      toast({
+        title: "Mosquée activée ✅",
+        description: `${o.name} est maintenant active — modules provisionnés pour le plan ${planLabel}.`,
+      });
       fetchAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setValidatingId(null);
     }
   };
 
@@ -699,11 +839,29 @@ export default function SaasAdminPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="dashboard" className="space-y-4">
+        <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="pending" className="gap-1.5">
+              <Clock className="h-3.5 w-3.5" />
+              Demandes en attente
+              {orgs.filter((o) => o.status === "pending").length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px]">
+                  {orgs.filter((o) => o.status === "pending").length}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="permissions">Permissions & RBAC</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="pending">
+            <PendingApprovalsTab
+              orgs={orgs}
+              loading={loading}
+              onValidate={handleValidateOrg}
+              validatingId={validatingId}
+            />
+          </TabsContent>
 
           <TabsContent value="dashboard">
             <DashboardTab
