@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Check, ArrowLeft } from "lucide-react";
@@ -15,13 +14,11 @@ import {
 
 export default function SetupPlanPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { refetch } = useOrganization();
   const { toast } = useToast();
   const [loading, setLoading] = useState<PlanId | null>(null);
 
   const handleChoosePlan = async (plan: PlanId) => {
-    if (!user) return;
     setLoading(plan);
 
     try {
@@ -34,54 +31,24 @@ export default function SetupPlanPage() {
       }
       const identity = JSON.parse(raw);
 
-      // 1. Create the organization
-      const { data: orgData, error: orgError } = await supabase
-        .from("organizations")
-        .insert({
-          name: identity.name,
-          city: identity.city,
-          postal_code: identity.postal_code,
-          phone: identity.phone,
-          siret: identity.siret || null,
-          status: "pending",
-          subscription_plan: plan,
-          chosen_plan: plan,
-          owner_id: user.id,
-        } as any)
-        .select("id")
-        .single();
+      console.log("[SetupPlan] Calling handle_onboarding RPC with:", { name: identity.name, city: identity.city, plan });
 
-      if (orgError) throw orgError;
-      const orgId = orgData.id;
+      // Use security definer RPC — bypasses RLS for role assignment
+      const { data: orgId, error } = await supabase.rpc("handle_onboarding" as any, {
+        p_name: identity.name,
+        p_city: identity.city,
+        p_postal_code: identity.postal_code || null,
+        p_phone: identity.phone || null,
+        p_siret: identity.siret || null,
+        p_plan: plan,
+      });
 
-      // 2. Update the user's profile to link to this org
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ org_id: orgId } as any)
-        .eq("user_id", user.id);
+      if (error) {
+        console.error("[SetupPlan] handle_onboarding error:", error);
+        throw error;
+      }
 
-      if (profileError) throw profileError;
-
-      // 3. Assign 'responsable' role for this org
-      // First remove existing non-super_admin roles
-      await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", user.id)
-        .neq("role", "super_admin" as any);
-
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: user.id,
-          role: "responsable",
-          org_id: orgId,
-        } as any);
-
-      if (roleError) throw roleError;
-
-      // 4. Clone default permissions
-      await supabase.rpc("clone_default_permissions", { p_org_id: orgId });
+      console.log("[SetupPlan] Organization created with ID:", orgId);
 
       // Cleanup
       sessionStorage.removeItem("setup_identity");
@@ -91,7 +58,8 @@ export default function SetupPlanPage() {
 
       navigate("/setup/success", { replace: true });
     } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      console.error("[SetupPlan] Error:", err);
+      toast({ title: "Erreur lors de la création", description: err.message || "Une erreur inattendue est survenue.", variant: "destructive" });
     } finally {
       setLoading(null);
     }
@@ -164,9 +132,7 @@ export default function SetupPlanPage() {
                     onClick={() => handleChoosePlan(planId)}
                     disabled={loading !== null}
                   >
-                    {loading === planId ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
+                    {loading === planId && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Choisir {meta.label}
                   </Button>
                 </CardContent>
