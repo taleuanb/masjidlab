@@ -625,6 +625,20 @@ export default function SaasAdminPage() {
     setEditPoles([...o.active_poles]);
   };
 
+  const handleValidateOrg = async (o: OrgRow) => {
+    try {
+      const { error } = await supabase
+        .from("organizations")
+        .update({ status: "active" } as any)
+        .eq("id", o.id);
+      if (error) throw error;
+      toast({ title: "Mosquée validée ✅", description: `${o.name} est maintenant active.` });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
   const togglePole = (poleId: string) => {
     setEditPoles((prev) =>
       prev.includes(poleId) ? prev.filter((p) => p !== poleId) : [...prev, poleId]
