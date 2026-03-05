@@ -15,7 +15,7 @@ const APP_HOST = "app.masjidlab.com";
 
 export function isVitrineDomain(): boolean {
   const hostname = window.location.hostname.toLowerCase();
-  return hostname === "masjidlab.com" || hostname === "www.masjidlab.com" || hostname === "localhost";
+  return hostname.includes("masjidlab.com") || hostname === "localhost";
 }
 
 export function isAppDomain(): boolean {

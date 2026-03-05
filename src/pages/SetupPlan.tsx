@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useOrganization } from "@/contexts/OrganizationContext";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +14,7 @@ import {
 
 export default function SetupPlanPage() {
   const navigate = useNavigate();
-  const { refetch } = useOrganization();
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState<PlanId | null>(null);
 
   // Setup pages are publicly accessible — no auth redirect
@@ -58,9 +54,6 @@ export default function SetupPlanPage() {
       // Cleanup
       sessionStorage.removeItem("setup_identity");
 
-      // Refresh org context
-      refetch();
-
       navigate("/setup/success", { replace: true });
     } catch (err: any) {
       console.error("[SetupPlan] Error:", err);
@@ -81,7 +74,7 @@ export default function SetupPlanPage() {
       <div className="w-full max-w-4xl space-y-6">
         <div className="text-center space-y-2">
           <a href="https://masjidlab.com" className="mx-auto mb-2 block">
-            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-16 w-16 object-contain drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
+            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
           </a>
           <h1 className="text-xl font-bold text-white">Choisissez votre plan</h1>
           <p className="text-sm text-white/50">Vous pourrez changer de plan à tout moment.</p>
