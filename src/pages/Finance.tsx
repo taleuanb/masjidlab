@@ -210,7 +210,7 @@ export default function FinancePage() {
                     </span>
                   </div>
                 </div>
-              ))
+              ))}
             </div>
           )}
         </CardContent>
