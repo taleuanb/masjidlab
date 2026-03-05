@@ -192,6 +192,9 @@ export default function LandingPage() {
       {/* ═══════════════════ CONFIANCE & SÉCURITÉ ═══════════════════ */}
       <TrustSection />
 
+      {/* ═══════════════════ TARIFS ═══════════════════ */}
+      <PricingSection />
+
       {/* ═══════════════════ CTA FINAL ═══════════════════ */}
       <section className="py-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
