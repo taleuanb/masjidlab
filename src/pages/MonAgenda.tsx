@@ -75,7 +75,7 @@ const POLE_COLORS: Record<string, string> = {
   Récolte: "bg-emerald-500/15 border-emerald-500/30 text-emerald-700",
   Digital: "bg-cyan-500/15 border-cyan-500/30 text-cyan-700",
   Com: "bg-pink-500/15 border-pink-500/30 text-pink-700",
-  Parking: "bg-slate-500/15 border-slate-500/30 text-slate-700",
+  Parking: "bg-muted border-border text-muted-foreground",
 };
 
 export default function MonAgendaPage() {

@@ -9,44 +9,44 @@
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
     --background: 210 20% 98%;
-    --foreground: 220 71% 14%;
+    --foreground: 222 68% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 71% 14%;
+    --card-foreground: 222 68% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 71% 14%;
+    --popover-foreground: 222 68% 15%;
 
-    --primary: 220 71% 14%;
+    --primary: 222 68% 15%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 160 82% 39%;
+    --secondary: 161 84% 39%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 214 20% 94%;
     --muted-foreground: 220 15% 46%;
 
-    --accent: 184 72% 56%;
-    --accent-foreground: 220 71% 14%;
+    --accent: 185 73% 57%;
+    --accent-foreground: 222 68% 15%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 15% 88%;
     --input: 220 15% 88%;
-    --ring: 160 82% 39%;
+    --ring: 161 84% 39%;
 
     --radius: 0.5rem;
 
     /* Sidebar — Navy deep */
-    --sidebar-background: 220 71% 14%;
-    --sidebar-foreground: 220 15% 88%;
-    --sidebar-primary: 160 82% 39%;
+    --sidebar-background: 222 68% 15%;
+    --sidebar-foreground: 220 15% 90%;
+    --sidebar-primary: 185 73% 57%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 55% 20%;
+    --sidebar-accent: 222 55% 22%;
     --sidebar-accent-foreground: 220 10% 92%;
-    --sidebar-border: 220 55% 18%;
-    --sidebar-ring: 160 82% 39%;
+    --sidebar-border: 222 55% 18%;
+    --sidebar-ring: 185 73% 57%;
     --sidebar-muted: 220 30% 30%;
 
     /* Extended palette tokens */
@@ -65,33 +65,33 @@
   }
 
   .dark {
-    --background: 220 71% 6%;
+    --background: 222 68% 6%;
     --foreground: 210 20% 92%;
-    --card: 220 55% 10%;
+    --card: 222 55% 10%;
     --card-foreground: 210 20% 92%;
-    --popover: 220 55% 10%;
+    --popover: 222 55% 10%;
     --popover-foreground: 210 20% 92%;
-    --primary: 160 82% 39%;
-    --primary-foreground: 220 71% 6%;
-    --secondary: 220 50% 20%;
+    --primary: 161 84% 39%;
+    --primary-foreground: 222 68% 6%;
+    --secondary: 222 50% 20%;
     --secondary-foreground: 210 20% 90%;
-    --muted: 220 40% 14%;
+    --muted: 222 40% 14%;
     --muted-foreground: 215 16% 55%;
-    --accent: 184 72% 46%;
+    --accent: 185 73% 46%;
     --accent-foreground: 210 20% 92%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 210 20% 90%;
-    --border: 220 40% 18%;
-    --input: 220 40% 18%;
-    --ring: 160 82% 39%;
-    --sidebar-background: 220 71% 6%;
+    --border: 222 40% 18%;
+    --input: 222 40% 18%;
+    --ring: 161 84% 39%;
+    --sidebar-background: 222 68% 6%;
     --sidebar-foreground: 210 20% 80%;
-    --sidebar-primary: 160 82% 39%;
+    --sidebar-primary: 185 73% 57%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 50% 12%;
+    --sidebar-accent: 222 50% 12%;
     --sidebar-accent-foreground: 210 20% 85%;
-    --sidebar-border: 220 50% 12%;
-    --sidebar-ring: 160 82% 39%;
+    --sidebar-border: 222 50% 12%;
+    --sidebar-ring: 185 73% 57%;
     --amber-warm: 38 92% 50%;
     --amber-warm-foreground: 38 92% 80%;
   }
@@ -120,28 +120,28 @@
 
   /* Gradients */
   .gradient-navy {
-    background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(220, 55%, 22%));
+    background: linear-gradient(135deg, hsl(222, 68%, 15%), hsl(222, 55%, 22%));
   }
 
   .gradient-emerald {
-    background: linear-gradient(135deg, hsl(160, 82%, 39%), hsl(184, 72%, 56%));
+    background: linear-gradient(135deg, hsl(161, 84%, 39%), hsl(185, 73%, 57%));
   }
 
   .gradient-emerald-subtle {
-    background: linear-gradient(135deg, hsl(160, 82%, 39% / 0.08), hsl(184, 72%, 56% / 0.04));
+    background: linear-gradient(135deg, hsl(161, 84%, 39% / 0.08), hsl(185, 73%, 57% / 0.04));
   }
 
   .gradient-positive {
-    background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(160, 82%, 39%));
+    background: linear-gradient(135deg, hsl(222, 68%, 15%), hsl(161, 84%, 39%));
     color: white;
   }
 
   .gradient-finance {
-    background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(160, 82%, 39%));
+    background: linear-gradient(135deg, hsl(222, 68%, 15%), hsl(161, 84%, 39%));
   }
 
   .text-gradient-brand {
-    background: linear-gradient(135deg, hsl(160, 82%, 39%), hsl(184, 72%, 56%));
+    background: linear-gradient(135deg, hsl(161, 84%, 39%), hsl(185, 73%, 57%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -179,20 +179,20 @@
 
   /* Room statut pastilles */
   .pastille-disponible {
-    background-color: hsl(220, 71%, 14%);
+    background-color: hsl(222, 68%, 15%);
   }
   .pastille-reserve {
-    background-color: hsl(184, 72%, 56%);
+    background-color: hsl(185, 73%, 57%);
   }
 
   /* Navy header for prestige cards */
   .header-navy {
-    background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(220, 55%, 20%));
+    background: linear-gradient(135deg, hsl(222, 68%, 15%), hsl(222, 55%, 20%));
     color: white;
   }
 
   /* Switch cyan override for RBAC */
   .switch-cyan[data-state="checked"] {
-    background-color: hsl(184, 72%, 56%);
+    background-color: hsl(185, 73%, 57%);
   }
 }
