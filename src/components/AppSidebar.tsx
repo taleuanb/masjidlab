@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getVitrineUrl } from "@/lib/domain";
 import {
   Building2, LayoutDashboard, CalendarDays, Users, Calendar, Car, Wrench,
   ClipboardList, UserCheck, SlidersHorizontal, ChevronDown,
