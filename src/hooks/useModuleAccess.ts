@@ -131,8 +131,17 @@ export function useModuleAccess(): UseModuleAccessReturn {
     }
 
     // C) Global RBAC filter — check global permissions (org_id IS NULL)
-    if (globalPerms.size > 0 && !globalPerms.get(moduleKey)) {
+    // Only block if an explicit entry exists with enabled=false.
+    // Missing entries default to ALLOWED (plan filter already restricts by subscription).
+    if (globalPerms.has(moduleKey) && !globalPerms.get(moduleKey)) {
       return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
+    }
+    // Also check parent-level permission for sub-modules (e.g. "education" for "education.eleves")
+    if (moduleKey.includes(".")) {
+      const parentKey = moduleKey.split(".")[0];
+      if (globalPerms.has(parentKey) && !globalPerms.get(parentKey)) {
+        return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
+      }
     }
 
     return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
