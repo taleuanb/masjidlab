@@ -839,11 +839,29 @@ export default function SaasAdminPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="dashboard" className="space-y-4">
+        <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="pending" className="gap-1.5">
+              <Clock className="h-3.5 w-3.5" />
+              Demandes en attente
+              {orgs.filter((o) => o.status === "pending").length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px]">
+                  {orgs.filter((o) => o.status === "pending").length}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="permissions">Permissions & RBAC</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="pending">
+            <PendingApprovalsTab
+              orgs={orgs}
+              loading={loading}
+              onValidate={handleValidateOrg}
+              validatingId={validatingId}
+            />
+          </TabsContent>
 
           <TabsContent value="dashboard">
             <DashboardTab
