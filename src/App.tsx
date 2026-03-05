@@ -39,6 +39,7 @@ import DonateursPage from "./pages/Donateurs";
 import RecusFiscauxPage from "./pages/RecusFiscaux";
 import NotFound from "./pages/NotFound";
 import WelcomePage from "./pages/Welcome";
+import LandingPage from "./pages/Landing";
 import SetupIdentityPage from "./pages/SetupIdentity";
 import SetupPlanPage from "./pages/SetupPlan";
 import SetupSuccessPage from "./pages/SetupSuccess";
