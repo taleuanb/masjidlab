@@ -62,9 +62,9 @@ const METIER_BLOCKS: NavBlock[] = [
     label: "Éducation",
     icon: GraduationCap,
     items: [
-      { title: "Élèves", url: "/eleves", icon: GraduationCap },
-      { title: "Classes", url: "/classes", icon: BookOpen },
-      { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList },
+      { title: "Élèves", url: "/eleves", icon: GraduationCap, moduleKey: "education.eleves" },
+      { title: "Classes", url: "/classes", icon: BookOpen, moduleKey: "education.classes" },
+      { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList, moduleKey: "education.inscriptions" },
     ],
   },
   {
@@ -72,9 +72,9 @@ const METIER_BLOCKS: NavBlock[] = [
     label: "Finance",
     icon: Wallet,
     items: [
-      { title: "Transactions", url: "/finance", icon: CreditCard },
-      { title: "Donateurs", url: "/donateurs", icon: Heart },
-      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt },
+      { title: "Transactions", url: "/finance", icon: CreditCard, moduleKey: "finance.transactions" },
+      { title: "Donateurs", url: "/donateurs", icon: Heart, moduleKey: "finance.donateurs" },
+      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt, moduleKey: "finance.recus" },
     ],
   },
   {
@@ -98,11 +98,11 @@ const LOGISTIQUE_BLOCK: NavBlock = {
   icon: Truck,
   items: [
     { title: "Dashboard Logistique", url: "/", icon: LayoutDashboard },
-    { title: "Planning", url: "/planning", icon: CalendarDays },
-    { title: "Événements", url: "/evenements", icon: Calendar },
-    { title: "Inventaire", url: "/inventaire", icon: Package },
-    { title: "Parking", url: "/parking", icon: Car },
-    { title: "Maintenance", url: "/maintenance", icon: Wrench },
+    { title: "Planning", url: "/planning", icon: CalendarDays, moduleKey: "operations.planning" },
+    { title: "Événements", url: "/evenements", icon: Calendar, moduleKey: "operations.evenements" },
+    { title: "Inventaire", url: "/inventaire", icon: Package, moduleKey: "operations.inventaire" },
+    { title: "Parking", url: "/parking", icon: Car, moduleKey: "operations.parking" },
+    { title: "Maintenance", url: "/maintenance", icon: Wrench, moduleKey: "operations.maintenance" },
   ],
 };
 
