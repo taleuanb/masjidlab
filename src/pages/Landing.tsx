@@ -84,7 +84,7 @@ export default function LandingPage() {
               <div className="absolute inset-0 -m-4 rounded-full"
                 style={{ background: "radial-gradient(circle, hsl(161 84% 39% / 0.2) 0%, transparent 70%)", filter: "blur(20px)" }}
               />
-              <img src={masjidLabLogo} alt="MASJIDLAB" className="relative h-20 w-20 object-contain drop-shadow-[0_0_30px_hsl(185_73%_57%/0.4)]" />
+              <img src={masjidLabLogo} alt="MASJIDLAB" className="relative h-20 w-20 object-contain drop-shadow-[0_0_10px_rgba(62,212,226,0.2)]" />
             </motion.div>
           </motion.div>
 

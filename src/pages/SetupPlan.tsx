@@ -70,11 +70,17 @@ export default function SetupPlanPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
+    <div className="min-h-screen w-full flex flex-col p-4" style={{ background: "hsl(222 68% 6%)" }}>
+      <div className="px-2 pt-3 pb-6">
+        <a href="https://masjidlab.com" className="inline-flex items-center gap-1.5 text-sm font-light text-white/40 hover:text-white/70 transition-colors">
+          ← Site Officiel
+        </a>
+      </div>
+      <div className="flex-1 flex items-center justify-center">
       <div className="w-full max-w-4xl space-y-6">
         <div className="text-center space-y-2">
           <a href="https://masjidlab.com" className="mx-auto mb-2 block">
-            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
+            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-16 w-auto object-contain drop-shadow-[0_0_10px_rgba(62,212,226,0.2)]" />
           </a>
           <h1 className="text-xl font-bold text-white">Choisissez votre plan</h1>
           <p className="text-sm text-white/50">Vous pourrez changer de plan à tout moment.</p>
@@ -140,10 +146,11 @@ export default function SetupPlanPage() {
         </div>
 
         <div className="text-center">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/setup/identity")}>
+          <Button variant="ghost" size="sm" className="text-white/40 hover:text-white/70" onClick={() => navigate("/setup/identity")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Retour
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );
