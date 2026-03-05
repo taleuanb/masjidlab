@@ -305,7 +305,7 @@ export function AppSidebar() {
           </div>
           <div className="min-w-0 text-left">
             <h1 className="text-sm font-bold text-sidebar-primary-foreground tracking-tight truncate">
-              {org?.name ?? "AMM Ops"}
+              {org?.name ?? "MasjidLab"}
             </h1>
           </div>
         </button>

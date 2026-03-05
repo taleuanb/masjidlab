@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -59,6 +62,9 @@ export default {
         },
         emerald: {
           glow: "hsl(var(--emerald-glow))",
+        },
+        cyan: {
+          glow: "hsl(var(--cyan-glow))",
         },
         surface: {
           warm: "hsl(var(--surface-warm))",
