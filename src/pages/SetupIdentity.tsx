@@ -19,9 +19,7 @@ export default function SetupIdentityPage() {
     siret: "",
   });
 
-  useEffect(() => {
-    if (!loading && !user) navigate("/login", { replace: true });
-  }, [loading, user, navigate]);
+  // Setup pages are publicly accessible — no auth redirect
 
   // Restore form state from sessionStorage when returning from /setup/plan
   useEffect(() => {
