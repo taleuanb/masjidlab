@@ -458,29 +458,23 @@ function PermissionsTab() {
 
 // ── Module Group Rows (Parent + Children) ─────────────────
 function ModuleGroupRows({
-  group, matrix, isGlobal, selectedOrgPlan, isDiff,
+  group, matrix,
   toggleEnabled, toggleChildEnabled, togglePerm,
 }: {
   group: RbacModuleGroup;
   matrix: PermMatrix;
-  isGlobal: boolean;
-  selectedOrgPlan: PlanId | null;
-  isDiff: (roleId: string, modId: string, col: PermCol | "enabled") => boolean;
   toggleEnabled: (roleId: string, groupId: string) => void;
   toggleChildEnabled: (roleId: string, childId: string, parentId: string) => void;
   togglePerm: (roleId: string, modId: string, col: PermCol) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const meta = getRegistryMeta(group.id);
-  const blockedByPlan = !isGlobal && selectedOrgPlan && meta
-    ? !isPlanAtLeast(selectedOrgPlan, meta.minPlan)
-    : false;
   const hasChildren = group.children.length > 0;
 
   return (
     <Fragment>
       {/* ── Parent row ── */}
-      <TableRow className={blockedByPlan ? "bg-muted/10 opacity-50" : "bg-muted/20"}>
+      <TableRow className="bg-muted/20">
         <TableCell className="font-semibold">
           <div className="flex items-center gap-2">
             <button
@@ -496,84 +490,64 @@ function ModuleGroupRows({
               {meta?.icon && <meta.icon className="h-4 w-4 text-muted-foreground" />}
               {group.label}
             </button>
-            {blockedByPlan && meta && (
-              <Badge variant="outline" className={`gap-1 text-[9px] px-1.5 py-0 h-4 shrink-0 ${PLAN_META[meta.minPlan].badgeCls}`}>
-                <Lock className="h-2.5 w-2.5" />
-                Upgrade Requis — {PLAN_META[meta.minPlan].label}
-              </Badge>
-            )}
           </div>
         </TableCell>
         {RBAC_ROLES.map((role) => (
           <TableCell key={role.id} className="text-center">
-            <div className="flex flex-col items-center gap-0.5">
-              <Switch
-                checked={matrix[permKey(role.id, group.id, "enabled")] ?? false}
-                onCheckedChange={() => toggleEnabled(role.id, group.id)}
-                disabled={blockedByPlan}
-              />
-              {!blockedByPlan && isDiff(role.id, group.id, "enabled") && (
-                <span className="text-[9px] text-primary font-medium">Modifié</span>
-              )}
-            </div>
+            <Switch
+              checked={matrix[permKey(role.id, group.id, "enabled")] ?? false}
+              onCheckedChange={() => toggleEnabled(role.id, group.id)}
+            />
           </TableCell>
         ))}
       </TableRow>
 
       {/* ── Children rows ── */}
-      {hasChildren && expanded && group.children.map((child) => {
-        const isChildRow = true;
-        return (
-          <TableRow key={child.id} className={blockedByPlan ? "opacity-40" : ""}>
-            <TableCell className="pl-10">
-              <span className="text-sm text-muted-foreground">{child.label}</span>
-            </TableCell>
-            {RBAC_ROLES.map((role) => {
-              const parentEnabled = matrix[permKey(role.id, group.id, "enabled")] ?? false;
-              const childEnabled = matrix[permKey(role.id, child.id, "enabled")] ?? false;
-              const disabled = blockedByPlan || !parentEnabled;
+      {hasChildren && expanded && group.children.map((child) => (
+        <TableRow key={child.id}>
+          <TableCell className="pl-10">
+            <span className="text-sm text-muted-foreground">{child.label}</span>
+          </TableCell>
+          {RBAC_ROLES.map((role) => {
+            const parentEnabled = matrix[permKey(role.id, group.id, "enabled")] ?? false;
+            const childEnabled = matrix[permKey(role.id, child.id, "enabled")] ?? false;
+            const disabled = !parentEnabled;
 
-              return (
-                <TableCell key={role.id} className="text-center">
-                  <div className="flex flex-col items-center gap-1">
-                    {/* Enabled toggle */}
-                    <Switch
-                      checked={childEnabled}
-                      onCheckedChange={() => toggleChildEnabled(role.id, child.id, group.id)}
-                      disabled={disabled}
-                      className="scale-90"
-                    />
-                    {/* Granular perms */}
-                    {childEnabled && !disabled && (
-                      <div className="flex gap-1.5 mt-0.5">
-                        {PERM_COLS.map((col) => (
-                          <label
-                            key={col}
-                            className="flex items-center gap-0.5 cursor-pointer"
-                            title={PERM_LABELS[col]}
-                          >
-                            <Checkbox
-                              checked={matrix[permKey(role.id, child.id, col)] ?? false}
-                              onCheckedChange={() => togglePerm(role.id, child.id, col)}
-                              className="h-3 w-3"
-                            />
-                            <span className="text-[8px] text-muted-foreground select-none">
-                              {col === "can_view" ? "V" : col === "can_edit" ? "E" : "D"}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                    {!blockedByPlan && isDiff(role.id, child.id, "enabled") && (
-                      <span className="text-[9px] text-primary font-medium">Modifié</span>
-                    )}
-                  </div>
-                </TableCell>
-              );
-            })}
-          </TableRow>
-        );
-      })}
+            return (
+              <TableCell key={role.id} className="text-center">
+                <div className="flex flex-col items-center gap-1">
+                  <Switch
+                    checked={childEnabled}
+                    onCheckedChange={() => toggleChildEnabled(role.id, child.id, group.id)}
+                    disabled={disabled}
+                    className="scale-90"
+                  />
+                  {childEnabled && !disabled && (
+                    <div className="flex gap-1.5 mt-0.5">
+                      {PERM_COLS.map((col) => (
+                        <label
+                          key={col}
+                          className="flex items-center gap-0.5 cursor-pointer"
+                          title={PERM_LABELS[col]}
+                        >
+                          <Checkbox
+                            checked={matrix[permKey(role.id, child.id, col)] ?? false}
+                            onCheckedChange={() => togglePerm(role.id, child.id, col)}
+                            className="h-3 w-3"
+                          />
+                          <span className="text-[8px] text-muted-foreground select-none">
+                            {col === "can_view" ? "V" : col === "can_edit" ? "E" : "D"}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TableCell>
+            );
+          })}
+        </TableRow>
+      ))}
     </Fragment>
   );
 }
