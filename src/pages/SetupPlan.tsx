@@ -120,11 +120,11 @@ export default function SetupPlanPage() {
                   </div>
                 )}
                 <CardHeader className="text-center pb-3">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-muted mb-2">
-                    <Icon className="h-5 w-5 text-primary" />
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 mb-2">
+                    <Icon className="h-5 w-5 text-brand-cyan" />
                   </div>
-                  <CardTitle className="text-base">{meta.label}</CardTitle>
-                  <p className="text-2xl font-bold text-foreground">{PLAN_PRICES[planId]}</p>
+                  <CardTitle className="text-base text-white">{meta.label}</CardTitle>
+                  <p className="text-2xl font-bold text-white">{PLAN_PRICES[planId]}</p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <ul className="space-y-1.5 text-xs text-muted-foreground">
