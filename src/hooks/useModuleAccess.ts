@@ -13,14 +13,13 @@
  */
 
 import { useMemo, useCallback, useEffect, useState } from "react";
-import { useAuth, type EffectivePermission } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   isModuleInPlan,
   CORE_MODULE_IDS,
   type PlanId,
-  PLAN_META,
   MODULE_MAP,
 } from "@/config/module-registry";
 
