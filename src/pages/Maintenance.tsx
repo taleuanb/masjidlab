@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Wrench,
-  AlertTriangle,
-  CircleDot,
-  CheckCircle2,
-  Plus,
-  ArrowUpDown,
+  Wrench, AlertTriangle, CircleDot, CheckCircle2, Plus, ArrowUpDown,
 } from "lucide-react";
 import { ticketsMock } from "@/data/mock-data";
 import { TicketMaintenance, PrioriteTicket, StatutTicket } from "@/types/amm";
@@ -14,33 +9,26 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
+/* Amber-based priority — no red-vif for urgente, use warm amber */
 const prioriteConfig: Record<PrioriteTicket, { color: string; label: string }> = {
   basse: { color: "bg-muted text-muted-foreground", label: "Basse" },
-  moyenne: { color: "bg-amber-500/10 text-amber-600", label: "Moyenne" },
-  haute: { color: "bg-destructive/10 text-destructive", label: "Haute" },
-  urgente: { color: "bg-destructive text-destructive-foreground", label: "Urgente" },
+  moyenne: { color: "bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,30%)]", label: "Moyenne" },
+  haute: { color: "bg-[hsl(38,92%,50%)]/20 text-[hsl(25,90%,35%)]", label: "Haute" },
+  urgente: { color: "bg-[hsl(25,90%,50%)]/15 text-[hsl(25,90%,30%)] font-semibold", label: "Urgente" },
 };
 
 const statutConfig: Record<StatutTicket, { icon: typeof CircleDot; color: string; label: string }> = {
-  ouvert: { icon: CircleDot, color: "text-destructive", label: "Ouvert" },
-  en_cours: { icon: ArrowUpDown, color: "text-amber-600", label: "En cours" },
-  résolu: { icon: CheckCircle2, color: "text-primary", label: "Résolu" },
+  ouvert: { icon: CircleDot, color: "text-[hsl(38,92%,40%)]", label: "Ouvert" },
+  en_cours: { icon: ArrowUpDown, color: "text-accent", label: "En cours" },
+  résolu: { icon: CheckCircle2, color: "text-secondary", label: "Résolu" },
 };
 
 export default function MaintenancePage() {
@@ -58,11 +46,8 @@ export default function MaintenancePage() {
   const handleCreate = () => {
     if (!newTicket.titre) return;
     const ticket: TicketMaintenance = {
-      id: `new-${Date.now()}`,
-      ...newTicket,
-      statut: "ouvert",
-      signalePar: "Accueil",
-      dateCreation: new Date().toISOString(),
+      id: `new-${Date.now()}`, ...newTicket,
+      statut: "ouvert", signalePar: "Accueil", dateCreation: new Date().toISOString(),
     };
     setTickets((prev) => [ticket, ...prev]);
     setNewTicket({ titre: "", description: "", localisation: "", priorite: "moyenne" });
@@ -87,15 +72,12 @@ export default function MaintenancePage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Nouveau ticket
+            <Button size="sm" className="gradient-positive border-0">
+              <Plus className="h-4 w-4 mr-1" /> Nouveau ticket
             </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Signaler un problème</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Signaler un problème</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
               <Input placeholder="Titre (ex: Fuite d'eau)" value={newTicket.titre} onChange={(e) => setNewTicket({ ...newTicket, titre: e.target.value })} />
               <Textarea placeholder="Description détaillée…" value={newTicket.description} onChange={(e) => setNewTicket({ ...newTicket, description: e.target.value })} />
@@ -109,19 +91,22 @@ export default function MaintenancePage() {
                   <SelectItem value="urgente">Urgente</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={handleCreate} className="w-full">Créer le ticket</Button>
             </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setDialogOpen(false)} className="text-muted-foreground">Annuler</Button>
+              <Button onClick={handleCreate} className="gradient-positive border-0">Créer le ticket</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </header>
 
       <main className="p-6 space-y-6">
-        {/* KPIs */}
+        {/* KPIs — Amber for open, Cyan for in progress, Emerald for resolved */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "Ouverts", value: ouverts, color: "text-destructive" },
-            { label: "En cours", value: enCours, color: "text-amber-600" },
-            { label: "Résolus", value: resolus, color: "text-primary" },
+            { label: "Ouverts", value: ouverts, color: "text-[hsl(38,92%,40%)]" },
+            { label: "En cours", value: enCours, color: "text-accent" },
+            { label: "Résolus", value: resolus, color: "text-secondary" },
           ].map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className="bento-card text-center">
               <p className="text-sm text-muted-foreground">{s.label}</p>
@@ -145,23 +130,17 @@ export default function MaintenancePage() {
           ))}
         </div>
 
-        {/* Tickets list */}
+        {/* Tickets */}
         <div className="space-y-3">
           {sortedTickets.map((ticket, i) => {
             const statut = statutConfig[ticket.statut];
             const StatutIcon = statut.icon;
             return (
-              <motion.div
-                key={ticket.id}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="bento-card !p-4"
-              >
+              <motion.div key={ticket.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="bento-card !p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1">
-                    <div className={`mt-0.5 rounded-lg p-1.5 ${ticket.priorite === "urgente" ? "bg-destructive/10" : "bg-muted"}`}>
-                      <Wrench className={`h-4 w-4 ${ticket.priorite === "urgente" ? "text-destructive" : "text-muted-foreground"}`} />
+                    <div className={`mt-0.5 rounded-lg p-1.5 ${ticket.priorite === "urgente" ? "bg-[hsl(25,90%,50%)]/10" : "bg-muted"}`}>
+                      <Wrench className={`h-4 w-4 ${ticket.priorite === "urgente" ? "text-[hsl(25,90%,40%)]" : "text-muted-foreground"}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

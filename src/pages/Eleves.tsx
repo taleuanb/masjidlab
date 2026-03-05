@@ -3,10 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { GraduationCap, Trash2, Loader2 } from "lucide-react";
+import { GraduationCap, Trash2, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -32,6 +33,21 @@ const Eleves = () => {
     enabled: !!orgId,
   });
 
+  // Get enrollment stats
+  const { data: enrollments = [] } = useQuery({
+    queryKey: ["madrasa_enrollments_stats", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("madrasa_enrollments")
+        .select("student_id, statut")
+        .eq("org_id", orgId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("madrasa_students").delete().eq("id", id);
@@ -44,14 +60,36 @@ const Eleves = () => {
     onError: () => toast.error("Erreur lors de la suppression"),
   });
 
+  const activeEnrollments = enrollments.filter(e => e.statut === "Actif").length;
+  const enrollmentRate = students.length > 0 ? Math.round((activeEnrollments / students.length) * 100) : 0;
+
   return (
-    <main className="flex-1 p-6 space-y-4">
+    <main className="flex-1 p-6 space-y-5">
       <div className="flex items-center gap-3">
         <SidebarTrigger />
-        <GraduationCap className="h-5 w-5 text-primary" />
+        <GraduationCap className="h-5 w-5 text-accent" />
         <h1 className="text-xl font-bold text-foreground">Élèves</h1>
         <Badge variant="secondary" className="ml-auto">{students.length} élève(s)</Badge>
       </div>
+
+      {/* Mini stats with Cyan progress */}
+      {students.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bento-card !p-4">
+            <p className="text-xs text-muted-foreground font-medium">Total élèves</p>
+            <p className="text-2xl font-bold mt-1">{students.length}</p>
+          </div>
+          <div className="bento-card !p-4">
+            <p className="text-xs text-muted-foreground font-medium">Inscriptions actives</p>
+            <p className="text-2xl font-bold mt-1 text-secondary">{activeEnrollments}</p>
+          </div>
+          <div className="bento-card !p-4">
+            <p className="text-xs text-muted-foreground font-medium">Taux d'inscription</p>
+            <p className="text-2xl font-bold mt-1">{enrollmentRate}%</p>
+            <Progress value={enrollmentRate} className="mt-2 h-1.5 [&>div]:progress-cyan" />
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -65,40 +103,50 @@ const Eleves = () => {
                 <TableHead>Nom</TableHead>
                 <TableHead>Prénom</TableHead>
                 <TableHead>Niveau</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead>Date de naissance</TableHead>
                 <TableHead className="w-[60px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.nom}</TableCell>
-                  <TableCell>{s.prenom}</TableCell>
-                  <TableCell><Badge variant="outline">{s.niveau ?? "—"}</Badge></TableCell>
-                  <TableCell className="text-muted-foreground">{s.date_naissance ?? "—"}</TableCell>
-                  <TableCell>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Supprimer cet élève ?</AlertDialogTitle>
-                          <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteMutation.mutate(s.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Supprimer
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {students.map((s) => {
+                const enrollment = enrollments.find(e => e.student_id === s.id);
+                const isActive = enrollment?.statut === "Actif";
+                return (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.nom}</TableCell>
+                    <TableCell>{s.prenom}</TableCell>
+                    <TableCell><Badge variant="outline">{s.niveau ?? "—"}</Badge></TableCell>
+                    <TableCell>
+                      <Badge className={isActive ? "badge-actif" : "badge-inactif"}>
+                        {isActive ? "Actif" : "Inactif"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{s.date_naissance ?? "—"}</TableCell>
+                    <TableCell>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer cet élève ?</AlertDialogTitle>
+                            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="text-muted-foreground">Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteMutation.mutate(s.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Supprimer
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

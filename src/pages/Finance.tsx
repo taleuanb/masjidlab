@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -42,10 +42,7 @@ export default function FinancePage() {
   const { data: donorsCount = 0 } = useQuery({
     queryKey: ["donors_count", orgId],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("donors")
-        .select("id", { count: "exact", head: true })
-        .eq("org_id", orgId!);
+      const { count, error } = await supabase.from("donors").select("id", { count: "exact", head: true }).eq("org_id", orgId!);
       if (error) throw error;
       return count ?? 0;
     },
@@ -55,10 +52,7 @@ export default function FinancePage() {
   const { data: totalDons = 0 } = useQuery({
     queryKey: ["donations_total", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("donations")
-        .select("montant")
-        .eq("org_id", orgId!);
+      const { data, error } = await supabase.from("donations").select("montant").eq("org_id", orgId!);
       if (error) throw error;
       return (data ?? []).reduce((s, d) => s + Number(d.montant), 0);
     },
@@ -68,12 +62,8 @@ export default function FinancePage() {
   const addMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("finance_transactions").insert({
-        titre: form.titre,
-        montant: parseFloat(form.montant),
-        type: form.type,
-        categorie: form.categorie || null,
-        org_id: orgId,
-        created_by: user?.id,
+        titre: form.titre, montant: parseFloat(form.montant), type: form.type,
+        categorie: form.categorie || null, org_id: orgId, created_by: user?.id,
       });
       if (error) throw error;
     },
@@ -99,7 +89,7 @@ export default function FinancePage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Ajouter</Button>
+            <Button className="gradient-positive border-0"><Plus className="h-4 w-4 mr-2" />Ajouter</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Nouvelle transaction</DialogTitle></DialogHeader>
@@ -126,61 +116,69 @@ export default function FinancePage() {
                 <Label>Catégorie (optionnel)</Label>
                 <Input value={form.categorie} onChange={(e) => setForm((f) => ({ ...f, categorie: e.target.value }))} placeholder="Ex: Fournitures" />
               </div>
-              <Button className="w-full" onClick={() => addMutation.mutate()} disabled={!form.titre || !form.montant || addMutation.isPending}>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setDialogOpen(false)} className="text-muted-foreground">Annuler</Button>
+              <Button className="gradient-positive border-0" onClick={() => addMutation.mutate()} disabled={!form.titre || !form.montant || addMutation.isPending}>
                 {addMutation.isPending ? "Ajout…" : "Enregistrer"}
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* ── Dashboard Stats ── */}
+      {/* Dashboard Stats — Navy-Emerald gradient cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
+        <Card className="overflow-hidden">
+          <div className="h-1 gradient-finance" />
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Heart className="h-3.5 w-3.5 text-pink-500" /> Total Dons
+              <Heart className="h-3.5 w-3.5 text-secondary" /> Total Dons
             </CardTitle>
           </CardHeader>
-          <CardContent><p className="text-xl font-bold text-pink-600">{fmt(totalDons)} €</p></CardContent>
+          <CardContent><p className="text-xl font-bold text-secondary">{fmt(totalDons)} €</p></CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
+          <div className="h-1 gradient-finance" />
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="h-3.5 w-3.5 text-blue-500" /> Donateurs
+              <Users className="h-3.5 w-3.5 text-primary" /> Donateurs
             </CardTitle>
           </CardHeader>
-          <CardContent><p className="text-xl font-bold text-blue-600">{donorsCount}</p></CardContent>
+          <CardContent><p className="text-xl font-bold text-primary">{donorsCount}</p></CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
+          <div className="h-1 gradient-finance" />
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> Recettes
+              <TrendingUp className="h-3.5 w-3.5 text-secondary" /> Recettes
             </CardTitle>
           </CardHeader>
-          <CardContent><p className="text-xl font-bold text-emerald-600">{fmt(totalRecettes)} €</p></CardContent>
+          <CardContent><p className="text-xl font-bold text-secondary">{fmt(totalRecettes)} €</p></CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
+          <div className="h-1 bg-destructive/50" />
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingDown className="h-3.5 w-3.5 text-red-500" /> Dépenses
+              <TrendingDown className="h-3.5 w-3.5 text-destructive" /> Dépenses
             </CardTitle>
           </CardHeader>
-          <CardContent><p className="text-xl font-bold text-red-600">{fmt(totalDepenses)} €</p></CardContent>
+          <CardContent><p className="text-xl font-bold text-destructive">{fmt(totalDepenses)} €</p></CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden">
+          <div className="h-1 gradient-finance" />
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
               <Wallet className="h-3.5 w-3.5 text-primary" /> Solde
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-xl font-bold ${solde >= 0 ? "text-emerald-600" : "text-red-600"}`}>{fmt(solde)} €</p>
+            <p className={`text-xl font-bold ${solde >= 0 ? "text-secondary" : "text-destructive"}`}>{fmt(solde)} €</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* ── Transaction list ── */}
+      {/* Transaction list */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -204,15 +202,15 @@ export default function FinancePage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={t.type === "recette" ? "default" : "destructive"} className="text-xs">
+                    <Badge variant={t.type === "recette" ? "default" : "destructive"} className={t.type === "recette" ? "badge-actif" : ""}>
                       {t.type === "recette" ? "Recette" : "Dépense"}
                     </Badge>
-                    <span className={`text-sm font-semibold tabular-nums ${t.type === "recette" ? "text-emerald-600" : "text-red-600"}`}>
+                    <span className={`text-sm font-semibold tabular-nums ${t.type === "recette" ? "text-secondary" : "text-destructive"}`}>
                       {t.type === "recette" ? "+" : "-"}{fmt(t.montant)} €
                     </span>
                   </div>
                 </div>
-              ))}
+              ))
             </div>
           )}
         </CardContent>

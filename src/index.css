@@ -38,6 +38,7 @@
 
     --radius: 0.5rem;
 
+    /* Sidebar — Navy deep */
     --sidebar-background: 220 71% 14%;
     --sidebar-foreground: 220 15% 88%;
     --sidebar-primary: 160 82% 39%;
@@ -48,13 +49,18 @@
     --sidebar-ring: 160 82% 39%;
     --sidebar-muted: 220 30% 30%;
 
+    /* Extended palette tokens */
     --emerald-glow: 160 82% 30%;
     --cyan-glow: 184 72% 46%;
     --surface-warm: 210 20% 96%;
+    --amber-warm: 38 92% 50%;
+    --amber-warm-foreground: 38 92% 20%;
+
+    /* Charts */
     --chart-1: 220 71% 14%;
     --chart-2: 160 82% 39%;
     --chart-3: 184 72% 56%;
-    --chart-4: 45 90% 55%;
+    --chart-4: 38 92% 50%;
     --chart-5: 0 75% 55%;
   }
 
@@ -86,6 +92,8 @@
     --sidebar-accent-foreground: 210 20% 85%;
     --sidebar-border: 220 50% 12%;
     --sidebar-ring: 160 82% 39%;
+    --amber-warm: 38 92% 50%;
+    --amber-warm-foreground: 38 92% 80%;
   }
 }
 
@@ -110,6 +118,7 @@
     @apply bg-card/80 backdrop-blur-sm border rounded-lg;
   }
 
+  /* Gradients */
   .gradient-navy {
     background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(220, 55%, 22%));
   }
@@ -127,10 +136,63 @@
     color: white;
   }
 
+  .gradient-finance {
+    background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(160, 82%, 39%));
+  }
+
   .text-gradient-brand {
     background: linear-gradient(135deg, hsl(160, 82%, 39%), hsl(184, 72%, 56%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  /* Pôle-specific semantic tokens */
+  .badge-actif {
+    @apply bg-secondary/10 text-secondary border-secondary/20;
+  }
+  .badge-inactif {
+    @apply bg-muted text-muted-foreground border-border;
+  }
+
+  .progress-cyan {
+    background-color: hsl(184, 72%, 56%);
+  }
+
+  .badge-contrat-benevole {
+    @apply bg-muted text-muted-foreground border-border text-[10px];
+  }
+  .badge-contrat-cdi {
+    @apply bg-primary/10 text-primary border-primary/20 text-[10px];
+  }
+  .badge-contrat-cdd {
+    @apply bg-accent/10 text-accent-foreground border-accent/20 text-[10px];
+  }
+  .badge-contrat-vacataire {
+    @apply bg-secondary/10 text-secondary border-secondary/20 text-[10px];
+  }
+
+  /* Amber for alerts (not red) */
+  .alert-amber {
+    @apply bg-[hsl(var(--amber-warm))/0.1] border-[hsl(var(--amber-warm))/0.25] text-[hsl(var(--amber-warm-foreground))];
+  }
+
+  /* Room statut pastilles */
+  .pastille-disponible {
+    background-color: hsl(220, 71%, 14%);
+  }
+  .pastille-reserve {
+    background-color: hsl(184, 72%, 56%);
+  }
+
+  /* Navy header for prestige cards */
+  .header-navy {
+    background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(220, 55%, 20%));
+    color: white;
+  }
+
+  /* Switch cyan override for RBAC */
+  .switch-cyan[data-state="checked"] {
+    background-color: hsl(184, 72%, 56%);
   }
 }
