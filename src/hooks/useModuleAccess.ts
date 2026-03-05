@@ -56,6 +56,9 @@ export function useModuleAccess(): UseModuleAccessReturn {
 
   const [globalPerms, setGlobalPerms] = useState<Map<string, boolean>>(new Map());
 
+  // Refetch when orgId changes (plan/activation context switch)
+  const orgId = org?.id;
+
   useEffect(() => {
     if (effectiveRoles.length === 0) {
       setGlobalPerms(new Map());
@@ -82,7 +85,7 @@ export function useModuleAccess(): UseModuleAccessReturn {
       }
       setGlobalPerms(map);
     })();
-  }, [effectiveRoles]);
+  }, [effectiveRoles, orgId]);
 
   // Build activation set from org's active_poles
   const activePoleSet = useMemo<Set<string>>(() => new Set(activePoles), [activePoles]);

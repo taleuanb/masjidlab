@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,11 +101,47 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { dbRole } = useAuth();
   const { orgId, activePoles, org } = useOrganization();
-  const isAdmin = dbRole === "admin" || dbRole === "super_admin";
+  const isSuperAdmin = dbRole === "super_admin";
+  const isAdmin = dbRole === "admin" || isSuperAdmin;
   const isResponsable = dbRole === "responsable";
-  const canManageModules = isAdmin || isResponsable;
+  const canManageModules = isAdmin; // Responsable can only view
   const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
   const showMadrassa = activePoles.includes("education");
+
+  // ── Tab: Identité ──
+  const [identityForm, setIdentityForm] = useState({
+    name: "", address: "", phone: "", email: "", logo_url: "",
+  });
+  const [identitySaving, setIdentitySaving] = useState(false);
+
+  useEffect(() => {
+    if (org) {
+      setIdentityForm({
+        name: org.name || "",
+        address: (org as any).address || "",
+        phone: (org as any).phone || "",
+        email: (org as any).email || "",
+        logo_url: (org as any).logo_url || "",
+      });
+    }
+  }, [org]);
+
+  const handleSaveIdentity = async () => {
+    if (!orgId) return;
+    setIdentitySaving(true);
+    const { error } = await supabase
+      .from("organizations")
+      .update({
+        name: identityForm.name.trim(),
+      } as any)
+      .eq("id", orgId);
+    setIdentitySaving(false);
+    if (error) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Identité mise à jour", description: "Les informations ont été enregistrées." });
+    }
+  };
 
   // ── Tab: Pôles ──
   const [polesLoading, setPolesLoading] = useState(false);
@@ -343,8 +380,11 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="poles" className="space-y-4">
-          <TabsList className={`grid w-full max-w-2xl ${showMadrassa ? "grid-cols-5" : "grid-cols-4"}`}>
+        <Tabs defaultValue="identite" className="space-y-4">
+          <TabsList className={`grid w-full max-w-2xl ${showMadrassa ? "grid-cols-6" : "grid-cols-5"}`}>
+            <TabsTrigger value="identite" className="gap-1.5 text-xs">
+              <Building2 className="h-3.5 w-3.5" />Identité
+            </TabsTrigger>
             <TabsTrigger value="poles" className="gap-1.5 text-xs">
               <Zap className="h-3.5 w-3.5" />Plan & Modules
             </TabsTrigger>
@@ -363,6 +403,81 @@ export default function SettingsPage() {
               </TabsTrigger>
             )}
           </TabsList>
+
+          {/* ═══════════ IDENTITÉ ═══════════ */}
+          <TabsContent value="identite" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  Identité de la mosquée
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nom de la mosquée *</Label>
+                  <Input
+                    value={identityForm.name}
+                    onChange={(e) => setIdentityForm((f) => ({ ...f, name: e.target.value }))}
+                    className="h-9"
+                    placeholder="Ex: Mosquée Al-Fath"
+                    disabled={!isAdmin && !isResponsable}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Adresse</Label>
+                  <Textarea
+                    value={identityForm.address}
+                    onChange={(e) => setIdentityForm((f) => ({ ...f, address: e.target.value }))}
+                    placeholder="Adresse complète de la mosquée"
+                    className="min-h-[60px]"
+                    disabled={!isAdmin && !isResponsable}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Téléphone</Label>
+                    <Input
+                      value={identityForm.phone}
+                      onChange={(e) => setIdentityForm((f) => ({ ...f, phone: e.target.value }))}
+                      className="h-9"
+                      placeholder="+33 1 23 45 67 89"
+                      disabled={!isAdmin && !isResponsable}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Email de contact</Label>
+                    <Input
+                      type="email"
+                      value={identityForm.email}
+                      onChange={(e) => setIdentityForm((f) => ({ ...f, email: e.target.value }))}
+                      className="h-9"
+                      placeholder="contact@mosquee.org"
+                      disabled={!isAdmin && !isResponsable}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">URL du Logo <span className="text-muted-foreground">(optionnel)</span></Label>
+                  <Input
+                    value={identityForm.logo_url}
+                    onChange={(e) => setIdentityForm((f) => ({ ...f, logo_url: e.target.value }))}
+                    className="h-9"
+                    placeholder="https://example.com/logo.png"
+                    disabled={!isAdmin && !isResponsable}
+                  />
+                </div>
+                {(isAdmin || isResponsable) && (
+                  <div className="flex justify-end pt-2">
+                    <Button onClick={handleSaveIdentity} disabled={identitySaving || !identityForm.name.trim()} size="sm">
+                      {identitySaving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                      Enregistrer
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* ═══════════ PLAN & MODULES ═══════════ */}
           <TabsContent value="poles" className="space-y-6">
@@ -500,7 +615,7 @@ export default function SettingsPage() {
                       {included ? (
                         <Switch
                           checked={isActive}
-                          disabled={!canManageModules || polesLoading}
+                          disabled={!isAdmin || polesLoading}
                           onCheckedChange={() => togglePole(mod.id)}
                           className="mt-0.5 shrink-0"
                         />
@@ -512,9 +627,9 @@ export default function SettingsPage() {
                 })}
               </div>
 
-              {!canManageModules && (
+              {!isAdmin && (
                 <p className="text-xs text-muted-foreground text-center pt-3">
-                  Seul un administrateur ou responsable peut gérer les modules métier.
+                  {isResponsable ? "Visualisation seule. Seul un administrateur peut modifier les modules." : "Seul un administrateur peut gérer les modules métier."}
                 </p>
               )}
             </div>
