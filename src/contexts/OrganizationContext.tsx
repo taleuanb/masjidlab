@@ -113,6 +113,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           name: orgData.name,
           active_poles: orgData.active_poles ?? [],
           subscription_plan: orgData.subscription_plan,
+          status: orgData.status,
         });
         setPendingAffectation(false);
       } else {
