@@ -17,6 +17,12 @@ export default function SetupPlanPage() {
   const navigate = useNavigate();
   const { refetch } = useOrganization();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+  const [loading, setLoading] = useState<PlanId | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) navigate("/login", { replace: true });
+  }, [authLoading, user, navigate]);
   const [loading, setLoading] = useState<PlanId | null>(null);
 
   const handleChoosePlan = async (plan: PlanId) => {
