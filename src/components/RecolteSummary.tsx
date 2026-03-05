@@ -25,7 +25,7 @@ export function RecolteSummary() {
       </div>
 
       <div className="mb-4">
-        <p className="text-3xl font-bold tracking-tight text-gradient-emerald">
+        <p className="text-3xl font-bold tracking-tight text-gradient-brand">
           {total.toLocaleString('fr-FR')} €
         </p>
         <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
