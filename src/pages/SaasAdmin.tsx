@@ -695,7 +695,6 @@ export default function SaasAdminPage() {
               openModules={openModules}
               onValidate={handleValidateOrg}
             />
-            />
           </TabsContent>
 
           <TabsContent value="permissions">
