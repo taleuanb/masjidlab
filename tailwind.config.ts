@@ -60,6 +60,9 @@ export default {
         emerald: {
           glow: "hsl(var(--emerald-glow))",
         },
+        cyan: {
+          glow: "hsl(var(--cyan-glow))",
+        },
         surface: {
           warm: "hsl(var(--surface-warm))",
         },
