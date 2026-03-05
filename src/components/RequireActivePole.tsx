@@ -75,11 +75,6 @@ export function RequireActivePole({
   const orgStatus = org?.status ?? "active";
   const isPending = orgStatus === "pending" || orgStatus === "suspended";
 
-  // If org is pending and route is not allowed, show banner
-  if (isPending && !isBypassing && !PENDING_ALLOWED.some((p) => path.startsWith(p))) {
-    return <PendingOrgBanner />;
-  }
-
   // Find the matching module requirement
   const matchedEntry = Object.entries(ROUTE_TO_MODULE).find(([prefix]) =>
     path.startsWith(prefix)
@@ -97,6 +92,11 @@ export function RequireActivePole({
       });
     }
   }, [isBlocked, toast]);
+
+  // If org is pending and route is not allowed, show banner
+  if (isPending && !isBypassing && !PENDING_ALLOWED.some((p) => path.startsWith(p))) {
+    return <PendingOrgBanner />;
+  }
 
   if (isBlocked) {
     return <Navigate to="/dashboard" replace />;
