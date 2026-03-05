@@ -30,14 +30,6 @@ export default function SetupIdentityPage() {
     }
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   const canContinue = form.name.trim().length > 0 && form.city.trim().length > 0;
 
   const handleNext = () => {
