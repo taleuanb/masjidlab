@@ -114,56 +114,47 @@ const AppLayout = () => {
 };
 
 const App = () => {
-  // Vitrine domain check BEFORE any auth provider to avoid redirects
-  if (isVitrineDomain()) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="*" element={<LandingPage />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </QueryClientProvider>
-    );
-  }
+  const vitrine = isVitrineDomain();
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <OrganizationProvider>
-            <RoleProvider>
-              <NotificationProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    <Route path="/vitrine" element={<LandingPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/set-password" element={<SetPasswordPage />} />
-                    <Route path="/onboarding" element={<OnboardingPage />} />
-                    <Route path="/welcome" element={<WelcomePage />} />
-                    <Route path="/setup/identity" element={<SetupIdentityPage />} />
-                    <Route path="/setup/plan" element={<SetupPlanPage />} />
-                    <Route path="/setup/success" element={<SetupSuccessPage />} />
-                    <Route
-                      path="/*"
-                      element={
-                        <RequireAuth>
-                          <AppLayout />
-                        </RequireAuth>
-                      }
-                    />
-                  </Routes>
-                </BrowserRouter>
-              </NotificationProvider>
-            </RoleProvider>
-          </OrganizationProvider>
-        </AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          {vitrine ? (
+            <Routes>
+              <Route path="*" element={<LandingPage />} />
+            </Routes>
+          ) : (
+            <AuthProvider>
+              <OrganizationProvider>
+                <RoleProvider>
+                  <NotificationProvider>
+                    <Routes>
+                      <Route path="/vitrine" element={<LandingPage />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/set-password" element={<SetPasswordPage />} />
+                      <Route path="/onboarding" element={<OnboardingPage />} />
+                      <Route path="/welcome" element={<WelcomePage />} />
+                      <Route path="/setup/identity" element={<SetupIdentityPage />} />
+                      <Route path="/setup/plan" element={<SetupPlanPage />} />
+                      <Route path="/setup/success" element={<SetupSuccessPage />} />
+                      <Route
+                        path="/*"
+                        element={
+                          <RequireAuth>
+                            <AppLayout />
+                          </RequireAuth>
+                        }
+                      />
+                    </Routes>
+                  </NotificationProvider>
+                </RoleProvider>
+              </OrganizationProvider>
+            </AuthProvider>
+          )}
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
