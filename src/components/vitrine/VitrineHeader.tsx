@@ -87,7 +87,7 @@ export function VitrineHeader() {
                 >
                   Connexion
                 </a>
-                <a href="/setup/identity" className="block">
+                <a href="https://app.masjidlab.com/setup/identity" className="block">
                   <Button className="w-full bg-brand-emerald hover:bg-brand-emerald/90 text-white">
                     Démarrer
                   </Button>
