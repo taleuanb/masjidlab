@@ -310,7 +310,7 @@ export default function ApprobationsPage() {
                               </Button>
                               <Button
                                 size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                className="gradient-positive hover:opacity-90"
                                 onClick={() => handleApprove(req)}
                                 disabled={actionLoading === req.id || !req.replacement_id}
                               >

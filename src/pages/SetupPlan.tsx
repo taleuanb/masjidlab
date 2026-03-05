@@ -89,8 +89,8 @@ export default function SetupPlanPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-4xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-xl gradient-emerald flex items-center justify-center mb-2">
-            <span className="text-2xl font-bold text-white">M</span>
+          <div className="mx-auto w-14 h-14 rounded-xl flex items-center justify-center mb-2">
+            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-14 w-14 object-contain" />
           </div>
           <h1 className="text-xl font-bold text-foreground">Choisissez votre plan</h1>
           <p className="text-sm text-muted-foreground">Vous pourrez changer de plan à tout moment.</p>

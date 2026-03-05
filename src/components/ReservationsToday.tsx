@@ -23,7 +23,7 @@ const poleBadgeColors: Record<string, string> = {
   "Récolte": "bg-violet-500/15 text-violet-700 border-violet-500/20",
   "Com": "bg-orange-500/15 text-orange-700 border-orange-500/20",
   "Digital": "bg-cyan-500/15 text-cyan-700 border-cyan-500/20",
-  "Parking": "bg-slate-500/15 text-slate-700 border-slate-500/20",
+  "Parking": "bg-muted text-muted-foreground border-border",
 };
 
 const HOUR_HEIGHT = 80;

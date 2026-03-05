@@ -60,6 +60,12 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        brand: {
+          navy: "hsl(222 68% 15%)",
+          emerald: "hsl(161 84% 39%)",
+          cyan: "hsl(185 73% 57%)",
+          card: "hsl(210 20% 98%)",
+        },
         emerald: {
           glow: "hsl(var(--emerald-glow))",
         },
