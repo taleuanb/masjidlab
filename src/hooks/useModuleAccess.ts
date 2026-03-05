@@ -99,6 +99,9 @@ export function useModuleAccess(): UseModuleAccessReturn {
       const defaultRoles = meta.defaultRoles ?? [];
       const hasWildcard = defaultRoles.includes("*");
       const allowed = hasWildcard || effectiveRoles.some((r) => defaultRoles.includes(r));
+      if (!allowed) {
+        console.debug(`[useModuleAccess] CORE "${moduleKey}" blocked — effectiveRoles:`, effectiveRoles, "defaultRoles:", defaultRoles);
+      }
       return { allowed, blockedByPlan: false, blockedByRbac: !allowed, isCore };
     }
 

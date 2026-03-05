@@ -22,6 +22,7 @@ import { useRole, type UserRole, UI_ROLE_TO_DB } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
 import type { Pole } from "@/types/amm";
 import { useModuleAccess } from "@/hooks/useModuleAccess";
+import { CORE_MODULE_IDS, MODULE_MAP } from "@/config/module-registry";
 
 const POLES: Pole[] = ["Imam", "École (Avenir)", "Social (ABD)", "Accueil", "Récolte", "Digital", "Com", "Parking"];
 
@@ -257,10 +258,20 @@ export function AppSidebar() {
    */
   const isModuleVisible = useCallback((moduleKey: string): boolean => {
     if (!hasAccess(moduleKey)) return false;
-    // Preview-mode overlay: also check preview RBAC set for non-CORE modules
-    if (isPreviewingOtherRole && previewPermissions !== null && !previewPermissions.has(moduleKey)) return false;
+    // Preview-mode overlay: also check preview RBAC set, but SKIP for CORE modules
+    // (CORE modules use defaultRoles logic, not role_permissions table)
+    if (isPreviewingOtherRole && previewPermissions !== null) {
+      if (CORE_MODULE_IDS.has(moduleKey)) {
+        // For CORE modules in preview, check defaultRoles against the previewed role
+        const meta = MODULE_MAP.get(moduleKey);
+        const defaultRoles = meta?.defaultRoles ?? [];
+        const previewDbRole = UI_ROLE_TO_DB[role];
+        return defaultRoles.includes("*") || (previewDbRole ? defaultRoles.includes(previewDbRole) : false);
+      }
+      if (!previewPermissions.has(moduleKey)) return false;
+    }
     return true;
-  }, [hasAccess, isPreviewingOtherRole, previewPermissions]);
+  }, [hasAccess, isPreviewingOtherRole, previewPermissions, role]);
 
   // ── Filter all blocks through the single gate ──
   const visibleCoreItems = useMemo(
