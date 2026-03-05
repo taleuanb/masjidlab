@@ -44,6 +44,7 @@ import SetupIdentityPage from "./pages/SetupIdentity";
 import SetupPlanPage from "./pages/SetupPlan";
 import SetupSuccessPage from "./pages/SetupSuccess";
 import { Loader2 } from "lucide-react";
+import { isVitrineDomain } from "@/lib/domain";
 
 const queryClient = new QueryClient();
 
@@ -112,41 +113,53 @@ const AppLayout = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <OrganizationProvider>
-          <RoleProvider>
-            <NotificationProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/vitrine" element={<LandingPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/set-password" element={<SetPasswordPage />} />
-                  <Route path="/onboarding" element={<OnboardingPage />} />
-                  <Route path="/welcome" element={<WelcomePage />} />
-                  <Route path="/setup/identity" element={<SetupIdentityPage />} />
-                  <Route path="/setup/plan" element={<SetupPlanPage />} />
-                  <Route path="/setup/success" element={<SetupSuccessPage />} />
-                  <Route
-                    path="/*"
-                    element={
-                      <RequireAuth>
-                        <AppLayout />
-                      </RequireAuth>
-                    }
-                  />
-                </Routes>
-              </BrowserRouter>
-            </NotificationProvider>
-          </RoleProvider>
-        </OrganizationProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const vitrine = isVitrineDomain();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <OrganizationProvider>
+            <RoleProvider>
+              <NotificationProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  {vitrine ? (
+                    /* ── Vitrine domain: only landing pages ── */
+                    <Routes>
+                      <Route path="*" element={<LandingPage />} />
+                    </Routes>
+                  ) : (
+                    /* ── App domain: full application ── */
+                    <Routes>
+                      <Route path="/vitrine" element={<LandingPage />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/set-password" element={<SetPasswordPage />} />
+                      <Route path="/onboarding" element={<OnboardingPage />} />
+                      <Route path="/welcome" element={<WelcomePage />} />
+                      <Route path="/setup/identity" element={<SetupIdentityPage />} />
+                      <Route path="/setup/plan" element={<SetupPlanPage />} />
+                      <Route path="/setup/success" element={<SetupSuccessPage />} />
+                      <Route
+                        path="/*"
+                        element={
+                          <RequireAuth>
+                            <AppLayout />
+                          </RequireAuth>
+                        }
+                      />
+                    </Routes>
+                  )}
+                </BrowserRouter>
+              </NotificationProvider>
+            </RoleProvider>
+          </OrganizationProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getVitrineUrl } from "@/lib/domain";
 import {
   Building2, LayoutDashboard, CalendarDays, Users, Calendar, Car, Wrench,
   ClipboardList, UserCheck, SlidersHorizontal, ChevronDown,
@@ -294,7 +295,7 @@ export function AppSidebar() {
   const showPersonnel = isModuleVisible(PERSONNEL_BLOCK.id);
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
-  const handleLogoClick = () => navigate("/");
+  const handleLogoClick = () => { window.location.href = getVitrineUrl(); };
 
   return (
     <Sidebar className="border-r-0">
