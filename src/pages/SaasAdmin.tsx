@@ -198,16 +198,13 @@ function PermissionsTab() {
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-  // ── Load permissions from DB ──
-  const loadMatrix = useCallback(async (orgId: string | null): Promise<PermMatrix> => {
+  // ── Load global permissions from DB (org_id IS NULL) ──
+  const loadMatrix = useCallback(async (): Promise<PermMatrix> => {
     const m = buildEmptyMatrix();
-    const query = supabase
+    const { data, error } = await supabase
       .from("role_permissions" as any)
-      .select("role, module, enabled, can_view, can_edit, can_delete");
-
-    const { data, error } = orgId
-      ? await query.eq("org_id", orgId)
-      : await query.is("org_id", null);
+      .select("role, module, enabled, can_view, can_edit, can_delete")
+      .is("org_id", null);
 
     if (error) throw error;
 
@@ -223,61 +220,29 @@ function PermissionsTab() {
     return m;
   }, []);
 
-  // Load global defaults
-  useEffect(() => {
-    loadMatrix(null).then(setGlobalMatrix).catch(() => {});
-  }, [loadMatrix]);
-
-  // Load current selection
+  // Load on mount
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        if (isGlobal) {
-          const m = await loadMatrix(null);
-          setMatrix(m);
-          setGlobalMatrix(m);
-          setHasOrgOverride(false);
-        } else {
-          const m = await loadMatrix(selectedOrgId);
-          const hasData = Object.values(m).some(Boolean);
-          if (!hasData) {
-            setMatrix({ ...globalMatrix });
-            setHasOrgOverride(false);
-          } else {
-            setMatrix(m);
-            setHasOrgOverride(true);
-          }
-        }
+        const m = await loadMatrix();
+        setMatrix(m);
       } catch (err: any) {
         toast({ title: "Erreur", description: err.message, variant: "destructive" });
       } finally {
         setLoading(false);
       }
     })();
-  }, [selectedOrgId, loadMatrix, toast]);
-
-  const copyDefaults = () => {
-    setMatrix({ ...globalMatrix });
-    setHasOrgOverride(true);
-  };
-
-  const isDiff = (roleId: string, modId: string, col: PermCol | "enabled") => {
-    if (isGlobal) return false;
-    const k = permKey(roleId, modId, col);
-    return (matrix[k] ?? false) !== (globalMatrix[k] ?? false);
-  };
+  }, [loadMatrix, toast]);
 
   // ── Toggle logic ──
   const toggleEnabled = (roleId: string, groupId: string) => {
-    if (!isGlobal && !hasOrgOverride) setHasOrgOverride(true);
     setMatrix((prev) => {
       const next = { ...prev };
       const k = permKey(roleId, groupId, "enabled");
       const newVal = !next[k];
       next[k] = newVal;
 
-      // If disabling parent, disable all children
       const group = RBAC_MODULE_HIERARCHY.find((g) => g.id === groupId);
       if (group && !newVal) {
         for (const child of group.children) {
@@ -287,21 +252,18 @@ function PermissionsTab() {
           }
         }
       }
-      // If enabling child, auto-enable parent
       if (newVal) {
         const parentGroup = RBAC_MODULE_HIERARCHY.find((g) => g.children.some((c) => c.id === groupId));
         if (parentGroup) {
           next[permKey(roleId, parentGroup.id, "enabled")] = true;
         }
       }
-      // Sync can_view with enabled for parent
       next[permKey(roleId, groupId, "can_view")] = newVal;
       return next;
     });
   };
 
   const toggleChildEnabled = (roleId: string, childId: string, parentId: string) => {
-    if (!isGlobal && !hasOrgOverride) setHasOrgOverride(true);
     setMatrix((prev) => {
       const next = { ...prev };
       const k = permKey(roleId, childId, "enabled");
@@ -309,24 +271,10 @@ function PermissionsTab() {
       next[k] = newVal;
       next[permKey(roleId, childId, "can_view")] = newVal;
 
-      // If enabling child, ensure parent is enabled
       if (newVal) {
         next[permKey(roleId, parentId, "enabled")] = true;
         next[permKey(roleId, parentId, "can_view")] = true;
       }
-      // If disabling child & no siblings left, disable parent
-      if (!newVal) {
-        const group = RBAC_MODULE_HIERARCHY.find((g) => g.id === parentId);
-        if (group) {
-          const anyChildEnabled = group.children.some(
-            (c) => c.id !== childId && next[permKey(roleId, c.id, "enabled")]
-          );
-          if (!anyChildEnabled) {
-            // Keep parent enabled state — user can choose to disable manually
-          }
-        }
-      }
-      // Reset granular perms when disabling
       if (!newVal) {
         for (const col of PERM_COLS) {
           next[permKey(roleId, childId, col)] = false;
@@ -337,7 +285,6 @@ function PermissionsTab() {
   };
 
   const togglePerm = (roleId: string, modId: string, col: PermCol) => {
-    if (!isGlobal && !hasOrgOverride) setHasOrgOverride(true);
     setMatrix((prev) => {
       const next = { ...prev };
       next[permKey(roleId, modId, col)] = !next[permKey(roleId, modId, col)];
@@ -345,19 +292,17 @@ function PermissionsTab() {
     });
   };
 
-  // ── Save ──
+  // ── Save (always org_id = NULL) ──
   const handleSave = async () => {
     setSaving(true);
     try {
-      const orgId = isGlobal ? null : selectedOrgId;
       const allIds = getAllRbacModuleIds();
       const rows: any[] = [];
       for (const role of RBAC_ROLES) {
         for (const modId of allIds) {
-          const parentGroup = RBAC_MODULE_HIERARCHY.find((g) => g.id === modId);
           const parentOfChild = RBAC_MODULE_HIERARCHY.find((g) => g.children.some((c) => c.id === modId));
           rows.push({
-            org_id: orgId,
+            org_id: null,
             role: role.id,
             module: modId,
             parent_key: parentOfChild ? parentOfChild.id : null,
@@ -373,13 +318,9 @@ function PermissionsTab() {
         .upsert(rows, { onConflict: "org_id,role,module" });
       if (error) throw error;
 
-      if (isGlobal) setGlobalMatrix({ ...matrix });
-      setHasOrgOverride(true);
       toast({
         title: "Configuration sauvegardée",
-        description: isGlobal
-          ? "Les permissions par défaut ont été mises à jour."
-          : `Permissions personnalisées pour ${orgs.find((o) => o.id === selectedOrgId)?.name ?? "l'organisation"}.`,
+        description: "Les permissions globales ont été mises à jour pour tous les utilisateurs.",
       });
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -388,37 +329,57 @@ function PermissionsTab() {
     }
   };
 
-  const selectedOrgName = orgs.find((o) => o.id === selectedOrgId)?.name;
+  // ── Reset: rebuild from MODULE_REGISTRY defaults ──
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      // Delete all global rows
+      const { error: delErr } = await supabase
+        .from("role_permissions" as any)
+        .delete()
+        .is("org_id", null);
+      if (delErr) throw delErr;
 
-  // ── Group by category ──
+      // Re-insert from registry defaults
+      const allIds = getAllRbacModuleIds();
+      const rows: any[] = [];
+      for (const role of RBAC_ROLES) {
+        for (const modId of allIds) {
+          const parentOfChild = RBAC_MODULE_HIERARCHY.find((g) => g.children.some((c) => c.id === modId));
+          // Default: admin gets everything enabled, others disabled
+          const isAdmin = role.id === "admin";
+          rows.push({
+            org_id: null,
+            role: role.id,
+            module: modId,
+            parent_key: parentOfChild ? parentOfChild.id : null,
+            enabled: isAdmin,
+            can_view: isAdmin,
+            can_edit: isAdmin,
+            can_delete: isAdmin,
+          });
+        }
+      }
+      const { error } = await supabase
+        .from("role_permissions" as any)
+        .upsert(rows, { onConflict: "org_id,role,module" });
+      if (error) throw error;
+
+      // Reload
+      const m = await loadMatrix();
+      setMatrix(m);
+      toast({ title: "Réinitialisation effectuée", description: "Les permissions globales ont été recréées depuis le registre." });
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const categories = ["metiers", "logistique", "personnel"] as const;
 
   return (
     <div className="space-y-4">
-      {/* Org selector */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
-          <SelectTrigger className="w-72 h-9">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="global">--- Configuration Globale (Défaut) ---</SelectItem>
-            {orgs.map((o) => (
-              <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {!isGlobal && !hasOrgOverride && (
-          <Button variant="outline" size="sm" onClick={copyDefaults}>
-            Copier les réglages par défaut
-          </Button>
-        )}
-        {!isGlobal && hasOrgOverride && (
-          <Badge variant="secondary" className="text-xs">Personnalisé</Badge>
-        )}
-      </div>
-
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -428,21 +389,22 @@ function PermissionsTab() {
           <CardHeader className="flex-row items-center justify-between pb-3">
             <div>
               <CardTitle className="text-base">
-                Matrice des permissions
-                {!isGlobal && selectedOrgName && (
-                  <span className="text-muted-foreground font-normal ml-2">— {selectedOrgName}</span>
-                )}
+                Matrice des permissions globales
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                {isGlobal
-                  ? "Configuration par défaut appliquée à toutes les organisations."
-                  : "Surcharge spécifique pour cette organisation."}
+                Configuration unique appliquée à toutes les organisations (org_id = NULL).
               </p>
             </div>
-            <Button onClick={handleSave} disabled={saving} size="sm">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-              Sauvegarder
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleReset} disabled={resetting}>
+                {resetting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                Réinitialiser
+              </Button>
+              <Button onClick={handleSave} disabled={saving} size="sm">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                Sauvegarder
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0 sm:p-4">
             <Accordion type="multiple" defaultValue={categories.map(String)} className="space-y-3">
@@ -474,9 +436,6 @@ function PermissionsTab() {
                                 key={group.id}
                                 group={group}
                                 matrix={matrix}
-                                isGlobal={isGlobal}
-                                selectedOrgPlan={selectedOrgPlan}
-                                isDiff={isDiff}
                                 toggleEnabled={toggleEnabled}
                                 toggleChildEnabled={toggleChildEnabled}
                                 togglePerm={togglePerm}
