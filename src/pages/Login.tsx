@@ -71,11 +71,17 @@ export default function LoginPage() {
   // Post-signup flow now handled by /welcome page
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
+    <div className="min-h-screen w-full flex flex-col p-4" style={{ background: "hsl(222 68% 6%)" }}>
+      <div className="px-2 pt-3 pb-6">
+        <a href="https://masjidlab.com" className="inline-flex items-center gap-1.5 text-sm font-light text-white/40 hover:text-white/70 transition-colors">
+          ← Site Officiel
+        </a>
+      </div>
+      <div className="flex-1 flex items-center justify-center">
       <Card className="w-full max-w-md shadow-2xl border-white/10 bg-brand-navy/60 backdrop-blur-xl text-white">
         <CardHeader className="text-center space-y-2">
           <a href="https://masjidlab.com" className="mx-auto mb-2 block">
-            <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
+            <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-auto object-contain drop-shadow-[0_0_10px_rgba(62,212,226,0.2)]" />
           </a>
           <CardTitle className="text-2xl font-bold text-white">MASJIDLAB</CardTitle>
           <CardDescription className="text-white/50">
@@ -151,6 +157,7 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
