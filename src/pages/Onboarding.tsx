@@ -47,11 +47,8 @@ export default function OnboardingPage() {
 
         {/* Logo */}
         <div className="mb-8">
-          <div
-            className="inline-flex items-center justify-center w-24 h-24 rounded-3xl shadow-2xl mb-4"
-            style={{ background: "linear-gradient(135deg, hsl(45, 90%, 40%), hsl(45, 90%, 55%))" }}
-          >
-            <span className="text-4xl font-bold text-white" style={{ fontFamily: "Georgia, serif" }}>م</span>
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl shadow-2xl mb-4 bg-primary-foreground/10">
+            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-16 w-16 object-contain" />
           </div>
           <h1
             className="text-4xl font-bold tracking-widest"
