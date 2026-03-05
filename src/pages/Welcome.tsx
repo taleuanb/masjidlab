@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,8 +26,8 @@ export default function WelcomePage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg border-border/50">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-xl gradient-emerald flex items-center justify-center mb-2">
-            <span className="text-2xl font-bold text-white">M</span>
+          <div className="mx-auto w-14 h-14 rounded-xl flex items-center justify-center mb-2">
+            <img src={masjidLabLogo} alt="MasjidLab" className="h-14 w-14 object-contain" />
           </div>
           <CardTitle className="text-xl font-bold">Bienvenue sur Masjidi 🎉</CardTitle>
           <CardDescription>Votre compte a été créé avec succès.</CardDescription>

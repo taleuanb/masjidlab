@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Building2, LogOut, Plus, ChevronRight, Loader2, CheckCircle2, Clock, RefreshCw } from "lucide-react";
+import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,8 +87,8 @@ export default function PendingAffectation() {
 
         {/* Logo */}
         <div className="flex justify-center">
-          <div className="h-16 w-16 rounded-2xl gradient-emerald flex items-center justify-center shadow-lg">
-            <Building2 className="h-8 w-8 text-primary-foreground" />
+          <div className="h-16 w-16 rounded-2xl flex items-center justify-center">
+            <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-16 object-contain" />
           </div>
         </div>
 

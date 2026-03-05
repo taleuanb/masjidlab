@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -81,10 +82,10 @@ export default function SetPasswordPage() {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo & Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl gradient-emerald mb-5 shadow-lg">
-            <span className="text-3xl font-bold text-white" style={{ fontFamily: "Georgia, serif" }}>م</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-5">
+            <img src={masjidLabLogo} alt="MasjidLab" className="h-20 w-20 object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">MASJIDI</h1>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">MasjidLab</h1>
           <p className="mt-3 text-muted-foreground text-base leading-relaxed max-w-xs mx-auto">
             "Votre engagement au service du Très-Haut<br />commence ici."
           </p>
