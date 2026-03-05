@@ -18,7 +18,7 @@ export function VitrineHeader() {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <a href="https://masjidlab.com" className="flex items-center gap-2.5 shrink-0">
-          <img src={masjidLabLogo} alt="MasjidLab" className="h-10 w-10 object-contain drop-shadow-[0_0_10px_rgba(62,212,226,0.2)]" />
+          <img src={masjidLabLogo} alt="MasjidLab" className="h-10 w-auto object-contain mix-blend-screen drop-shadow-[0_0_15px_rgba(62,212,226,0.3)]" />
           <span className="text-white font-bold tracking-tight text-lg">MASJIDLAB</span>
         </a>
 

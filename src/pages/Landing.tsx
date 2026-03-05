@@ -6,7 +6,6 @@ import PricingSection from "@/components/vitrine/PricingSection";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ArrowRight, Building2, Users, BookOpen, BarChart3, Shield, Zap, Lock, Server, ShieldCheck } from "lucide-react";
-import masjidLabLogo from "@/assets/masjidlab-logo.png";
 
 const features = [
   { icon: Building2, title: "Gestion des locaux", desc: "Plan interactif, réservations et suivi d'occupation en temps réel." },
@@ -40,70 +39,78 @@ export default function LandingPage() {
 
       {/* ═══════════════════ HERO ═══════════════════ */}
       <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden">
-        {/* Radial gradient background */}
+        {/* Deep radial gradient: navy center → pure black edges */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: "radial-gradient(ellipse 70% 60% at 50% 40%, hsl(222 68% 15%) 0%, hsl(222 68% 6%) 60%, hsl(0 0% 0%) 100%)",
+            background: "radial-gradient(ellipse 60% 55% at 50% 45%, hsl(222 68% 14%) 0%, hsl(222 68% 6%) 50%, hsl(0 0% 2%) 100%)",
           }}
         />
 
-        {/* Dot grid */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: "radial-gradient(circle, hsl(185 73% 57% / 0.08) 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
+        {/* Lattice Structure — Islamic architectural grid */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.07]" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="lattice" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+              {/* Octagonal lattice pattern inspired by Islamic geometry */}
+              <path d="M40 0 L60 20 L60 60 L40 80 L20 60 L20 20 Z" fill="none" stroke="hsl(161 84% 39%)" strokeWidth="0.5" />
+              <path d="M0 40 L20 20 L60 20 L80 40 L60 60 L20 60 Z" fill="none" stroke="hsl(185 73% 57%)" strokeWidth="0.3" />
+              <circle cx="40" cy="40" r="2" fill="hsl(185 73% 57%)" opacity="0.4" />
+              <circle cx="0" cy="0" r="1.5" fill="hsl(161 84% 39%)" opacity="0.3" />
+              <circle cx="80" cy="0" r="1.5" fill="hsl(161 84% 39%)" opacity="0.3" />
+              <circle cx="0" cy="80" r="1.5" fill="hsl(161 84% 39%)" opacity="0.3" />
+              <circle cx="80" cy="80" r="1.5" fill="hsl(161 84% 39%)" opacity="0.3" />
+            </pattern>
+            {/* Radial mask to fade lattice at edges */}
+            <radialGradient id="latticeFade" cx="50%" cy="45%" r="50%">
+              <stop offset="0%" stopColor="white" stopOpacity="1" />
+              <stop offset="70%" stopColor="white" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="white" stopOpacity="0" />
+            </radialGradient>
+            <mask id="latticeMask">
+              <rect width="100%" height="100%" fill="url(#latticeFade)" />
+            </mask>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#lattice)" mask="url(#latticeMask)" />
+        </svg>
 
-        {/* Glow Core — Emerald layer */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, hsl(161 84% 39% / 0.15) 0%, transparent 70%)", filter: "blur(80px)" }}
+        {/* Pulsing Core — Emerald breath behind title */}
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
+          animate={{ scale: [1, 1.15, 1], opacity: [0.12, 0.22, 0.12] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          style={{ background: "radial-gradient(circle, hsl(161 84% 39% / 0.25) 0%, transparent 65%)", filter: "blur(100px)" }}
         />
-        {/* Glow Core — Cyan ring */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, transparent 40%, hsl(185 73% 57% / 0.08) 60%, transparent 75%)", filter: "blur(40px)" }}
+        {/* Cyan outer ring — breath sync */}
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full pointer-events-none"
+          animate={{ scale: [1, 1.08, 1], opacity: [0.06, 0.12, 0.06] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+          style={{ background: "radial-gradient(circle, transparent 35%, hsl(185 73% 57% / 0.12) 55%, transparent 70%)", filter: "blur(60px)" }}
         />
 
         {/* Content */}
         <motion.div
-          className="relative z-10 max-w-4xl mx-auto text-center"
+          className="relative z-10 max-w-5xl mx-auto text-center"
           variants={stagger}
           initial="hidden"
           animate="show"
         >
-          {/* Breathing Logo */}
-          <motion.div variants={fadeUp} className="flex justify-center mb-8">
-            <motion.div
-              animate={{ scale: [1, 1.06, 1], opacity: [0.9, 1, 0.9] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="relative"
-            >
-              {/* Logo glow ring */}
-              <div className="absolute inset-0 -m-4 rounded-full"
-                style={{ background: "radial-gradient(circle, hsl(161 84% 39% / 0.2) 0%, transparent 70%)", filter: "blur(20px)" }}
-              />
-              <img src={masjidLabLogo} alt="MASJIDLAB" className="relative h-20 w-20 object-contain drop-shadow-[0_0_10px_rgba(62,212,226,0.2)]" />
-            </motion.div>
-          </motion.div>
-
-          {/* Surtitre */}
+          {/* Surtitre — light, wide tracking */}
           <motion.p
             variants={fadeUp}
-            className="text-brand-cyan text-xs font-light tracking-[0.3em] uppercase mb-6"
+            className="text-brand-cyan text-[11px] sm:text-xs font-light tracking-[0.4em] uppercase mb-8"
           >
             L'INFRASTRUCTURE DIGITALE D'ÉLITE
           </motion.p>
 
-          {/* H1 */}
+          {/* H1 — Imposing, prestigious */}
           <motion.h1
             variants={fadeUp}
-            className="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[1.1] tracking-tight mb-8"
+            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold leading-[1.05] tracking-tight mb-8"
           >
             <span
               className="bg-clip-text text-transparent"
-              style={{ backgroundImage: "linear-gradient(180deg, hsl(0 0% 100%) 30%, hsl(220 15% 70%) 100%)" }}
+              style={{ backgroundImage: "linear-gradient(180deg, hsl(0 0% 100%) 20%, hsl(220 15% 65%) 100%)" }}
             >
               Gérez l'organisation,
             </span>
@@ -114,28 +121,28 @@ export default function LandingPage() {
           {/* Sous-titre */}
           <motion.p
             variants={fadeUp}
-            className="text-base md:text-lg text-white/50 max-w-2xl mx-auto mb-12 leading-relaxed"
+            className="text-base md:text-lg text-white/45 max-w-2xl mx-auto mb-14 leading-relaxed font-light"
           >
             MASJIDLAB est le système d'exploitation institutionnel qui centralise votre Madrasa,
             vos finances et votre logistique dans un écosystème SaaS de pointe.
           </motion.p>
 
-          {/* CTAs */}
-          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <a href="/setup/identity">
+          {/* CTAs — Emerald primary */}
+          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+            <a href="https://app.masjidlab.com/setup/identity">
               <Button
                 size="lg"
-                className="bg-brand-emerald hover:bg-brand-emerald/90 text-white px-8 gap-2 transition-all shadow-[0_0_24px_hsl(161_84%_39%/0.3)] hover:shadow-[0_0_40px_hsl(185_73%_57%/0.4)]"
+                className="bg-brand-emerald hover:bg-brand-emerald/90 text-white px-10 py-6 text-base gap-2.5 transition-all shadow-[0_0_30px_hsl(161_84%_39%/0.35)] hover:shadow-[0_0_50px_hsl(161_84%_39%/0.5)]"
               >
                 Inscrire ma mosquée
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-5 w-5" />
               </Button>
             </a>
             <a href="/contact">
               <Button
                 size="lg"
                 variant="outline"
-                className="border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/5 hover:text-white bg-transparent"
+                className="border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/5 hover:text-white bg-transparent px-8 py-6 text-base"
               >
                 Demander une démo
               </Button>
@@ -148,9 +155,9 @@ export default function LandingPage() {
             className="flex flex-wrap items-center justify-center gap-6 md:gap-10"
           >
             {trustBadges.map((badge) => (
-              <div key={badge.label} className="flex items-center gap-2 text-white/30">
-                <badge.icon className="h-4 w-4 text-brand-cyan/50" />
-                <span className="text-xs font-medium tracking-wide">{badge.label}</span>
+              <div key={badge.label} className="flex items-center gap-2 text-white/25">
+                <badge.icon className="h-4 w-4 text-brand-cyan/40" />
+                <span className="text-[11px] font-medium tracking-wide">{badge.label}</span>
               </div>
             ))}
           </motion.div>
@@ -173,7 +180,7 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.4 }}
-                className="rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-6 hover:border-brand-cyan/30 transition-colors group"
+                className="rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-6 hover:border-brand-emerald/30 hover:shadow-[0_0_30px_hsl(161_84%_39%/0.08)] transition-all duration-500 group"
               >
                 <div className="h-10 w-10 rounded-lg bg-brand-cyan/10 flex items-center justify-center mb-4 group-hover:bg-brand-cyan/20 transition-colors">
                   <f.icon className="h-5 w-5 text-brand-cyan" />
@@ -205,7 +212,7 @@ export default function LandingPage() {
             <p className="text-white/50 mb-8 max-w-lg mx-auto">
               Rejoignez les institutions qui font confiance à MASJIDLAB pour leur gestion quotidienne.
             </p>
-            <a href="/setup/identity">
+            <a href="https://app.masjidlab.com/setup/identity">
               <Button size="lg" className="bg-brand-emerald hover:bg-brand-emerald/90 text-white shadow-[0_0_30px_hsl(161_84%_39%/0.3)] gap-2 px-8">
                 Créer mon espace
                 <ArrowRight className="h-4 w-4" />

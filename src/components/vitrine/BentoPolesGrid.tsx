@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { GraduationCap, Wallet, Building2, Users, TrendingUp, CheckCircle2, BookOpen, BarChart3 } from "lucide-react";
+import { GraduationCap, Wallet, Building2, Users, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const fadeUp = {
@@ -79,7 +79,7 @@ const poles = [
     desc: "Madrasa 2.0 : Pilotage pédagogique et portail parents.",
     badge: "Inclus dans Pro/Elite",
     icon: GraduationCap,
-    accentBorder: "hover:shadow-[0_0_40px_hsl(161_84%_39%/0.15)]",
+    hoverGlow: "group-hover:shadow-[0_0_50px_hsl(161_84%_39%/0.2)]",
     accentIcon: "text-brand-emerald",
     accentBg: "bg-brand-emerald/10",
     span: "md:col-span-2 md:row-span-2",
@@ -99,7 +99,7 @@ const poles = [
     desc: "Intégrité & Transparence : Gestion des dons et reçus fiscaux.",
     badge: "Inclus dans Pro/Elite",
     icon: Wallet,
-    accentBorder: "hover:shadow-[0_0_40px_hsl(185_73%_57%/0.15)]",
+    hoverGlow: "group-hover:shadow-[0_0_50px_hsl(185_73%_57%/0.2)]",
     accentIcon: "text-brand-cyan",
     accentBg: "bg-brand-cyan/10",
     span: "md:col-span-1",
@@ -119,7 +119,7 @@ const poles = [
     desc: "Maîtrise Opérationnelle : Salles, équipements et flux.",
     badge: "Elite",
     icon: Building2,
-    accentBorder: "hover:shadow-[0_0_40px_hsl(220_60%_50%/0.15)]",
+    hoverGlow: "group-hover:shadow-[0_0_50px_hsl(220_60%_50%/0.2)]",
     accentIcon: "text-blue-400",
     accentBg: "bg-blue-400/10",
     span: "md:col-span-1",
@@ -135,7 +135,7 @@ const poles = [
     desc: "Capital Humain : Gestion des contrats, bénévoles et compétences.",
     badge: "Elite",
     icon: Users,
-    accentBorder: "hover:shadow-[0_0_40px_hsl(280_60%_50%/0.12)]",
+    hoverGlow: "group-hover:shadow-[0_0_50px_hsl(280_60%_50%/0.15)]",
     accentIcon: "text-purple-400",
     accentBg: "bg-purple-400/10",
     span: "md:col-span-2",
@@ -151,14 +151,16 @@ const poles = [
 export default function BentoPolesGrid() {
   return (
     <section className="py-24 px-6 relative" style={{ background: "hsl(222 68% 6%)" }}>
-      {/* subtle dot grid continuity */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: "radial-gradient(circle, hsl(185 73% 57% / 0.04) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      />
+      {/* Lattice continuation — subtle */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="lattice-bento" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+            <path d="M40 0 L60 20 L60 60 L40 80 L20 60 L20 20 Z" fill="none" stroke="hsl(185 73% 57%)" strokeWidth="0.4" />
+            <circle cx="40" cy="40" r="1.5" fill="hsl(161 84% 39%)" opacity="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#lattice-bento)" />
+      </svg>
 
       <div className="relative max-w-6xl mx-auto">
         {/* Section header */}
@@ -185,12 +187,12 @@ export default function BentoPolesGrid() {
               whileInView="show"
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className={`group relative rounded-2xl border border-white/[0.06] p-6 backdrop-blur-lg transition-all duration-500 ${pole.span} ${pole.accentBorder}`}
+              className={`group relative rounded-2xl border border-white/[0.06] p-6 backdrop-blur-lg transition-all duration-500 ${pole.span} ${pole.hoverGlow} hover:border-white/[0.12]`}
               style={{ background: "hsl(222 68% 15% / 0.4)" }}
             >
               {/* Icon + Badge row */}
               <div className="flex items-start justify-between mb-3">
-                <div className={`h-10 w-10 rounded-xl ${pole.accentBg} flex items-center justify-center`}>
+                <div className={`h-10 w-10 rounded-xl ${pole.accentBg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                   <pole.icon className={`h-5 w-5 ${pole.accentIcon}`} />
                 </div>
                 <Badge className={`${pole.accentBg} ${pole.accentIcon} border-0 text-[10px] font-medium`}>
