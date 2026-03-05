@@ -80,9 +80,9 @@ export default function SetupPlanPage() {
     <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
       <div className="w-full max-w-4xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="mx-auto mb-2">
+          <a href="https://masjidlab.com" className="mx-auto mb-2 block">
             <img src={masjidLabLogo} alt="MASJIDLAB" className="h-16 w-16 object-contain drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
-          </div>
+          </a>
           <h1 className="text-xl font-bold text-white">Choisissez votre plan</h1>
           <p className="text-sm text-white/50">Vous pourrez changer de plan à tout moment.</p>
           <div className="flex justify-center gap-2 pt-1">

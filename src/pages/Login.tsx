@@ -74,9 +74,9 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
       <Card className="w-full max-w-md shadow-2xl border-white/10 bg-brand-navy/60 backdrop-blur-xl text-white">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto mb-2">
+          <a href="https://masjidlab.com" className="mx-auto mb-2 block">
             <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-16 object-contain drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
-          </div>
+          </a>
           <CardTitle className="text-2xl font-bold text-white">MASJIDLAB</CardTitle>
           <CardDescription className="text-white/50">
             {isSignUp

@@ -51,9 +51,9 @@ export default function SetupIdentityPage() {
     <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
       <Card className="w-full max-w-lg shadow-2xl border-white/10 bg-brand-navy/60 backdrop-blur-xl text-white">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto mb-2">
+          <a href="https://masjidlab.com" className="mx-auto mb-2 block">
             <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-16 object-contain drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
-          </div>
+          </a>
           <CardTitle className="text-xl font-bold text-white">Identité de votre mosquée</CardTitle>
           <CardDescription className="text-white/50">Renseignez les informations de base. Vous pourrez les modifier plus tard.</CardDescription>
           <div className="flex justify-center gap-2 pt-2">

@@ -82,7 +82,7 @@ export function VitrineHeader() {
               ))}
               <div className="pt-4 border-t border-white/10 space-y-3">
                 <a
-                  href="/login"
+                  href="https://app.masjidlab.com/login"
                   className="block text-sm font-medium text-brand-cyan text-center py-2"
                 >
                   Connexion
