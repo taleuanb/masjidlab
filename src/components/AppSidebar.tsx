@@ -29,6 +29,8 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ElementType;
+  /** Sub-module RBAC key (e.g. "education.eleves"). If omitted, inherits parent visibility. */
+  moduleKey?: string;
 }
 
 interface NavBlock {
@@ -60,9 +62,9 @@ const METIER_BLOCKS: NavBlock[] = [
     label: "Éducation",
     icon: GraduationCap,
     items: [
-      { title: "Élèves", url: "/eleves", icon: GraduationCap },
-      { title: "Classes", url: "/classes", icon: BookOpen },
-      { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList },
+      { title: "Élèves", url: "/eleves", icon: GraduationCap, moduleKey: "education.eleves" },
+      { title: "Classes", url: "/classes", icon: BookOpen, moduleKey: "education.classes" },
+      { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList, moduleKey: "education.inscriptions" },
     ],
   },
   {
@@ -70,9 +72,9 @@ const METIER_BLOCKS: NavBlock[] = [
     label: "Finance",
     icon: Wallet,
     items: [
-      { title: "Transactions", url: "/finance", icon: CreditCard },
-      { title: "Donateurs", url: "/donateurs", icon: Heart },
-      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt },
+      { title: "Transactions", url: "/finance", icon: CreditCard, moduleKey: "finance.transactions" },
+      { title: "Donateurs", url: "/donateurs", icon: Heart, moduleKey: "finance.donateurs" },
+      { title: "Reçus Fiscaux", url: "/recus-fiscaux", icon: Receipt, moduleKey: "finance.recus" },
     ],
   },
   {
@@ -96,11 +98,11 @@ const LOGISTIQUE_BLOCK: NavBlock = {
   icon: Truck,
   items: [
     { title: "Dashboard Logistique", url: "/", icon: LayoutDashboard },
-    { title: "Planning", url: "/planning", icon: CalendarDays },
-    { title: "Événements", url: "/evenements", icon: Calendar },
-    { title: "Inventaire", url: "/inventaire", icon: Package },
-    { title: "Parking", url: "/parking", icon: Car },
-    { title: "Maintenance", url: "/maintenance", icon: Wrench },
+    { title: "Planning", url: "/planning", icon: CalendarDays, moduleKey: "operations.planning" },
+    { title: "Événements", url: "/evenements", icon: Calendar, moduleKey: "operations.evenements" },
+    { title: "Inventaire", url: "/inventaire", icon: Package, moduleKey: "operations.inventaire" },
+    { title: "Parking", url: "/parking", icon: Car, moduleKey: "operations.parking" },
+    { title: "Maintenance", url: "/maintenance", icon: Wrench, moduleKey: "operations.maintenance" },
   ],
 };
 
@@ -110,10 +112,10 @@ const PERSONNEL_BLOCK: NavBlock = {
   label: "Personnel",
   icon: ShieldCheck,
   items: [
-    { title: "Approbations", url: "/approbations", icon: UserCheck },
-    { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck },
-    { title: "Documents", url: "/documents", icon: FileText },
-    { title: "Structure", url: "/organisation", icon: Users },
+    { title: "Approbations", url: "/approbations", icon: UserCheck, moduleKey: "gestion-rh.approbations" },
+    { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, moduleKey: "gestion-rh.contrats" },
+    { title: "Documents", url: "/documents", icon: FileText, moduleKey: "gestion-rh.documents" },
+    { title: "Structure", url: "/organisation", icon: Users, moduleKey: "gestion-rh.structure" },
   ],
 };
 
@@ -136,12 +138,19 @@ const roleIcons: Record<UserRole, React.ElementType> = {
 // Visibility is already resolved by the parent via useModuleAccess.
 // This component only handles expand/collapse UI.
 function SidebarBlock({
-  block, location,
+  block, location, isModuleVisible,
 }: {
   block: NavBlock;
   location: ReturnType<typeof useLocation>;
+  isModuleVisible: (key: string) => boolean;
 }) {
-  const hasActiveRoute = block.items.some((item) =>
+  // Filter items by sub-module RBAC key
+  const visibleItems = block.items.filter((item) => {
+    if (!item.moduleKey) return true; // no sub-module key → inherits parent visibility
+    return isModuleVisible(item.moduleKey);
+  });
+
+  const hasActiveRoute = visibleItems.some((item) =>
     item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url)
   );
   const [open, setOpen] = useState(hasActiveRoute);
@@ -158,16 +167,16 @@ function SidebarBlock({
         >
           <block.icon className="h-4 w-4 shrink-0 text-primary" />
           <span className="flex-1 text-left">{block.label}</span>
-          {block.items.length > 0 && (
+          {visibleItems.length > 0 && (
             <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40 transition-transform duration-200", open && "rotate-180")} />
           )}
         </button>
       </CollapsibleTrigger>
 
-      {block.items.length > 0 && (
+      {visibleItems.length > 0 && (
         <CollapsibleContent>
           <SidebarMenu className="ml-3 mt-0.5 border-l border-sidebar-border/40 pl-3">
-            {block.items.map((item) => (
+            {visibleItems.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild>
                   <NavLink
@@ -186,7 +195,7 @@ function SidebarBlock({
         </CollapsibleContent>
       )}
 
-      {block.items.length === 0 && (
+      {visibleItems.length === 0 && (
         <CollapsibleContent>
           <p className="ml-6 mt-1 mb-1 text-[11px] text-sidebar-foreground/30 italic border-l border-sidebar-border/40 pl-3 py-0.5">
             Aucun module actif
@@ -371,7 +380,7 @@ export function AppSidebar() {
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
             <div className="space-y-px">
               {visibleMetierBlocks.map((block) => (
-                <SidebarBlock key={block.id} block={block} location={location} />
+                <SidebarBlock key={block.id} block={block} location={location} isModuleVisible={isModuleVisible} />
               ))}
             </div>
           </div>
@@ -382,7 +391,7 @@ export function AppSidebar() {
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Logistique</p>
             <div className="space-y-px">
-              <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} />
+              <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} isModuleVisible={isModuleVisible} />
             </div>
           </div>
         )}
@@ -392,7 +401,7 @@ export function AppSidebar() {
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Personnel</p>
             <div className="space-y-px">
-              <SidebarBlock block={PERSONNEL_BLOCK} location={location} />
+              <SidebarBlock block={PERSONNEL_BLOCK} location={location} isModuleVisible={isModuleVisible} />
             </div>
           </div>
         )}
