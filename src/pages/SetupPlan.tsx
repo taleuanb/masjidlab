@@ -23,7 +23,6 @@ export default function SetupPlanPage() {
   useEffect(() => {
     if (!authLoading && !user) navigate("/login", { replace: true });
   }, [authLoading, user, navigate]);
-  const [loading, setLoading] = useState<PlanId | null>(null);
 
   const handleChoosePlan = async (plan: PlanId) => {
     setLoading(plan);
