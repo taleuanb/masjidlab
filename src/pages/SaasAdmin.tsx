@@ -142,6 +142,16 @@ function DashboardTab({
                   <TableRow key={o.id}>
                     <TableCell className="font-medium">{o.name}</TableCell>
                     <TableCell>
+                      {(() => {
+                        const s = STATUS_BADGE[o.status ?? "active"] ?? STATUS_BADGE.active;
+                        return (
+                          <Badge variant="outline" className={`text-[10px] ${s.cls}`}>
+                            {s.label}
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
                       <Badge variant="outline" className="capitalize">
                         {o.subscription_plan ?? "starter"}
                       </Badge>
@@ -157,9 +167,17 @@ function DashboardTab({
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => openModules(o)}>
-                        Gérer les modules
-                      </Button>
+                      <div className="flex gap-1.5 justify-end">
+                        {(o.status === "pending" || !o.status) && o.status !== "active" && (
+                          <Button size="sm" variant="default" onClick={() => onValidate(o)} className="gap-1">
+                            <Check className="h-3.5 w-3.5" />
+                            Valider
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => openModules(o)}>
+                          Modules
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
