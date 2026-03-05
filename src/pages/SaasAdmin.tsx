@@ -23,7 +23,7 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Navigate } from "react-router-dom";
-import { MODULE_REGISTRY, PLAN_META, type PlanId, isPlanAtLeast } from "@/config/module-registry";
+import { MODULE_REGISTRY, PLAN_META, type PlanId } from "@/config/module-registry";
 import {
   RBAC_MODULE_HIERARCHY, getAllRbacModuleIds, getRegistryMeta,
   CATEGORY_LABELS, type RbacModuleGroup,
