@@ -87,14 +87,14 @@ export default function SetupPlanPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
       <div className="w-full max-w-4xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-xl flex items-center justify-center mb-2">
-            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-14 w-14 object-contain" />
+          <div className="mx-auto mb-2">
+            <img src={masjidLabLogo} alt="MASJIDLAB" className="h-16 w-16 object-contain drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
           </div>
-          <h1 className="text-xl font-bold text-foreground">Choisissez votre plan</h1>
-          <p className="text-sm text-muted-foreground">Vous pourrez changer de plan à tout moment.</p>
+          <h1 className="text-xl font-bold text-white">Choisissez votre plan</h1>
+          <p className="text-sm text-white/50">Vous pourrez changer de plan à tout moment.</p>
           <div className="flex justify-center gap-2 pt-1">
             <div className="h-1.5 w-12 rounded-full bg-primary" />
             <div className="h-1.5 w-12 rounded-full bg-primary" />
@@ -110,9 +110,9 @@ export default function SetupPlanPage() {
             return (
               <Card
                 key={planId}
-                className={`relative border-2 transition-all hover:shadow-md ${
-                  planId === "pro" ? "border-primary shadow-sm" : "border-border"
-                }`}
+                className={`relative border transition-all hover:shadow-md backdrop-blur-xl ${
+                  planId === "pro" ? "border-brand-emerald/40 shadow-[0_0_30px_hsl(161_84%_39%/0.1)]" : "border-white/10"
+                } bg-brand-navy/60 text-white`}
               >
                 {planId === "pro" && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -120,14 +120,14 @@ export default function SetupPlanPage() {
                   </div>
                 )}
                 <CardHeader className="text-center pb-3">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-muted mb-2">
-                    <Icon className="h-5 w-5 text-primary" />
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 mb-2">
+                    <Icon className="h-5 w-5 text-brand-cyan" />
                   </div>
-                  <CardTitle className="text-base">{meta.label}</CardTitle>
-                  <p className="text-2xl font-bold text-foreground">{PLAN_PRICES[planId]}</p>
+                  <CardTitle className="text-base text-white">{meta.label}</CardTitle>
+                  <p className="text-2xl font-bold text-white">{PLAN_PRICES[planId]}</p>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <ul className="space-y-1.5 text-xs text-muted-foreground">
+                  <ul className="space-y-1.5 text-xs text-white/50">
                     {modules.map((m) => (
                       <li key={m.id} className="flex items-start gap-2">
                         <Check className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
@@ -142,7 +142,7 @@ export default function SetupPlanPage() {
                     )}
                   </ul>
                   <Button
-                    className="w-full"
+                    className={`w-full ${planId === "pro" ? "bg-brand-emerald hover:bg-brand-emerald/90 text-white" : "border-white/20 text-white hover:bg-white/10 bg-transparent"}`}
                     variant={planId === "pro" ? "default" : "outline"}
                     onClick={() => handleChoosePlan(planId)}
                     disabled={loading !== null}

@@ -71,14 +71,14 @@ export default function LoginPage() {
   // Post-signup flow now handled by /welcome page
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg border-border/50">
+    <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
+      <Card className="w-full max-w-md shadow-2xl border-white/10 bg-brand-navy/60 backdrop-blur-xl text-white">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-xl flex items-center justify-center mb-2">
-            <img src={masjidLabLogo} alt="MasjidLab" className="h-14 w-14 object-contain" />
+          <div className="mx-auto mb-2">
+            <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-16 object-contain drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
           </div>
-          <CardTitle className="text-2xl font-bold">MASJIDLAB</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl font-bold text-white">MASJIDLAB</CardTitle>
+          <CardDescription className="text-white/50">
             {isSignUp
               ? inviteToken
                 ? "Créer votre compte pour rejoindre l'équipe"
@@ -90,7 +90,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="displayName">Nom complet</Label>
+                <Label htmlFor="displayName" className="text-white/70">Nom complet</Label>
                 <Input
                   id="displayName"
                   type="text"
@@ -98,11 +98,12 @@ export default function LoginPage() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   autoComplete="name"
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                 />
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-white/70">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -111,10 +112,11 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
+              <Label htmlFor="password" className="text-white/70">Mot de passe</Label>
               <Input
                 id="password"
                 type="password"
@@ -124,9 +126,10 @@ export default function LoginPage() {
                 required
                 minLength={6}
                 autoComplete={isSignUp ? "new-password" : "current-password"}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full bg-brand-emerald hover:bg-brand-emerald/90 text-white" disabled={loading}>
               {loading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : isSignUp ? (
