@@ -126,7 +126,7 @@ export default function LoginPage() {
                 autoComplete={isSignUp ? "new-password" : "current-password"}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full bg-brand-emerald hover:bg-brand-emerald/90 text-white" disabled={loading}>
               {loading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : isSignUp ? (
