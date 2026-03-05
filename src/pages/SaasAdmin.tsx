@@ -53,10 +53,14 @@ const PERM_LABELS: Record<PermCol, string> = {
 interface OrgRow {
   id: string;
   name: string;
+  city: string | null;
   active_poles: string[];
   subscription_plan: string | null;
+  chosen_plan: string | null;
   status: string | null;
   member_count: number;
+  owner_email: string | null;
+  created_at: string | null;
 }
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
