@@ -43,8 +43,8 @@ export default function LoginPage() {
           toast({ title: "Compte créé", description: "Bienvenue dans votre équipe !" });
           navigate("/", { replace: true });
         } else {
-          // Free signup: show post-signup choice
-          setPostSignupStep("choice");
+          // Free signup: redirect to welcome page
+          navigate("/welcome", { replace: true });
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });

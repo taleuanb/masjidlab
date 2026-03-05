@@ -125,6 +125,10 @@ const App = () => (
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/set-password" element={<SetPasswordPage />} />
                   <Route path="/onboarding" element={<OnboardingPage />} />
+                  <Route path="/welcome" element={<WelcomePage />} />
+                  <Route path="/setup/identity" element={<SetupIdentityPage />} />
+                  <Route path="/setup/plan" element={<SetupPlanPage />} />
+                  <Route path="/setup/success" element={<SetupSuccessPage />} />
                   <Route
                     path="/*"
                     element={
