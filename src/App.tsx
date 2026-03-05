@@ -44,6 +44,7 @@ import SetupIdentityPage from "./pages/SetupIdentity";
 import SetupPlanPage from "./pages/SetupPlan";
 import SetupSuccessPage from "./pages/SetupSuccess";
 import { Loader2 } from "lucide-react";
+import { isVitrineDomain } from "@/lib/domain";
 
 const queryClient = new QueryClient();
 
