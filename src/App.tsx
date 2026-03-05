@@ -38,6 +38,10 @@ import DocumentsPage from "./pages/Documents";
 import DonateursPage from "./pages/Donateurs";
 import RecusFiscauxPage from "./pages/RecusFiscaux";
 import NotFound from "./pages/NotFound";
+import WelcomePage from "./pages/Welcome";
+import SetupIdentityPage from "./pages/SetupIdentity";
+import SetupPlanPage from "./pages/SetupPlan";
+import SetupSuccessPage from "./pages/SetupSuccess";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
