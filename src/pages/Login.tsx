@@ -102,7 +102,7 @@ export default function LoginPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-white/70">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -111,10 +111,11 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
+              <Label htmlFor="password" className="text-white/70">Mot de passe</Label>
               <Input
                 id="password"
                 type="password"
@@ -124,6 +125,7 @@ export default function LoginPage() {
                 required
                 minLength={6}
                 autoComplete={isSignUp ? "new-password" : "current-password"}
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
               />
             </div>
             <Button type="submit" className="w-full bg-brand-emerald hover:bg-brand-emerald/90 text-white" disabled={loading}>
