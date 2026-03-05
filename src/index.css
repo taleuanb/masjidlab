@@ -111,7 +111,7 @@
   }
 
   .gradient-navy {
-    background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(220, 50%, 22%));
+    background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(220, 55%, 22%));
   }
 
   .gradient-emerald {
@@ -120,6 +120,11 @@
 
   .gradient-emerald-subtle {
     background: linear-gradient(135deg, hsl(160, 82%, 39% / 0.08), hsl(184, 72%, 56% / 0.04));
+  }
+
+  .gradient-positive {
+    background: linear-gradient(135deg, hsl(220, 71%, 14%), hsl(160, 82%, 39%));
+    color: white;
   }
 
   .text-gradient-brand {
