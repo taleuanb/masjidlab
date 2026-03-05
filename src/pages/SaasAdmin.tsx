@@ -129,7 +129,8 @@ function DashboardTab({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mosquée</TableHead>
+                 <TableHead>Mosquée</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Membres</TableHead>
                   <TableHead>Modules Actifs</TableHead>
