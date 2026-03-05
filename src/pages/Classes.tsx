@@ -42,7 +42,6 @@ const Classes = () => {
         .order("nom");
       if (error) throw error;
 
-      // Fetch subjects for each class
       const classIds = (data ?? []).map((c: any) => c.id);
       let subjectMap: Record<string, { id: string; name: string }[]> = {};
       if (classIds.length > 0) {
@@ -65,11 +64,7 @@ const Classes = () => {
     queryKey: ["madrasa_levels", orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("madrasa_levels")
-        .select("*")
-        .eq("org_id", orgId!)
-        .order("label");
+      const { data, error } = await supabase.from("madrasa_levels").select("*").eq("org_id", orgId!).order("label");
       if (error) throw error;
       return data as Tables<"madrasa_levels">[];
     },
@@ -79,11 +74,7 @@ const Classes = () => {
     queryKey: ["madrasa_subjects", orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("madrasa_subjects")
-        .select("*")
-        .eq("org_id", orgId!)
-        .order("name");
+      const { data, error } = await supabase.from("madrasa_subjects").select("*").eq("org_id", orgId!).order("name");
       if (error) throw error;
       return data as Tables<"madrasa_subjects">[];
     },
@@ -99,10 +90,6 @@ const Classes = () => {
         .eq("user_roles.role", "enseignant")
         .eq("org_id", orgId!);
       if (error) throw error;
-      console.log("[Classes] Teachers with role enseignant:", data);
-      if (!data || data.length === 0) {
-        console.log("[Classes] No teachers found with role 'enseignant' for org", orgId);
-      }
       return (data ?? []).map((t: any) => ({ id: t.id, display_name: t.display_name }));
     },
   });
@@ -113,54 +100,32 @@ const Classes = () => {
       if (!form.nom.trim()) throw new Error("Nom requis");
       const { data: created, error } = await supabase
         .from("madrasa_classes")
-        .insert({
-          nom: form.nom.trim(),
-          niveau: form.niveau || null,
-          prof_id: form.prof_id || null,
-          salle_id: form.salle_id || null,
-          org_id: orgId!,
-        })
+        .insert({ nom: form.nom.trim(), niveau: form.niveau || null, prof_id: form.prof_id || null, salle_id: form.salle_id || null, org_id: orgId! })
         .select("id")
         .single();
       if (error) throw error;
-
-      // Link subjects
       if (selectedSubjects.length > 0) {
         const links = selectedSubjects.map((sid) => ({ class_id: created.id, subject_id: sid }));
         const { error: linkErr } = await supabase.from("madrasa_class_subjects").insert(links);
         if (linkErr) throw linkErr;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["madrasa_classes", orgId] });
-      setDialogOpen(false);
-      resetForm();
-      toast({ title: "Classe créée" });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["madrasa_classes", orgId] }); setDialogOpen(false); resetForm(); toast({ title: "Classe créée" }); },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
   const deleteClass = useMutation({
     mutationFn: async (id: string) => {
-      // Delete linked subjects first
       await supabase.from("madrasa_class_subjects").delete().eq("class_id", id);
       const { error } = await supabase.from("madrasa_classes").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["madrasa_classes", orgId] });
-      toast({ title: "Classe supprimée" });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["madrasa_classes", orgId] }); toast({ title: "Classe supprimée" }); },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
-  const resetForm = () => {
-    setForm({ nom: "", niveau: "", prof_id: "", salle_id: "" });
-    setSelectedSubjects([]);
-  };
-
-  const toggleSubject = (id: string) =>
-    setSelectedSubjects((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  const resetForm = () => { setForm({ nom: "", niveau: "", prof_id: "", salle_id: "" }); setSelectedSubjects([]); };
+  const toggleSubject = (id: string) => setSelectedSubjects((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
 
   return (
     <main className="flex-1 overflow-y-auto">
@@ -168,10 +133,10 @@ const Classes = () => {
         {/* Header */}
         <div className="flex items-center gap-3">
           <SidebarTrigger />
-          <BookOpen className="h-5 w-5 text-primary" />
+          <BookOpen className="h-5 w-5 text-accent" />
           <h1 className="text-xl font-bold text-foreground">Classes</h1>
           <Badge variant="secondary" className="ml-1">{classes.length}</Badge>
-          <Button size="sm" className="ml-auto" onClick={() => { resetForm(); setDialogOpen(true); }}>
+          <Button size="sm" className="ml-auto gradient-positive border-0" onClick={() => { resetForm(); setDialogOpen(true); }}>
             <Plus className="h-4 w-4" /> Nouvelle classe
           </Button>
         </div>
@@ -184,9 +149,7 @@ const Classes = () => {
               <SelectTrigger className="h-9 w-48"><SelectValue placeholder="Filtrer par niveau" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les niveaux</SelectItem>
-                {levels.map((l) => (
-                  <SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>
-                ))}
+                {levels.map((l) => (<SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>
@@ -210,51 +173,38 @@ const Classes = () => {
                     <CardTitle className="text-base">{c.nom}</CardTitle>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                        >
+                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Supprimer « {c.nom} » ?</AlertDialogTitle>
-                          <AlertDialogDescription>Cette action est irréversible. Les inscriptions liées seront également supprimées.</AlertDialogDescription>
+                          <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteClass.mutate(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Supprimer
-                          </AlertDialogAction>
+                          <AlertDialogCancel className="text-muted-foreground">Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteClass.mutate(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {c.niveau && (
-                    <Badge variant="outline" className="text-xs">{c.niveau}</Badge>
-                  )}
-
+                  {c.niveau && <Badge variant="outline" className="text-xs">{c.niveau}</Badge>}
                   {c.prof?.display_name && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{c.prof.display_name}</span>
                     </div>
                   )}
-
                   {c.subjects.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {c.subjects.map((s: any) => (
-                        <Badge key={s.id} variant="secondary" className="text-[10px] font-normal">
-                          {s.name}
-                        </Badge>
+                        <Badge key={s.id} variant="secondary" className="text-[10px] font-normal">{s.name}</Badge>
                       ))}
                     </div>
                   )}
-
                   {!c.niveau && !c.prof?.display_name && c.subjects.length === 0 && (
                     <p className="text-xs text-muted-foreground/50 italic">Aucun détail configuré</p>
                   )}
@@ -275,50 +225,31 @@ const Classes = () => {
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
               <Label className="text-xs">Nom de la classe *</Label>
-              <Input
-                value={form.nom}
-                onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
-                placeholder="Ex: CE1 - Groupe A"
-                className="h-9"
-              />
+              <Input value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))} placeholder="Ex: CE1 - Groupe A" className="h-9" />
             </div>
-
             <div className="space-y-1.5">
               <Label className="text-xs">Niveau</Label>
               <Select value={form.niveau} onValueChange={(v) => setForm((f) => ({ ...f, niveau: v }))}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner un niveau" /></SelectTrigger>
-                <SelectContent>
-                  {levels.map((l) => (
-                    <SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{levels.map((l) => (<SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>))}</SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1.5">
               <Label className="text-xs">Professeur</Label>
               <Select value={form.prof_id} onValueChange={(v) => setForm((f) => ({ ...f, prof_id: v }))}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="Assigner un professeur" /></SelectTrigger>
-                <SelectContent>
-                  {teachers.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{teachers.map((t) => (<SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>))}</SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1.5">
               <Label className="text-xs">Matières</Label>
               {subjects.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Aucune matière configurée. Ajoutez-en dans Configuration &gt; Madrassa.</p>
+                <p className="text-xs text-muted-foreground">Aucune matière configurée.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto rounded-md border p-3">
                   {subjects.map((s) => (
                     <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={selectedSubjects.includes(s.id)}
-                        onCheckedChange={() => toggleSubject(s.id)}
-                      />
+                      <Checkbox checked={selectedSubjects.includes(s.id)} onCheckedChange={() => toggleSubject(s.id)} />
                       <span className="truncate">{s.name}</span>
                     </label>
                   ))}
@@ -327,8 +258,8 @@ const Classes = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
-            <Button onClick={() => createClass.mutate()} disabled={createClass.isPending || !form.nom.trim()}>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)} className="text-muted-foreground">Annuler</Button>
+            <Button onClick={() => createClass.mutate()} disabled={createClass.isPending || !form.nom.trim()} className="gradient-positive border-0">
               {createClass.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Créer
             </Button>

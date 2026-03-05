@@ -646,6 +646,7 @@ function ModuleGroupRows({
         {RBAC_ROLES.map((role) => (
           <TableCell key={role.id} className="text-center">
             <Switch
+              className="switch-cyan"
               checked={matrix[permKey(role.id, group.id, "enabled")] ?? false}
               onCheckedChange={() => toggleEnabled(role.id, group.id)}
             />
@@ -668,10 +669,10 @@ function ModuleGroupRows({
               <TableCell key={role.id} className="text-center">
                 <div className="flex flex-col items-center gap-1">
                   <Switch
+                    className={`scale-90 switch-cyan ${disabled ? "opacity-40" : ""}`}
                     checked={childEnabled}
                     onCheckedChange={() => toggleChildEnabled(role.id, child.id, group.id)}
                     disabled={disabled}
-                    className="scale-90"
                   />
                   {childEnabled && !disabled && (
                     <div className="flex gap-1.5 mt-0.5">

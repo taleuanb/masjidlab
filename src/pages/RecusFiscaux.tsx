@@ -13,7 +13,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -44,11 +44,7 @@ const RecusFiscaux = () => {
     queryKey: ["donors_list", orgId],
     queryFn: async () => {
       if (!orgId) return [];
-      const { data, error } = await supabase
-        .from("donors")
-        .select("id, nom, prenom")
-        .eq("org_id", orgId)
-        .order("nom");
+      const { data, error } = await supabase.from("donors").select("id, nom, prenom").eq("org_id", orgId).order("nom");
       if (error) throw error;
       return data;
     },
@@ -78,10 +74,7 @@ const RecusFiscaux = () => {
       const { error } = await supabase.from("tax_receipts").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tax_receipts", orgId] });
-      toast.success("Reçu supprimé");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["tax_receipts", orgId] }); toast.success("Reçu supprimé"); },
     onError: () => toast.error("Erreur lors de la suppression"),
   });
 
@@ -99,7 +92,7 @@ const RecusFiscaux = () => {
         <div className="ml-auto">
           <Dialog open={genOpen} onOpenChange={setGenOpen}>
             <DialogTrigger asChild>
-              <Button size="sm"><FileText className="h-4 w-4 mr-2" />Générer un reçu</Button>
+              <Button size="sm" className="gradient-positive border-0"><FileText className="h-4 w-4 mr-2" />Générer un reçu</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Générer un Reçu Fiscal</DialogTitle></DialogHeader>
@@ -109,9 +102,7 @@ const RecusFiscaux = () => {
                   <Select value={selectedDonor} onValueChange={setSelectedDonor}>
                     <SelectTrigger><SelectValue placeholder="Sélectionner un donateur" /></SelectTrigger>
                     <SelectContent>
-                      {donors.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>{d.nom} {d.prenom ?? ""}</SelectItem>
-                      ))}
+                      {donors.map((d) => (<SelectItem key={d.id} value={d.id}>{d.nom} {d.prenom ?? ""}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -119,21 +110,16 @@ const RecusFiscaux = () => {
                   <Label>Année fiscale</Label>
                   <Select value={selectedYear} onValueChange={setSelectedYear}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {years.map((y) => (
-                        <SelectItem key={y} value={y}>{y}</SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectContent>{years.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
-                <Button
-                  className="w-full"
-                  onClick={() => generateMutation.mutate()}
-                  disabled={!selectedDonor || generateMutation.isPending}
-                >
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setGenOpen(false)} className="text-muted-foreground">Annuler</Button>
+                <Button className="gradient-positive border-0" onClick={() => generateMutation.mutate()} disabled={!selectedDonor || generateMutation.isPending}>
                   {generateMutation.isPending ? "Génération…" : "Générer le reçu CERFA"}
                 </Button>
-              </div>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
@@ -177,7 +163,7 @@ const RecusFiscaux = () => {
                           <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogCancel className="text-muted-foreground">Annuler</AlertDialogCancel>
                           <AlertDialogAction onClick={() => deleteMutation.mutate(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                             Supprimer
                           </AlertDialogAction>
