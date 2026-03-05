@@ -104,6 +104,16 @@ export default function SetupIdentityPage() {
             Suivant
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
+
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={() => navigate("/welcome")}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              ← Retour
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>
