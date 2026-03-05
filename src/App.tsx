@@ -124,6 +124,9 @@ const App = () => {
         <BrowserRouter>
           {vitrine ? (
             <Routes>
+              <Route path="/setup/identity" element={<SetupIdentityPage />} />
+              <Route path="/setup/plan" element={<SetupPlanPage />} />
+              <Route path="/setup/success" element={<SetupSuccessPage />} />
               <Route path="*" element={<LandingPage />} />
             </Routes>
           ) : (

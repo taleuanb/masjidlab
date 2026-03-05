@@ -54,9 +54,6 @@ export default function SetupPlanPage() {
       // Cleanup
       sessionStorage.removeItem("setup_identity");
 
-      // Refresh org context
-      refetch();
-
       navigate("/setup/success", { replace: true });
     } catch (err: any) {
       console.error("[SetupPlan] Error:", err);
