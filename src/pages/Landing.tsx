@@ -122,7 +122,7 @@ export default function LandingPage() {
 
           {/* CTAs */}
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <a href="https://app.masjidlab.com/setup/identity">
+            <a href="/setup/identity">
               <Button
                 size="lg"
                 className="bg-brand-emerald hover:bg-brand-emerald/90 text-white px-8 gap-2 transition-all shadow-[0_0_24px_hsl(161_84%_39%/0.3)] hover:shadow-[0_0_40px_hsl(185_73%_57%/0.4)]"
