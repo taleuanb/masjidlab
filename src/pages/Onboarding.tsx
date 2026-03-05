@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Star, Heart, Shield } from "lucide-react";
+import masjidLabLogo from "@/assets/masjidlab-logo.png";
 
 const visionCards = [
   {
