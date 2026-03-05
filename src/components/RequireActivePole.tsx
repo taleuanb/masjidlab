@@ -1,21 +1,37 @@
 import { Navigate } from "react-router-dom";
-import { useOrganization } from "@/contexts/OrganizationContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useModuleAccess } from "@/hooks/useModuleAccess";
 
-/** Maps route prefixes to the pole ID required in active_poles */
-const ROUTE_TO_POLE: Record<string, string> = {
-  "/finance": "admin",
-  "/recoltes": "admin",
-  "/structure-membres": "admin",
-  "/membres": "admin",
-  "/organisation": "admin",
-  "/planning": "logistics",
-  "/evenements": "logistics",
-  "/inventaire": "logistics",
-  "/parking": "logistics",
-  "/maintenance": "logistics",
+/**
+ * Maps route prefixes to their sub-module RBAC key.
+ * useModuleAccess handles the triple filter (Plan + Activation + Global RBAC).
+ */
+const ROUTE_TO_MODULE: Record<string, string> = {
+  // Education
+  "/eleves": "education.eleves",
+  "/classes": "education.classes",
+  "/inscriptions": "education.inscriptions",
+  // Finance
+  "/finance": "finance.transactions",
+  "/donateurs": "finance.donateurs",
+  "/recus-fiscaux": "finance.recus",
+  // Logistique
+  "/planning": "operations.planning",
+  "/evenements": "operations.evenements",
+  "/inventaire": "operations.inventaire",
+  "/parking": "operations.parking",
+  "/maintenance": "operations.maintenance",
+  // Personnel
+  "/approbations": "gestion-rh.approbations",
+  "/contrats-staff": "gestion-rh.contrats",
+  "/documents": "gestion-rh.documents",
+  "/organisation": "gestion-rh.structure",
+  // Parent-level routes (check parent module)
+  "/structure-membres": "gouvernance",
+  "/membres": "gouvernance",
+  "/configuration": "config",
 };
 
 export function RequireActivePole({
@@ -23,31 +39,31 @@ export function RequireActivePole({
 }: {
   children: React.ReactNode;
 }) {
-  const { activePoles } = useOrganization();
   const { isSuperAdmin } = useRole();
   const { toast } = useToast();
+  const { hasAccess, isBypassing } = useModuleAccess();
   const path = window.location.pathname;
 
-  // Find the matching pole requirement
-  const requiredPole = Object.entries(ROUTE_TO_POLE).find(([prefix]) =>
+  // Find the matching module requirement
+  const matchedEntry = Object.entries(ROUTE_TO_MODULE).find(([prefix]) =>
     path.startsWith(prefix)
-  )?.[1];
+  );
+  const requiredModule = matchedEntry?.[1];
 
-  const isBlocked =
-    requiredPole && !isSuperAdmin && !activePoles.includes(requiredPole);
+  const isBlocked = requiredModule && !isBypassing && !hasAccess(requiredModule);
 
   useEffect(() => {
     if (isBlocked) {
       toast({
         title: "Module non disponible",
-        description: "Ce module n'est pas activé pour votre organisation.",
+        description: "Ce module n'est pas activé pour votre organisation ou votre rôle.",
         variant: "destructive",
       });
     }
   }, [isBlocked, toast]);
 
   if (isBlocked) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
