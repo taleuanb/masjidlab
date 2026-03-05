@@ -29,6 +29,8 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ElementType;
+  /** Sub-module RBAC key (e.g. "education.eleves"). If omitted, inherits parent visibility. */
+  moduleKey?: string;
 }
 
 interface NavBlock {
