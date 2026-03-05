@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, Loader2, Building2, UserPlus, Users, ChevronRight } from "lucide-react";
 
-type PostSignupStep = "choice" | null;
+type PostSignupStep = null;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
