@@ -9,6 +9,7 @@ interface Organization {
   name: string;
   active_poles: string[];
   subscription_plan: string | null;
+  status: string | null;
 }
 
 interface OrganizationContextType {
