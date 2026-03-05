@@ -111,7 +111,12 @@ export function useModuleAccess(): UseModuleAccessReturn {
       return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
     }
 
-    // ── Priority 3: Triple filter (Plan + Activation + Global RBAC) ──
+    // ── Priority 3: Org status filter — pending orgs only get CORE ──
+    if (orgStatus === "pending" || orgStatus === "suspended") {
+      return { allowed: false, blockedByPlan: false, blockedByRbac: false, isCore };
+    }
+
+    // ── Priority 4: Triple filter (Plan + Activation + Global RBAC) ──
 
     // A) Plan filter
     const inPlan = isModuleInPlan(moduleKey, currentPlan);
@@ -131,7 +136,7 @@ export function useModuleAccess(): UseModuleAccessReturn {
     }
 
     return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
-  }, [isBypassing, currentPlan, effectiveRoles, globalPerms, activePoleSet]);
+  }, [isBypassing, currentPlan, orgStatus, effectiveRoles, globalPerms, activePoleSet]);
 
   const hasAccess = useCallback((moduleKey: string): boolean => {
     return checkAccess(moduleKey).allowed;
