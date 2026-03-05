@@ -39,7 +39,6 @@ export default function LoginPage() {
         if (error) throw error;
 
         if (data.session) {
-          // Session exists (email auto-confirmed or confirmation disabled)
           if (inviteToken) {
             toast({ title: "Compte créé", description: "Bienvenue dans votre équipe !" });
             navigate("/", { replace: true });
@@ -47,7 +46,6 @@ export default function LoginPage() {
             navigate("/welcome", { replace: true });
           }
         } else {
-          // Email confirmation required — stay on login
           toast({
             title: "Vérifiez votre email",
             description: "Un lien de confirmation vous a été envoyé. Cliquez dessus puis connectez-vous.",
