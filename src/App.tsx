@@ -39,6 +39,7 @@ import DonateursPage from "./pages/Donateurs";
 import RecusFiscauxPage from "./pages/RecusFiscaux";
 import NotFound from "./pages/NotFound";
 import WelcomePage from "./pages/Welcome";
+import LandingPage from "./pages/Landing";
 import SetupIdentityPage from "./pages/SetupIdentity";
 import SetupPlanPage from "./pages/SetupPlan";
 import SetupSuccessPage from "./pages/SetupSuccess";
@@ -122,6 +123,7 @@ const App = () => (
               <Sonner />
               <BrowserRouter>
                 <Routes>
+                  <Route path="/vitrine" element={<LandingPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/set-password" element={<SetPasswordPage />} />
                   <Route path="/onboarding" element={<OnboardingPage />} />
