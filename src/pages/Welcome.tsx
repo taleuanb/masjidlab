@@ -47,7 +47,7 @@ export default function WelcomePage() {
             <ChevronRight className="h-4 w-4 shrink-0 opacity-60" />
           </Button>
 
-          <div className="rounded-xl border bg-card p-4 space-y-2">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm font-semibold text-foreground">J'ai déjà une équipe</p>
