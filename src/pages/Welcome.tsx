@@ -41,7 +41,7 @@ export default function WelcomePage() {
               <Building2 className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Inscrire ma mosquée sur Masjidi</p>
+              <p className="text-sm font-semibold">Inscrire ma mosquée sur MasjidLab</p>
               <p className="text-[11px] opacity-80">Créer une nouvelle organisation</p>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 opacity-60" />

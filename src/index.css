@@ -39,13 +39,14 @@
     --radius: 0.5rem;
 
     --sidebar-background: 220 71% 14%;
-    --sidebar-foreground: 210 20% 85%;
+    --sidebar-foreground: 220 15% 88%;
     --sidebar-primary: 160 82% 39%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 50% 20%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 220 50% 20%;
+    --sidebar-accent: 220 55% 20%;
+    --sidebar-accent-foreground: 220 10% 92%;
+    --sidebar-border: 220 55% 18%;
     --sidebar-ring: 160 82% 39%;
+    --sidebar-muted: 220 30% 30%;
 
     --emerald-glow: 160 82% 30%;
     --cyan-glow: 184 72% 46%;
