@@ -178,7 +178,7 @@ export default function PricingSection() {
               </ul>
 
               {/* CTA */}
-              <a href="/setup/plan">
+              <a href={`https://app.masjidlab.com/setup/plan?plan=${plan.id}`}>
                 <Button className={`w-full ${plan.style.btnClass}`} size="lg">
                   {plan.id === "elite" && <Zap className="h-4 w-4 mr-1.5" />}
                   {plan.cta}

@@ -122,7 +122,7 @@ export default function LandingPage() {
 
           {/* CTAs */}
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <a href="/setup/identity">
+            <a href="https://app.masjidlab.com/setup/identity">
               <Button
                 size="lg"
                 className="bg-brand-emerald hover:bg-brand-emerald/90 text-white px-8 gap-2 transition-all shadow-[0_0_24px_hsl(161_84%_39%/0.3)] hover:shadow-[0_0_40px_hsl(185_73%_57%/0.4)]"
@@ -205,7 +205,7 @@ export default function LandingPage() {
             <p className="text-white/50 mb-8 max-w-lg mx-auto">
               Rejoignez les institutions qui font confiance à MASJIDLAB pour leur gestion quotidienne.
             </p>
-            <a href="/setup/identity">
+            <a href="https://app.masjidlab.com/setup/identity">
               <Button size="lg" className="bg-brand-emerald hover:bg-brand-emerald/90 text-white shadow-[0_0_30px_hsl(161_84%_39%/0.3)] gap-2 px-8">
                 Créer mon espace
                 <ArrowRight className="h-4 w-4" />

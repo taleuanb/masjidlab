@@ -5,12 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, ArrowRight } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { ArrowRight } from "lucide-react";
 
 export default function SetupIdentityPage() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
   const [form, setForm] = useState({
     name: "",
     city: "",
@@ -19,9 +17,7 @@ export default function SetupIdentityPage() {
     siret: "",
   });
 
-  useEffect(() => {
-    if (!loading && !user) navigate("/login", { replace: true });
-  }, [loading, user, navigate]);
+  // Setup pages are publicly accessible — no auth redirect
 
   // Restore form state from sessionStorage when returning from /setup/plan
   useEffect(() => {
@@ -34,14 +30,6 @@ export default function SetupIdentityPage() {
     }
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   const canContinue = form.name.trim().length > 0 && form.city.trim().length > 0;
 
   const handleNext = () => {
@@ -53,9 +41,9 @@ export default function SetupIdentityPage() {
     <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
       <Card className="w-full max-w-lg shadow-2xl border-white/10 bg-brand-navy/60 backdrop-blur-xl text-white">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto mb-2">
+          <a href="https://masjidlab.com" className="mx-auto mb-2 block">
             <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-16 object-contain drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
-          </div>
+          </a>
           <CardTitle className="text-xl font-bold text-white">Identité de votre mosquée</CardTitle>
           <CardDescription className="text-white/50">Renseignez les informations de base. Vous pourrez les modifier plus tard.</CardDescription>
           <div className="flex justify-center gap-2 pt-2">
