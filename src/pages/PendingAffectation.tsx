@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Building2, LogOut, Plus, ChevronRight, Loader2, CheckCircle2, Clock, RefreshCw } from "lucide-react";
+import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
