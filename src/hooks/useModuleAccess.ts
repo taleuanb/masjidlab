@@ -24,13 +24,20 @@ import {
   MODULE_MAP,
 } from "@/config/module-registry";
 
-/**
- * Global permissions row from role_permissions where org_id IS NULL.
- */
-interface GlobalPermRow {
-  module: string;
-  enabled: boolean;
+export interface ModuleAccessResult {
+  allowed: boolean;
+  blockedByPlan: boolean;
+  blockedByRbac: boolean;
+  isCore: boolean;
 }
+
+interface UseModuleAccessReturn {
+  checkAccess: (moduleKey: string) => ModuleAccessResult;
+  hasAccess: (moduleKey: string) => boolean;
+  currentPlan: PlanId;
+  isBypassing: boolean;
+}
+
 
 export function useModuleAccess(): UseModuleAccessReturn {
   const { dbRole, dbRoles, impersonatedUser } = useAuth();
