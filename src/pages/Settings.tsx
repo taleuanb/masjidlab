@@ -627,9 +627,9 @@ export default function SettingsPage() {
                 })}
               </div>
 
-              {!isAdmin && (
+              {!canManageModules && (
                 <p className="text-xs text-muted-foreground text-center pt-3">
-                  {isResponsable ? "Visualisation seule. Seul un administrateur peut modifier les modules." : "Seul un administrateur peut gérer les modules métier."}
+                  Seul un administrateur ou responsable peut gérer les modules métier.
                 </p>
               )}
             </div>

@@ -454,26 +454,28 @@ export function AppSidebar() {
           </SidebarMenu>
         )}
 
-        <div className={cn("space-y-1", isGhostActive && "opacity-40 pointer-events-none")}>
-          <label className="text-[9px] uppercase tracking-wider text-sidebar-foreground/30 font-medium px-1">
-            {isGhostActive
-              ? "Désactivé (Mode Ghost)"
-              : isSuperAdmin ? "Prévisualiser en tant que" : "Rôle actif"}
-          </label>
-          <Select value={role} onValueChange={(v) => setRole(v as UserRole)} disabled={isGhostActive}>
-            <SelectTrigger className="h-8 text-[11px] bg-sidebar-accent/30 border-sidebar-accent/50 text-sidebar-foreground/70">
-              <div className="flex items-center gap-2">
-                {React.createElement(roleIcons[role], { className: "h-3 w-3 text-sidebar-foreground/40" })}
-                <SelectValue />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {ALL_ROLES.map((r) => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {isSuperAdmin && (
+          <div className={cn("space-y-1", isGhostActive && "opacity-40 pointer-events-none")}>
+            <label className="text-[9px] uppercase tracking-wider text-sidebar-foreground/30 font-medium px-1">
+              {isGhostActive
+                ? "Désactivé (Mode Ghost)"
+                : "Prévisualiser en tant que"}
+            </label>
+            <Select value={role} onValueChange={(v) => setRole(v as UserRole)} disabled={isGhostActive}>
+              <SelectTrigger className="h-8 text-[11px] bg-sidebar-accent/30 border-sidebar-accent/50 text-sidebar-foreground/70">
+                <div className="flex items-center gap-2">
+                  {React.createElement(roleIcons[role], { className: "h-3 w-3 text-sidebar-foreground/40" })}
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {showPoleSelector && (
           <div className="space-y-1">

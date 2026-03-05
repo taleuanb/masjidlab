@@ -627,12 +627,31 @@ export default function SaasAdminPage() {
 
   const handleValidateOrg = async (o: OrgRow) => {
     try {
+      // 1. Set status to active
       const { error } = await supabase
         .from("organizations")
         .update({ status: "active" } as any)
         .eq("id", o.id);
       if (error) throw error;
-      toast({ title: "Mosquée validée ✅", description: `${o.name} est maintenant active.` });
+
+      // 2. Auto-activate modules included in the org's chosen_plan
+      const plan = (o.subscription_plan ?? "starter") as PlanId;
+      const { PLAN_FEATURE_MAPPING } = await import("@/config/module-registry");
+      const planModules = PLAN_FEATURE_MAPPING[plan] ?? PLAN_FEATURE_MAPPING.starter;
+      // Filter to only non-CORE business modules
+      const businessModuleIds = planModules.filter(
+        (id: string) => !MODULE_REGISTRY.find((m) => m.id === id)?.isCore
+      );
+
+      if (businessModuleIds.length > 0) {
+        const { error: polesError } = await supabase
+          .from("organizations")
+          .update({ active_poles: businessModuleIds })
+          .eq("id", o.id);
+        if (polesError) throw polesError;
+      }
+
+      toast({ title: "Mosquée validée ✅", description: `${o.name} est maintenant active avec ${businessModuleIds.length} modules activés.` });
       fetchAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
