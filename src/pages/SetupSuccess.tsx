@@ -16,23 +16,23 @@ export default function SetupSuccessPage() {
           <CardTitle className="text-xl font-bold text-white">Merci pour votre inscription !</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
             <div className="flex items-start gap-3 text-left">
-              <Clock className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Votre dossier est <span className="font-semibold text-foreground">en cours de validation</span> par nos équipes. 
-                Ce processus prend généralement <span className="font-semibold text-foreground">moins de 24h</span>.
+              <Clock className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-white/50 leading-relaxed">
+                Votre dossier est <span className="font-semibold text-white">en cours de validation</span> par nos équipes. 
+                Ce processus prend généralement <span className="font-semibold text-white">moins de 24h</span>.
               </p>
             </div>
             <div className="flex items-start gap-3 text-left">
-              <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Vous recevrez un <span className="font-semibold text-foreground">email de confirmation</span> dès que votre espace sera activé.
+              <Mail className="h-4 w-4 text-brand-cyan mt-0.5 shrink-0" />
+              <p className="text-sm text-white/50 leading-relaxed">
+                Vous recevrez un <span className="font-semibold text-white">email de confirmation</span> dès que votre espace sera activé.
               </p>
             </div>
           </div>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-white/40">
             En attendant, vous pouvez accéder à votre profil et explorer le tableau de bord.
           </p>
 
