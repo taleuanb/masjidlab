@@ -84,9 +84,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, dbRoles, impersonatedUser]);
 
   const fetchRoles = async (userId: string) => {
+    // Fetch ALL roles for the user (any org + global) to get the full picture
     const { data, error } = await supabase
       .from("user_roles")
-      .select("role")
+      .select("role, org_id")
       .eq("user_id", userId);
 
     if (error) {
@@ -94,7 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDbRoles([]);
       return;
     }
-    setDbRoles((data ?? []).map((r) => r.role));
+    // Deduplicate role names across all orgs
+    const uniqueRoles = [...new Set((data ?? []).map((r) => r.role))];
+    setDbRoles(uniqueRoles);
   };
 
   const refreshPermissions = useCallback(async (orgId?: string) => {
