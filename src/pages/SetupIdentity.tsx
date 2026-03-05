@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, ArrowRight } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { ArrowRight } from "lucide-react";
 
 export default function SetupIdentityPage() {
   const navigate = useNavigate();
