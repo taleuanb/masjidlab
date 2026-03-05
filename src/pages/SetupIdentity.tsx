@@ -10,18 +10,6 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function SetupIdentityPage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-
-  useEffect(() => {
-    if (!loading && !user) navigate("/login", { replace: true });
-  }, [loading, user, navigate]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
   const [form, setForm] = useState({
     name: "",
     city: "",
@@ -29,6 +17,10 @@ export default function SetupIdentityPage() {
     phone: "",
     siret: "",
   });
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/login", { replace: true });
+  }, [loading, user, navigate]);
 
   // Restore form state from sessionStorage when returning from /setup/plan
   useEffect(() => {
@@ -40,6 +32,14 @@ export default function SetupIdentityPage() {
       } catch { /* ignore */ }
     }
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   const canContinue = form.name.trim().length > 0 && form.city.trim().length > 0;
 
