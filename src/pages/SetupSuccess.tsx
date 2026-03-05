@@ -7,11 +7,11 @@ export default function SetupSuccessPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg border-border/50 text-center">
+    <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "hsl(222 68% 6%)" }}>
+      <Card className="w-full max-w-md shadow-2xl border-white/10 bg-brand-navy/60 backdrop-blur-xl text-white text-center">
         <CardHeader className="space-y-3 pb-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-            <CheckCircle2 className="h-8 w-8 text-primary" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-emerald/10">
+            <CheckCircle2 className="h-8 w-8 text-brand-emerald" />
           </div>
           <CardTitle className="text-xl font-bold">Merci pour votre inscription !</CardTitle>
         </CardHeader>
