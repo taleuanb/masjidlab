@@ -38,6 +38,7 @@ import DocumentsPage from "./pages/Documents";
 import DonateursPage from "./pages/Donateurs";
 import RecusFiscauxPage from "./pages/RecusFiscaux";
 import NotFound from "./pages/NotFound";
+import JoinPage from "./pages/JoinPage";
 import WelcomePage from "./pages/Welcome";
 import LandingPage from "./pages/Landing";
 import SetupIdentityPage from "./pages/SetupIdentity";
@@ -76,6 +77,19 @@ function RequireAuthWithOrgGuard({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
+
+const AppLayoutOrPending = () => {
+  const { dbRoles } = useAuth();
+  const { org } = useOrganization();
+  const isSuperAdmin = dbRoles.includes("super_admin");
+  const isPending = org && org.status === "pending" && !isSuperAdmin;
+
+  if (isPending) {
+    return <Navigate to="/setup/success" replace />;
+  }
+
+  return <AppLayout />;
+};
 
 const AppLayout = () => {
   return (
@@ -146,11 +160,12 @@ const App = () => {
                       <Route path="/setup/identity" element={<SetupIdentityPage />} />
                       <Route path="/setup/plan" element={<SetupPlanPage />} />
                       <Route path="/setup/success" element={<SetupSuccessPage />} />
+                      <Route path="/join/:id" element={<JoinPage />} />
                       <Route
                         path="/*"
                         element={
                           <RequireAuthWithOrgGuard>
-                            <AppLayout />
+                            <AppLayoutOrPending />
                           </RequireAuthWithOrgGuard>
                         }
                       />

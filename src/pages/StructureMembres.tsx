@@ -6,6 +6,7 @@ import {
   Trash2, Mail, MoreHorizontal, UserX, UserCheck2, Phone, PhoneCall, UserPlus,
   ExternalLink, UserCog, Building2, Ghost,
 } from "lucide-react";
+import { InviteMemberDialog } from "@/components/InviteMemberDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -130,6 +131,7 @@ export default function StructureMembresPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<MemberRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MemberRow | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   // ─── Fetch ─────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -354,6 +356,11 @@ export default function StructureMembresPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button size="sm" variant="default" onClick={() => setInviteOpen(true)} className="gap-1.5">
+                <UserPlus className="h-4 w-4" /> Inviter un membre
+              </Button>
+            )}
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-[200px] pl-8 text-xs" />
@@ -635,6 +642,9 @@ export default function StructureMembresPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Invite member dialog */}
+      <InviteMemberDialog open={inviteOpen} onOpenChange={setInviteOpen} onInvited={fetchAll} />
     </main>
   );
 }
