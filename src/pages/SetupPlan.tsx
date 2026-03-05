@@ -21,17 +21,7 @@ export default function SetupPlanPage() {
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState<PlanId | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && !user) navigate("/login", { replace: true });
-  }, [authLoading, user, navigate]);
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // Setup pages are publicly accessible — no auth redirect
 
   const handleChoosePlan = async (plan: PlanId) => {
     setLoading(plan);
