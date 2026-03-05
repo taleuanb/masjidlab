@@ -586,6 +586,7 @@ export default function SaasAdminPage() {
         name: o.name,
         active_poles: o.active_poles ?? [],
         subscription_plan: o.subscription_plan,
+        status: o.status ?? "active",
         member_count: orgCounts.get(o.id) ?? 0,
       }));
       setOrgs(rows);
