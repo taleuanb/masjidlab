@@ -78,7 +78,7 @@ export default function LoginPage() {
             <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-16 object-contain drop-shadow-[0_0_20px_hsl(185_73%_57%/0.3)]" />
           </div>
           <CardTitle className="text-2xl font-bold text-white">MASJIDLAB</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-white/50">
             {isSignUp
               ? inviteToken
                 ? "Créer votre compte pour rejoindre l'équipe"
