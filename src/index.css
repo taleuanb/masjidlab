@@ -9,44 +9,44 @@
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
     --background: 210 20% 98%;
-    --foreground: 220 71% 14%;
+    --foreground: 222 68% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 71% 14%;
+    --card-foreground: 222 68% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 71% 14%;
+    --popover-foreground: 222 68% 15%;
 
-    --primary: 220 71% 14%;
+    --primary: 222 68% 15%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 160 82% 39%;
+    --secondary: 161 84% 39%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 214 20% 94%;
     --muted-foreground: 220 15% 46%;
 
-    --accent: 184 72% 56%;
-    --accent-foreground: 220 71% 14%;
+    --accent: 185 73% 57%;
+    --accent-foreground: 222 68% 15%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 15% 88%;
     --input: 220 15% 88%;
-    --ring: 160 82% 39%;
+    --ring: 161 84% 39%;
 
     --radius: 0.5rem;
 
     /* Sidebar — Navy deep */
-    --sidebar-background: 220 71% 14%;
-    --sidebar-foreground: 220 15% 88%;
-    --sidebar-primary: 160 82% 39%;
+    --sidebar-background: 222 68% 15%;
+    --sidebar-foreground: 220 15% 90%;
+    --sidebar-primary: 185 73% 57%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 55% 20%;
+    --sidebar-accent: 222 55% 22%;
     --sidebar-accent-foreground: 220 10% 92%;
-    --sidebar-border: 220 55% 18%;
-    --sidebar-ring: 160 82% 39%;
+    --sidebar-border: 222 55% 18%;
+    --sidebar-ring: 185 73% 57%;
     --sidebar-muted: 220 30% 30%;
 
     /* Extended palette tokens */
