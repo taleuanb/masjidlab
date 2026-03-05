@@ -693,6 +693,8 @@ export default function SaasAdminPage() {
               loading={loading}
               fetchAll={fetchAll}
               openModules={openModules}
+              onValidate={handleValidateOrg}
+            />
             />
           </TabsContent>
 
