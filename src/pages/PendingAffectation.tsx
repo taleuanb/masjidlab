@@ -87,8 +87,8 @@ export default function PendingAffectation() {
 
         {/* Logo */}
         <div className="flex justify-center">
-          <div className="h-16 w-16 rounded-2xl gradient-emerald flex items-center justify-center shadow-lg">
-            <Building2 className="h-8 w-8 text-primary-foreground" />
+          <div className="h-16 w-16 rounded-2xl flex items-center justify-center">
+            <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-16 object-contain" />
           </div>
         </div>
 

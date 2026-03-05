@@ -74,8 +74,8 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg border-border/50">
         <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-xl gradient-emerald flex items-center justify-center mb-2">
-            <span className="text-2xl font-bold text-white">M</span>
+          <div className="mx-auto w-14 h-14 rounded-xl flex items-center justify-center mb-2">
+            <img src={masjidLabLogo} alt="MasjidLab" className="h-14 w-14 object-contain" />
           </div>
           <CardTitle className="text-2xl font-bold">Masjidi</CardTitle>
           <CardDescription>
