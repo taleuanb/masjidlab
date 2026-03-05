@@ -391,7 +391,7 @@ export function AppSidebar() {
           <div className="py-1">
             <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Logistique</p>
             <div className="space-y-px">
-              <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} />
+              <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} isModuleVisible={isModuleVisible} />
             </div>
           </div>
         )}
