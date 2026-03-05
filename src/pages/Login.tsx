@@ -90,7 +90,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="displayName">Nom complet</Label>
+                <Label htmlFor="displayName" className="text-white/70">Nom complet</Label>
                 <Input
                   id="displayName"
                   type="text"
