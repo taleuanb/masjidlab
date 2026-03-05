@@ -13,7 +13,7 @@ export default function SetupSuccessPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-emerald/10">
             <CheckCircle2 className="h-8 w-8 text-brand-emerald" />
           </div>
-          <CardTitle className="text-xl font-bold">Merci pour votre inscription !</CardTitle>
+          <CardTitle className="text-xl font-bold text-white">Merci pour votre inscription !</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
