@@ -67,13 +67,14 @@ const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
 
 // ── Dashboard Tab ──────────────────────────────────────────
 function DashboardTab({
-  orgs, totalUsers, loading, fetchAll, openModules,
+  orgs, totalUsers, loading, fetchAll, openModules, onValidate,
 }: {
   orgs: OrgRow[];
   totalUsers: number;
   loading: boolean;
   fetchAll: () => void;
   openModules: (o: OrgRow) => void;
+  onValidate: (o: OrgRow) => void;
 }) {
   return (
     <div className="space-y-6">
