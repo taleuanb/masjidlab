@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, ArrowRight, Loader2 } from "lucide-react";
+import { Building2, ArrowRight } from "lucide-react";
 
 export default function SetupIdentityPage() {
   const navigate = useNavigate();
@@ -16,10 +16,20 @@ export default function SetupIdentityPage() {
     siret: "",
   });
 
+  // Restore form state from sessionStorage when returning from /setup/plan
+  useEffect(() => {
+    const saved = sessionStorage.getItem("setup_identity");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setForm(parsed);
+      } catch { /* ignore */ }
+    }
+  }, []);
+
   const canContinue = form.name.trim().length > 0 && form.city.trim().length > 0;
 
   const handleNext = () => {
-    // Store in sessionStorage for the plan step
     sessionStorage.setItem("setup_identity", JSON.stringify(form));
     navigate("/setup/plan");
   };
