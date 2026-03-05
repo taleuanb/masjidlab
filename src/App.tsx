@@ -48,37 +48,6 @@ import { isVitrineDomain } from "@/lib/domain";
 
 const queryClient = new QueryClient();
 
-function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const { loading: orgLoading, pendingAffectation, org } = useOrganization();
-
-  if (loading || orgLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // If org exists but is pending, force user to the success/waiting page
-  // Super admins bypass this restriction
-  if (org && org.status === "pending") {
-    const isSuperAdmin = false; // Will be checked below
-    return <Navigate to="/setup/success" replace />;
-  }
-
-  if (pendingAffectation) {
-    return <PendingAffectation />;
-  }
-
-  return <>{children}</>;
-}
-
-/** Wrapper that checks super_admin bypass for pending org guard */
 function RequireAuthWithOrgGuard({ children }: { children: React.ReactNode }) {
   const { user, loading, dbRoles } = useAuth();
   const { loading: orgLoading, pendingAffectation, org } = useOrganization();
