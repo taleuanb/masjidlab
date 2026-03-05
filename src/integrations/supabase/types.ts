@@ -1222,6 +1222,17 @@ export type Database = {
             }[]
           }
       get_my_org_id: { Args: never; Returns: string }
+      handle_onboarding: {
+        Args: {
+          p_city: string
+          p_name: string
+          p_phone?: string
+          p_plan?: string
+          p_postal_code?: string
+          p_siret?: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
