@@ -110,9 +110,9 @@ export default function SetupPlanPage() {
             return (
               <Card
                 key={planId}
-                className={`relative border-2 transition-all hover:shadow-md ${
-                  planId === "pro" ? "border-primary shadow-sm" : "border-border"
-                }`}
+                className={`relative border transition-all hover:shadow-md backdrop-blur-xl ${
+                  planId === "pro" ? "border-brand-emerald/40 shadow-[0_0_30px_hsl(161_84%_39%/0.1)]" : "border-white/10"
+                } bg-brand-navy/60 text-white`}
               >
                 {planId === "pro" && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
