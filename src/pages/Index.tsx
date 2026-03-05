@@ -1,4 +1,5 @@
 import { useState } from "react";
+import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { motion } from "framer-motion";
 import { Etage } from "@/types/amm";
 import { DashboardStats } from "@/components/DashboardStats";
