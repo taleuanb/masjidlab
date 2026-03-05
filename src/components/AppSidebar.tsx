@@ -295,7 +295,7 @@ export function AppSidebar() {
   const showPersonnel = isModuleVisible(PERSONNEL_BLOCK.id);
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
-  const handleLogoClick = () => navigate("/");
+  const handleLogoClick = () => { window.location.href = getVitrineUrl(); };
 
   return (
     <Sidebar className="border-r-0">
