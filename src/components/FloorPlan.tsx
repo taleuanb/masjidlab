@@ -35,10 +35,11 @@ const statutLabels: Record<string, string> = {
   maintenance: "En maintenance",
 };
 
+/* Navy for Disponible, Cyan for Réservée */
 const statutDots: Record<string, string> = {
-  disponible:  "bg-primary",
+  disponible:  "pastille-disponible",
   occupée:     "bg-destructive",
-  réservée:    "bg-accent",
+  réservée:    "pastille-reserve",
   maintenance: "bg-muted-foreground/50",
 };
 

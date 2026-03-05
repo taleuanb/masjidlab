@@ -658,7 +658,7 @@ function ModuleGroupRows({
       {hasChildren && expanded && group.children.map((child) => (
         <TableRow key={child.id}>
           <TableCell className="pl-10">
-            <span className="text-sm text-muted-foreground">{child.label}</span>
+            <span className={`text-sm ${!parentEnabled ? "text-muted-foreground/40 italic" : "text-muted-foreground"}`}>{child.label}</span>
           </TableCell>
           {RBAC_ROLES.map((role) => {
             const parentEnabled = matrix[permKey(role.id, group.id, "enabled")] ?? false;
