@@ -29,7 +29,7 @@ export default function WelcomePage() {
           <div className="mx-auto w-14 h-14 rounded-xl flex items-center justify-center mb-2">
             <img src={masjidLabLogo} alt="MasjidLab" className="h-14 w-14 object-contain" />
           </div>
-          <CardTitle className="text-xl font-bold">Bienvenue sur Masjidi 🎉</CardTitle>
+          <CardTitle className="text-xl font-bold">Bienvenue sur MasjidLab 🎉</CardTitle>
           <CardDescription>Votre compte a été créé avec succès.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
