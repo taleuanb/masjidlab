@@ -34,7 +34,7 @@ export default function WelcomePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <Button
-            className="w-full h-14 justify-start gap-3 text-left"
+            className="w-full h-14 justify-start gap-3 text-left bg-brand-emerald hover:bg-brand-emerald/90 text-white"
             onClick={() => navigate("/setup/identity")}
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/20">
