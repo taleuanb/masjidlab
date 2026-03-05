@@ -598,20 +598,33 @@ export default function SaasAdminPage() {
     setLoading(true);
     try {
       const { data: orgsData } = await supabase.rpc("get_all_organizations");
-      const { data: profiles } = await supabase.from("profiles").select("org_id");
+      const { data: profiles } = await supabase.from("profiles").select("org_id, email, user_id");
 
       const orgCounts = new Map<string, number>();
+      const ownerEmails = new Map<string, string>();
       (profiles ?? []).forEach((p: any) => {
         if (p.org_id) orgCounts.set(p.org_id, (orgCounts.get(p.org_id) ?? 0) + 1);
       });
 
+      // Map owner_id → email
+      for (const o of (orgsData ?? []) as any[]) {
+        if (o.owner_id) {
+          const ownerProfile = (profiles ?? []).find((p: any) => p.user_id === o.owner_id);
+          if (ownerProfile) ownerEmails.set(o.id, (ownerProfile as any).email ?? null);
+        }
+      }
+
       const rows: OrgRow[] = (orgsData ?? []).map((o: any) => ({
         id: o.id,
         name: o.name,
+        city: o.city ?? null,
         active_poles: o.active_poles ?? [],
         subscription_plan: o.subscription_plan,
+        chosen_plan: o.chosen_plan ?? o.subscription_plan,
         status: o.status ?? "active",
         member_count: orgCounts.get(o.id) ?? 0,
+        owner_email: ownerEmails.get(o.id) ?? null,
+        created_at: o.created_at ?? null,
       }));
       setOrgs(rows);
       setTotalUsers((profiles ?? []).length);
