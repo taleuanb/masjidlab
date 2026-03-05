@@ -591,34 +591,58 @@ export type Database = {
       organizations: {
         Row: {
           active_poles: string[] | null
+          address: string | null
+          chosen_plan: string | null
+          city: string | null
+          contact_email: string | null
           created_at: string | null
           id: string
+          logo_url: string | null
           max_users: number | null
           name: string
           notes_admin: string | null
           owner_id: string | null
+          phone: string | null
+          postal_code: string | null
+          siret: string | null
           status: string | null
           subscription_plan: string | null
         }
         Insert: {
           active_poles?: string[] | null
+          address?: string | null
+          chosen_plan?: string | null
+          city?: string | null
+          contact_email?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           max_users?: number | null
           name: string
           notes_admin?: string | null
           owner_id?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          siret?: string | null
           status?: string | null
           subscription_plan?: string | null
         }
         Update: {
           active_poles?: string[] | null
+          address?: string | null
+          chosen_plan?: string | null
+          city?: string | null
+          contact_email?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           max_users?: number | null
           name?: string
           notes_admin?: string | null
           owner_id?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          siret?: string | null
           status?: string | null
           subscription_plan?: string | null
         }
@@ -1116,12 +1140,20 @@ export type Database = {
         Args: never
         Returns: {
           active_poles: string[] | null
+          address: string | null
+          chosen_plan: string | null
+          city: string | null
+          contact_email: string | null
           created_at: string | null
           id: string
+          logo_url: string | null
           max_users: number | null
           name: string
           notes_admin: string | null
           owner_id: string | null
+          phone: string | null
+          postal_code: string | null
+          siret: string | null
           status: string | null
           subscription_plan: string | null
         }[]
@@ -1136,12 +1168,20 @@ export type Database = {
         Args: never
         Returns: {
           active_poles: string[] | null
+          address: string | null
+          chosen_plan: string | null
+          city: string | null
+          contact_email: string | null
           created_at: string | null
           id: string
+          logo_url: string | null
           max_users: number | null
           name: string
           notes_admin: string | null
           owner_id: string | null
+          phone: string | null
+          postal_code: string | null
+          siret: string | null
           status: string | null
           subscription_plan: string | null
         }[]
