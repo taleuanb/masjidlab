@@ -38,12 +38,12 @@ export function VitrineHeader() {
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-4">
           <a
-            href="https://app.masjidlab.com/login"
+            href="/login"
             className="text-sm font-medium text-brand-cyan hover:text-white transition-colors"
           >
             Connexion
           </a>
-          <a href="https://app.masjidlab.com/register">
+          <a href="/setup/identity">
             <Button className="bg-brand-emerald hover:bg-brand-emerald/90 text-white shadow-[0_0_20px_hsl(161_84%_39%/0.3)] hover:shadow-[0_0_30px_hsl(161_84%_39%/0.4)] transition-all">
               Démarrer
             </Button>
