@@ -595,6 +595,7 @@ export default function SaasAdminPage() {
   const [editOrg, setEditOrg] = useState<OrgRow | null>(null);
   const [editPoles, setEditPoles] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [validatingId, setValidatingId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
