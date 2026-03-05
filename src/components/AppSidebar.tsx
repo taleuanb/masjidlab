@@ -138,12 +138,19 @@ const roleIcons: Record<UserRole, React.ElementType> = {
 // Visibility is already resolved by the parent via useModuleAccess.
 // This component only handles expand/collapse UI.
 function SidebarBlock({
-  block, location,
+  block, location, isModuleVisible,
 }: {
   block: NavBlock;
   location: ReturnType<typeof useLocation>;
+  isModuleVisible: (key: string) => boolean;
 }) {
-  const hasActiveRoute = block.items.some((item) =>
+  // Filter items by sub-module RBAC key
+  const visibleItems = block.items.filter((item) => {
+    if (!item.moduleKey) return true; // no sub-module key → inherits parent visibility
+    return isModuleVisible(item.moduleKey);
+  });
+
+  const hasActiveRoute = visibleItems.some((item) =>
     item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url)
   );
   const [open, setOpen] = useState(hasActiveRoute);
@@ -160,16 +167,16 @@ function SidebarBlock({
         >
           <block.icon className="h-4 w-4 shrink-0 text-primary" />
           <span className="flex-1 text-left">{block.label}</span>
-          {block.items.length > 0 && (
+          {visibleItems.length > 0 && (
             <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40 transition-transform duration-200", open && "rotate-180")} />
           )}
         </button>
       </CollapsibleTrigger>
 
-      {block.items.length > 0 && (
+      {visibleItems.length > 0 && (
         <CollapsibleContent>
           <SidebarMenu className="ml-3 mt-0.5 border-l border-sidebar-border/40 pl-3">
-            {block.items.map((item) => (
+            {visibleItems.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild>
                   <NavLink
@@ -188,7 +195,7 @@ function SidebarBlock({
         </CollapsibleContent>
       )}
 
-      {block.items.length === 0 && (
+      {visibleItems.length === 0 && (
         <CollapsibleContent>
           <p className="ml-6 mt-1 mb-1 text-[11px] text-sidebar-foreground/30 italic border-l border-sidebar-border/40 pl-3 py-0.5">
             Aucun module actif
