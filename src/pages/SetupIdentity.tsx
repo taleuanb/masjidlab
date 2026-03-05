@@ -9,7 +9,6 @@ import { ArrowRight } from "lucide-react";
 
 export default function SetupIdentityPage() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
   const [form, setForm] = useState({
     name: "",
     city: "",
