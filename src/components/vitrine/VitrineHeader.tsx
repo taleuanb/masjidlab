@@ -38,7 +38,7 @@ export function VitrineHeader() {
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-4">
           <a
-            href="/login"
+            href="https://app.masjidlab.com/login"
             className="text-sm font-medium text-brand-cyan hover:text-white transition-colors"
           >
             Connexion
