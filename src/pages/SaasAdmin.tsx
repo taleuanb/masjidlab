@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, Fragment } from "react";
 import {
   Building2, Users, Globe, Loader2, RefreshCw, Check, Shield, Save,
-  ChevronDown, ChevronRight, Lock,
+  ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
 } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/contexts/RoleContext";
 import { useToast } from "@/hooks/use-toast";
