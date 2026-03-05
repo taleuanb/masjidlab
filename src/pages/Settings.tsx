@@ -104,7 +104,7 @@ export default function SettingsPage() {
   const isSuperAdmin = dbRole === "super_admin";
   const isAdmin = dbRole === "admin" || isSuperAdmin;
   const isResponsable = dbRole === "responsable";
-  const canManageModules = isAdmin; // Responsable can only view
+  const canManageModules = isAdmin || isResponsable;
   const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
   const showMadrassa = activePoles.includes("education");
 
@@ -147,7 +147,7 @@ export default function SettingsPage() {
   const [polesLoading, setPolesLoading] = useState(false);
 
   const togglePole = async (poleId: string) => {
-    if (!orgId || !isAdmin) return;
+    if (!orgId || !canManageModules) return;
     const isActive = activePoles.includes(poleId);
     const next = isActive
       ? activePoles.filter((p) => p !== poleId)
@@ -615,7 +615,7 @@ export default function SettingsPage() {
                       {included ? (
                         <Switch
                           checked={isActive}
-                          disabled={!isAdmin || polesLoading}
+                          disabled={!canManageModules || polesLoading}
                           onCheckedChange={() => togglePole(mod.id)}
                           className="mt-0.5 shrink-0"
                         />
@@ -627,9 +627,9 @@ export default function SettingsPage() {
                 })}
               </div>
 
-              {!isAdmin && (
+              {!canManageModules && (
                 <p className="text-xs text-muted-foreground text-center pt-3">
-                  {isResponsable ? "Visualisation seule. Seul un administrateur peut modifier les modules." : "Seul un administrateur peut gérer les modules métier."}
+                  Seul un administrateur ou responsable peut gérer les modules métier.
                 </p>
               )}
             </div>
