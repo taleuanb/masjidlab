@@ -65,6 +65,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           name: o.name,
           active_poles: o.active_poles ?? [],
           subscription_plan: o.subscription_plan,
+          status: o.status ?? null,
         }))
       );
     });
