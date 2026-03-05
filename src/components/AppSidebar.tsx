@@ -112,10 +112,10 @@ const PERSONNEL_BLOCK: NavBlock = {
   label: "Personnel",
   icon: ShieldCheck,
   items: [
-    { title: "Approbations", url: "/approbations", icon: UserCheck },
-    { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck },
-    { title: "Documents", url: "/documents", icon: FileText },
-    { title: "Structure", url: "/organisation", icon: Users },
+    { title: "Approbations", url: "/approbations", icon: UserCheck, moduleKey: "gestion-rh.approbations" },
+    { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, moduleKey: "gestion-rh.contrats" },
+    { title: "Documents", url: "/documents", icon: FileText, moduleKey: "gestion-rh.documents" },
+    { title: "Structure", url: "/organisation", icon: Users, moduleKey: "gestion-rh.structure" },
   ],
 };
 
