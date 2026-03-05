@@ -16,9 +16,7 @@ import {
 
 export default function SetupPlanPage() {
   const navigate = useNavigate();
-  const { refetch } = useOrganization();
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState<PlanId | null>(null);
 
   // Setup pages are publicly accessible — no auth redirect
