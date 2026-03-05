@@ -48,7 +48,7 @@ export default function SetupIdentityPage() {
       <Card className="w-full max-w-lg shadow-2xl border-white/10 bg-brand-navy/60 backdrop-blur-xl text-white">
         <CardHeader className="text-center space-y-2">
           <a href="https://masjidlab.com" className="mx-auto mb-2 block">
-            <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-auto object-contain drop-shadow-[0_0_10px_rgba(62,212,226,0.2)]" />
+            <img src={masjidLabLogo} alt="MasjidLab" className="h-16 w-auto object-contain mix-blend-screen drop-shadow-[0_0_15px_rgba(62,212,226,0.3)]" />
           </a>
           <CardTitle className="text-xl font-bold text-white">Identité de votre mosquée</CardTitle>
           <CardDescription className="text-white/50">Renseignez les informations de base. Vous pourrez les modifier plus tard.</CardDescription>
