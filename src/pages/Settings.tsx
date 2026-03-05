@@ -380,8 +380,11 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="poles" className="space-y-4">
-          <TabsList className={`grid w-full max-w-2xl ${showMadrassa ? "grid-cols-5" : "grid-cols-4"}`}>
+        <Tabs defaultValue="identite" className="space-y-4">
+          <TabsList className={`grid w-full max-w-2xl ${showMadrassa ? "grid-cols-6" : "grid-cols-5"}`}>
+            <TabsTrigger value="identite" className="gap-1.5 text-xs">
+              <Building2 className="h-3.5 w-3.5" />Identité
+            </TabsTrigger>
             <TabsTrigger value="poles" className="gap-1.5 text-xs">
               <Zap className="h-3.5 w-3.5" />Plan & Modules
             </TabsTrigger>
@@ -400,6 +403,81 @@ export default function SettingsPage() {
               </TabsTrigger>
             )}
           </TabsList>
+
+          {/* ═══════════ IDENTITÉ ═══════════ */}
+          <TabsContent value="identite" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  Identité de la mosquée
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nom de la mosquée *</Label>
+                  <Input
+                    value={identityForm.name}
+                    onChange={(e) => setIdentityForm((f) => ({ ...f, name: e.target.value }))}
+                    className="h-9"
+                    placeholder="Ex: Mosquée Al-Fath"
+                    disabled={!isAdmin && !isResponsable}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Adresse</Label>
+                  <Textarea
+                    value={identityForm.address}
+                    onChange={(e) => setIdentityForm((f) => ({ ...f, address: e.target.value }))}
+                    placeholder="Adresse complète de la mosquée"
+                    className="min-h-[60px]"
+                    disabled={!isAdmin && !isResponsable}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Téléphone</Label>
+                    <Input
+                      value={identityForm.phone}
+                      onChange={(e) => setIdentityForm((f) => ({ ...f, phone: e.target.value }))}
+                      className="h-9"
+                      placeholder="+33 1 23 45 67 89"
+                      disabled={!isAdmin && !isResponsable}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Email de contact</Label>
+                    <Input
+                      type="email"
+                      value={identityForm.email}
+                      onChange={(e) => setIdentityForm((f) => ({ ...f, email: e.target.value }))}
+                      className="h-9"
+                      placeholder="contact@mosquee.org"
+                      disabled={!isAdmin && !isResponsable}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">URL du Logo <span className="text-muted-foreground">(optionnel)</span></Label>
+                  <Input
+                    value={identityForm.logo_url}
+                    onChange={(e) => setIdentityForm((f) => ({ ...f, logo_url: e.target.value }))}
+                    className="h-9"
+                    placeholder="https://example.com/logo.png"
+                    disabled={!isAdmin && !isResponsable}
+                  />
+                </div>
+                {(isAdmin || isResponsable) && (
+                  <div className="flex justify-end pt-2">
+                    <Button onClick={handleSaveIdentity} disabled={identitySaving || !identityForm.name.trim()} size="sm">
+                      {identitySaving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                      Enregistrer
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* ═══════════ PLAN & MODULES ═══════════ */}
           <TabsContent value="poles" className="space-y-6">
