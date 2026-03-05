@@ -101,11 +101,47 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { dbRole } = useAuth();
   const { orgId, activePoles, org } = useOrganization();
-  const isAdmin = dbRole === "admin" || dbRole === "super_admin";
+  const isSuperAdmin = dbRole === "super_admin";
+  const isAdmin = dbRole === "admin" || isSuperAdmin;
   const isResponsable = dbRole === "responsable";
-  const canManageModules = isAdmin || isResponsable;
+  const canManageModules = isAdmin; // Responsable can only view
   const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
   const showMadrassa = activePoles.includes("education");
+
+  // ── Tab: Identité ──
+  const [identityForm, setIdentityForm] = useState({
+    name: "", address: "", phone: "", email: "", logo_url: "",
+  });
+  const [identitySaving, setIdentitySaving] = useState(false);
+
+  useEffect(() => {
+    if (org) {
+      setIdentityForm({
+        name: org.name || "",
+        address: (org as any).address || "",
+        phone: (org as any).phone || "",
+        email: (org as any).email || "",
+        logo_url: (org as any).logo_url || "",
+      });
+    }
+  }, [org]);
+
+  const handleSaveIdentity = async () => {
+    if (!orgId) return;
+    setIdentitySaving(true);
+    const { error } = await supabase
+      .from("organizations")
+      .update({
+        name: identityForm.name.trim(),
+      } as any)
+      .eq("id", orgId);
+    setIdentitySaving(false);
+    if (error) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Identité mise à jour", description: "Les informations ont été enregistrées." });
+    }
+  };
 
   // ── Tab: Pôles ──
   const [polesLoading, setPolesLoading] = useState(false);
