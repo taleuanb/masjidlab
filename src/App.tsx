@@ -123,6 +123,7 @@ const App = () => (
               <Sonner />
               <BrowserRouter>
                 <Routes>
+                  <Route path="/vitrine" element={<LandingPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/set-password" element={<SetPasswordPage />} />
                   <Route path="/onboarding" element={<OnboardingPage />} />
