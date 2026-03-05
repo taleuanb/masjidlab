@@ -656,7 +656,7 @@ export default function SaasAdminPage() {
           </TabsContent>
 
           <TabsContent value="permissions">
-            <PermissionsTab orgs={orgs} />
+            <PermissionsTab />
           </TabsContent>
         </Tabs>
       </div>
