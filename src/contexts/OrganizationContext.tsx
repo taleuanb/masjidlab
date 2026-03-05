@@ -151,6 +151,28 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("org-poles-updated", handlePolesUpdated);
   }, [user, session, authLoading, tick, fetchOrg, isSuperAdmin, overrideOrgId]);
 
+  // ── Poll org status for pending → active transition ──
+  // When org is pending, poll every 10s so the Responsable sees it go active without manual refresh
+  useEffect(() => {
+    if (!org || org.status !== "pending" || isSuperAdmin) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("organizations")
+        .select("status, active_poles, subscription_plan")
+        .eq("id", org.id)
+        .maybeSingle();
+      if (data && data.status !== org.status) {
+        setOrg((prev) => prev ? {
+          ...prev,
+          status: data.status,
+          active_poles: data.active_poles ?? prev.active_poles,
+          subscription_plan: data.subscription_plan ?? prev.subscription_plan,
+        } : prev);
+      }
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [org?.id, org?.status, isSuperAdmin]);
+
   return (
     <OrganizationContext.Provider
       value={{
