@@ -54,9 +54,6 @@ export default function PendingAffectation() {
 
       if (orgErr || !newOrg) throw orgErr ?? new Error("Création impossible");
 
-      // 2. Cloner les permissions par défaut pour la nouvelle org
-      await supabase.rpc("clone_default_permissions" as any, { p_org_id: newOrg.id });
-
       // 3. Rattacher le profil à l'organisation
       const { error: profileErr } = await supabase
         .from("profiles")
