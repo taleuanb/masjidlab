@@ -13,6 +13,14 @@ export default function WelcomePage() {
     if (!loading && !user) navigate("/login", { replace: true });
   }, [loading, user, navigate]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg border-border/50">
