@@ -966,7 +966,7 @@ export default function OrganisationPage() {
           )}
           {addMode === "invite" && (
             <p className="text-xs text-muted-foreground bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
-              Un email d'invitation sera envoyé. Une fois le mot de passe créé, le membre aura accès à MASJIDI et passera en badge <strong>Actif</strong>.
+              Un email d'invitation sera envoyé. Une fois le mot de passe créé, le membre aura accès à MASJIDLAB et passera en badge <strong>Actif</strong>.
             </p>
           )}
 
@@ -1068,7 +1068,7 @@ export default function OrganisationPage() {
             <DialogDescription className="pt-2">
               Vous êtes sur le point de désactiver le compte de{" "}
               <strong>{deactivateTarget?.display_name}</strong>. Cette personne sera
-              immédiatement déconnectée et ne pourra plus accéder à MASJIDI.
+              immédiatement déconnectée et ne pourra plus accéder à MASJIDLAB.
             </DialogDescription>
           </DialogHeader>
           <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm text-accent-foreground">

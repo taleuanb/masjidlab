@@ -57,7 +57,7 @@ export default function OnboardingPage() {
             className="text-4xl font-bold tracking-widest"
             style={{ color: "hsl(45, 90%, 65%)", letterSpacing: "0.2em" }}
           >
-            MASJIDI
+            MASJIDLAB
           </h1>
         </div>
 
@@ -191,7 +191,7 @@ export default function OnboardingPage() {
             color: "white",
           }}
         >
-          Entrer dans MASJIDI
+          Entrer dans MASJIDLAB
           <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
       </div>

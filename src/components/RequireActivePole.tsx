@@ -46,7 +46,7 @@ function PendingOrgBanner() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Votre mosquée est en cours de validation par l'équipe Masjidi.
+            Votre mosquée est en cours de validation par l'équipe MasjidLab.
             Vous recevrez un email dès que votre espace sera activé.
           </p>
           <div className="rounded-lg bg-muted/50 border p-3 flex items-center gap-2.5">

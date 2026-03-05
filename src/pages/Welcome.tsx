@@ -29,7 +29,7 @@ export default function WelcomePage() {
           <div className="mx-auto w-14 h-14 rounded-xl flex items-center justify-center mb-2">
             <img src={masjidLabLogo} alt="MasjidLab" className="h-14 w-14 object-contain" />
           </div>
-          <CardTitle className="text-xl font-bold">Bienvenue sur Masjidi 🎉</CardTitle>
+          <CardTitle className="text-xl font-bold">Bienvenue sur MasjidLab 🎉</CardTitle>
           <CardDescription>Votre compte a été créé avec succès.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -41,7 +41,7 @@ export default function WelcomePage() {
               <Building2 className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Inscrire ma mosquée sur Masjidi</p>
+              <p className="text-sm font-semibold">Inscrire ma mosquée sur MasjidLab</p>
               <p className="text-[11px] opacity-80">Créer une nouvelle organisation</p>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 opacity-60" />

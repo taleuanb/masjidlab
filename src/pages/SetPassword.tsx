@@ -172,7 +172,7 @@ export default function SetPasswordPage() {
               )}
 
               <Button type="submit" className="w-full h-11 text-base font-medium" disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer et accéder à MASJIDI"}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer et accéder à MASJIDLAB"}
               </Button>
             </form>
           )}

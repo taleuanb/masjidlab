@@ -1,4 +1,5 @@
 import { useState } from "react";
+import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { motion } from "framer-motion";
 import { Etage } from "@/types/amm";
 import { DashboardStats } from "@/components/DashboardStats";
@@ -28,22 +29,21 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
+      <header className="sticky top-0 z-10 border-b bg-card/90 backdrop-blur-sm">
         {/* Barre principale */}
-        <div className="flex items-center gap-3 px-6 py-4">
+        <div className="flex items-center gap-3 px-6 py-3">
           <SidebarTrigger />
-          <div className="flex-1">
-            <h2 className="text-xl font-semibold tracking-tight">
-              {impersonatedUser ? `Tableau de bord — ${impersonatedUser.name}` : "Tableau de bord"}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {impersonatedUser
-                ? "Mode Ghost actif — Vue utilisateur"
-                : isChef
-                  ? `Vue Pôle ${pole} — Mes activités`
-                  : "Bienvenue au service de la Maison d'Allah"}
-            </p>
+          <Separator orientation="vertical" className="h-6" />
+          <div className="flex items-center gap-2.5">
+            <img src={masjidLabLogo} alt="MasjidLab" className="h-8 w-8 object-contain" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold tracking-tight text-foreground leading-none">MASJIDLAB</h2>
+              <p className="text-[10px] text-muted-foreground italic leading-tight mt-0.5">
+                Gérez l'organisation, élevez les cœurs.
+              </p>
+            </div>
           </div>
+          <div className="flex-1" />
           <div className="flex items-center gap-3">
             <WeatherPrayerWidget />
             <CommandPalette />
