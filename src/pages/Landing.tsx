@@ -194,7 +194,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════ BENTO PÔLES ═══════════════════ */}
-      <BentoPolesGrid />
+      <HumanCentricPoles />
 
       {/* ═══════════════════ CONFIANCE & SÉCURITÉ ═══════════════════ */}
       <TrustSection />
