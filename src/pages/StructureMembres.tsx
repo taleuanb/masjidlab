@@ -101,7 +101,9 @@ export default function StructureMembresPage() {
   const { user: currentUser, dbRole, dbRoles, startImpersonating } = useAuth();
   const navigate = useNavigate();
   const isAdmin = dbRole === "admin" || dbRole === "super_admin";
+  const isResponsable = dbRoles.includes("responsable");
   const isSuperAdmin = dbRoles.includes("super_admin");
+  const canInvite = isAdmin || isResponsable;
 
   const [loading, setLoading] = useState(true);
   const [poles, setPoles] = useState<PoleRow[]>([]);
