@@ -84,13 +84,17 @@ const METIER_BLOCKS: NavBlock[] = [
     id: "social",
     label: "Social",
     icon: Heart,
-    items: [],
+    items: [
+      { title: "Dashboard Social", url: "/social", icon: Heart, moduleKey: "social" },
+    ],
   },
   {
     id: "comms",
     label: "Communication",
     icon: Radio,
-    items: [],
+    items: [
+      { title: "Dashboard Com", url: "/communication", icon: Radio, moduleKey: "comms" },
+    ],
   },
 ];
 

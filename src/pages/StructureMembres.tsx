@@ -101,7 +101,9 @@ export default function StructureMembresPage() {
   const { user: currentUser, dbRole, dbRoles, startImpersonating } = useAuth();
   const navigate = useNavigate();
   const isAdmin = dbRole === "admin" || dbRole === "super_admin";
+  const isResponsable = dbRoles.includes("responsable");
   const isSuperAdmin = dbRoles.includes("super_admin");
+  const canInvite = isAdmin || isResponsable;
 
   const [loading, setLoading] = useState(true);
   const [poles, setPoles] = useState<PoleRow[]>([]);
@@ -356,7 +358,7 @@ export default function StructureMembresPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isAdmin && (
+            {canInvite && (
               <Button size="sm" variant="default" onClick={() => setInviteOpen(true)} className="gap-1.5">
                 <UserPlus className="h-4 w-4" /> Inviter un membre
               </Button>
