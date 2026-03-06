@@ -10,6 +10,7 @@ import {
   ClipboardList, UserCheck, SlidersHorizontal, ChevronDown,
   BookOpen, Heart, Radio, Globe, LogOut, Wallet, CreditCard,
   GraduationCap, ShieldCheck, FileText, Receipt, Package, Truck, UserCircle,
+  Settings, CreditCard as BillingIcon,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -32,12 +33,10 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ElementType;
-  /** Sub-module RBAC key (e.g. "education.eleves"). If omitted, inherits parent visibility. */
   moduleKey?: string;
 }
 
 interface NavBlock {
-  /** Must match a moduleId from MODULE_REGISTRY */
   id: string;
   label: string;
   icon: React.ElementType;
@@ -46,19 +45,14 @@ interface NavBlock {
 
 const ALL_ROLES: UserRole[] = ["Super Admin", "Admin Mosquée", "Responsable", "Enseignant / Oustaz", "Bénévole", "Parent d'élève"];
 
-// ── CORE ITEMS — visible to all via useModuleAccess defaultRoles ──
-const CORE_ITEMS: (NavItem & { moduleKey: string })[] = [
-  { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard, moduleKey: "dashboard_general" },
-  { title: "Mon Profil", url: "/profil", icon: UserCircle, moduleKey: "profile_core" },
-];
-
-// ── ADMINISTRATION — CORE modules, visibility via useModuleAccess ──
+// ── GROUPE A: ADMINISTRATION ──
 const ADMIN_ITEMS: (NavItem & { moduleKey: string })[] = [
-  { title: "Configuration", url: "/configuration", icon: SlidersHorizontal, moduleKey: "config" },
-  { title: "Membres & Rôles", url: "/structure-membres", icon: Users, moduleKey: "gouvernance" },
+  { title: "Paramètres", url: "/configuration", icon: Settings, moduleKey: "config" },
+  { title: "Ressources Humaines", url: "/structure-membres", icon: Users, moduleKey: "gouvernance" },
+  { title: "Abonnement & Facturation", url: "/configuration/plan", icon: BillingIcon, moduleKey: "config" },
 ];
 
-// ── PÔLES MÉTIERS ─────────────────────────────────────────
+// ── GROUPE B: PÔLES MÉTIERS ──
 const METIER_BLOCKS: NavBlock[] = [
   {
     id: "education",
@@ -98,7 +92,6 @@ const METIER_BLOCKS: NavBlock[] = [
   },
 ];
 
-// ── LOGISTIQUE ────────────────────────────────────────────
 const LOGISTIQUE_BLOCK: NavBlock = {
   id: "operations",
   label: "Logistique",
@@ -113,7 +106,6 @@ const LOGISTIQUE_BLOCK: NavBlock = {
   ],
 };
 
-// ── PERSONNEL ─────────────────────────────────────────────
 const PERSONNEL_BLOCK: NavBlock = {
   id: "gestion-rh",
   label: "Personnel",
@@ -126,10 +118,11 @@ const PERSONNEL_BLOCK: NavBlock = {
   ],
 };
 
-const STANDALONE_ITEMS: (NavItem & { roles: UserRole[] })[] = [
-  { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays, roles: ["Bénévole", "Parent d'élève"] },
-  { title: "Mes Missions", url: "/missions", icon: ClipboardList, roles: ["Bénévole"] },
-  { title: "Mon Équipe", url: "/mon-equipe", icon: Users, roles: ["Responsable"] },
+// ── GROUPE C: MON ESPACE ──
+const MON_ESPACE_ITEMS: NavItem[] = [
+  { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Mon Agenda", url: "/mon-agenda", icon: CalendarDays },
+  { title: "Mes Missions", url: "/missions", icon: ClipboardList },
 ];
 
 const roleIcons: Record<UserRole, React.ElementType> = {
@@ -141,9 +134,7 @@ const roleIcons: Record<UserRole, React.ElementType> = {
   "Parent d'élève": Users,
 };
 
-// ── Reusable collapsible block ────────────────────────────
-// Visibility is already resolved by the parent via useModuleAccess.
-// This component only handles expand/collapse UI.
+// ── Reusable collapsible block ──
 function SidebarBlock({
   block, location, isModuleVisible,
 }: {
@@ -151,9 +142,8 @@ function SidebarBlock({
   location: ReturnType<typeof useLocation>;
   isModuleVisible: (key: string) => boolean;
 }) {
-  // Filter items by sub-module RBAC key
   const visibleItems = block.items.filter((item) => {
-    if (!item.moduleKey) return true; // no sub-module key → inherits parent visibility
+    if (!item.moduleKey) return true;
     return isModuleVisible(item.moduleKey);
   });
 
@@ -213,7 +203,7 @@ function SidebarBlock({
   );
 }
 
-// ── Main Sidebar ─────────────────────────────────────────
+// ── Main Sidebar ──
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -225,8 +215,6 @@ export function AppSidebar() {
   const isGhostActive = !!impersonatedUser;
   const isPreviewingOtherRole = !isGhostActive && isSuperAdmin && role !== "Super Admin";
   const effectiveBypass = isBypassing && !isPreviewingOtherRole;
-  const showPoleSelector = !effectiveBypass && !isGhostActive && ["Bénévole", "Parent d'élève"].includes(role);
-  const standaloneVisible = STANDALONE_ITEMS.filter((i) => i.roles.includes(role));
 
   // ── Preview permissions (for "Prévisualiser en tant que") ──
   const [previewPermissions, setPreviewPermissions] = useState<Set<string> | null>(null);
@@ -258,17 +246,10 @@ export function AppSidebar() {
     if (!impersonatedUser && isSuperAdmin) setRole("Super Admin");
   }, [impersonatedUser, isSuperAdmin, setRole]);
 
-  /**
-   * Single visibility gate — delegates entirely to useModuleAccess.
-   * Only adds preview-mode RBAC overlay when super_admin is previewing another role.
-   */
   const isModuleVisible = useCallback((moduleKey: string): boolean => {
     if (!hasAccess(moduleKey)) return false;
-    // Preview-mode overlay: also check preview RBAC set, but SKIP for CORE modules
-    // (CORE modules use defaultRoles logic, not role_permissions table)
     if (isPreviewingOtherRole && previewPermissions !== null) {
       if (CORE_MODULE_IDS.has(moduleKey)) {
-        // For CORE modules in preview, check defaultRoles against the previewed role
         const meta = MODULE_MAP.get(moduleKey);
         const defaultRoles = meta?.defaultRoles ?? [];
         const previewDbRole = UI_ROLE_TO_DB[role];
@@ -279,22 +260,17 @@ export function AppSidebar() {
     return true;
   }, [hasAccess, isPreviewingOtherRole, previewPermissions, role]);
 
-  // ── Filter all blocks through the single gate ──
-  const visibleCoreItems = useMemo(
-    () => CORE_ITEMS.filter((item) => isModuleVisible(item.moduleKey)),
-    [isModuleVisible]
-  );
-
+  // ── GROUPE A: Administration — visible for admin roles ──
   const visibleAdminItems = useMemo(
     () => ADMIN_ITEMS.filter((item) => isModuleVisible(item.moduleKey)),
     [isModuleVisible]
   );
 
+  // ── GROUPE B: Pôles Métiers ──
   const visibleMetierBlocks = useMemo(
     () => METIER_BLOCKS.filter((block) => isModuleVisible(block.id)),
     [isModuleVisible]
   );
-
   const showLogistique = isModuleVisible(LOGISTIQUE_BLOCK.id);
   const showPersonnel = isModuleVisible(PERSONNEL_BLOCK.id);
 
@@ -344,93 +320,23 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* ── G0: CORE — Dashboard & Profil, visible to all via defaultRoles ── */}
-        {visibleCoreItems.length > 0 && (
-          <div className="py-1">
-            <SidebarMenu className="space-y-px">
-              {visibleCoreItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </div>
-        )}
-
-        {/* ── G1: ADMINISTRATION — visibility via useModuleAccess (CORE defaultRoles) ── */}
+        {/* ══════════ GROUPE A : ADMINISTRATION ══════════ */}
         {visibleAdminItems.length > 0 && (
-          <div className="py-1">
-            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Administration</p>
-            <SidebarMenu className="space-y-px">
-              {visibleAdminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </div>
-        )}
-
-        {/* ── G2: PÔLES MÉTIERS — visibility via useModuleAccess ── */}
-        {visibleMetierBlocks.length > 0 && (
-          <div className="py-1">
-            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Pôles Métiers</p>
-            <div className="space-y-px">
-              {visibleMetierBlocks.map((block) => (
-                <SidebarBlock key={block.id} block={block} location={location} isModuleVisible={isModuleVisible} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── G3: LOGISTIQUE — visibility via useModuleAccess ── */}
-        {showLogistique && (
-          <div className="py-1">
-            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Logistique</p>
-            <div className="space-y-px">
-              <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} isModuleVisible={isModuleVisible} />
-            </div>
-          </div>
-        )}
-
-        {/* ── G4: PERSONNEL — visibility via useModuleAccess ── */}
-        {showPersonnel && (
-          <div className="py-1">
-            <p className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-1 px-2">Personnel</p>
-            <div className="space-y-px">
-              <SidebarBlock block={PERSONNEL_BLOCK} location={location} isModuleVisible={isModuleVisible} />
-            </div>
-          </div>
-        )}
-
-        {/* ── ESPACE PERSO ── */}
-        {standaloneVisible.length > 0 && (
           <SidebarGroup className="py-1">
-            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5">Mon Espace</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+              <Settings className="h-3 w-3" />
+              Administration
+            </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {standaloneVisible.map((item) => (
+              <SidebarMenu className="space-y-px">
+                {visibleAdminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
-                      <NavLink to={item.url} end={item.url === "/"} className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                      <NavLink
+                        to={item.url}
+                        className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      >
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </NavLink>
@@ -441,6 +347,55 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        {/* ══════════ GROUPE B : PÔLES MÉTIERS ══════════ */}
+        {(visibleMetierBlocks.length > 0 || showLogistique || showPersonnel) && (
+          <SidebarGroup className="py-1">
+            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+              <Building2 className="h-3 w-3" />
+              Pôles Métiers
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="space-y-px">
+                {visibleMetierBlocks.map((block) => (
+                  <SidebarBlock key={block.id} block={block} location={location} isModuleVisible={isModuleVisible} />
+                ))}
+                {showLogistique && (
+                  <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} isModuleVisible={isModuleVisible} />
+                )}
+                {showPersonnel && (
+                  <SidebarBlock block={PERSONNEL_BLOCK} location={location} isModuleVisible={isModuleVisible} />
+                )}
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* ══════════ GROUPE C : MON ESPACE ══════════ */}
+        <SidebarGroup className="py-1">
+          <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+            <UserCircle className="h-3 w-3" />
+            Mon Espace
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-px">
+              {MON_ESPACE_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       {/* ── Footer ── */}
@@ -475,22 +430,6 @@ export function AppSidebar() {
               <SelectContent>
                 {ALL_ROLES.map((r) => (
                   <SelectItem key={r} value={r}>{r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {showPoleSelector && (
-          <div className="space-y-1">
-            <label className="text-[9px] uppercase tracking-wider text-sidebar-foreground/30 font-medium px-1">Mon Pôle</label>
-            <Select value={pole} onValueChange={(v) => setPole(v as Pole)}>
-              <SelectTrigger className="h-8 text-[11px] bg-sidebar-accent/30 border-sidebar-accent/50 text-sidebar-foreground/70">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {POLES.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
