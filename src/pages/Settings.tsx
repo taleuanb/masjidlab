@@ -381,12 +381,9 @@ export default function SettingsPage() {
         </div>
 
         <Tabs defaultValue="identite" className="space-y-4">
-          <TabsList className={`grid w-full max-w-2xl ${showMadrassa ? "grid-cols-6" : "grid-cols-5"}`}>
+          <TabsList className={`grid w-full max-w-2xl ${showMadrassa ? "grid-cols-5" : "grid-cols-4"}`}>
             <TabsTrigger value="identite" className="gap-1.5 text-xs">
               <Building2 className="h-3.5 w-3.5" />Identité
-            </TabsTrigger>
-            <TabsTrigger value="poles" className="gap-1.5 text-xs">
-              <Zap className="h-3.5 w-3.5" />Plan & Modules
             </TabsTrigger>
             <TabsTrigger value="espaces" className="gap-1.5 text-xs">
               <Layers className="h-3.5 w-3.5" />Espaces
