@@ -162,7 +162,7 @@ function SidebarBlock({
             hasActiveRoute && "text-sidebar-primary font-medium"
           )}
         >
-          <block.icon className="h-4 w-4 shrink-0 text-primary" />
+          <block.icon className="h-4 w-4 shrink-0" />
           <span className="flex-1 text-left">{block.label}</span>
           {visibleItems.length > 0 && (
             <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40 transition-transform duration-200", open && "rotate-180")} />
