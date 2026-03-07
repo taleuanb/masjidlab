@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users, Plus, Pencil, Loader2, RefreshCw, Search, X, Shield, UserCheck, Tag,
-  Trash2, Mail, MoreHorizontal, UserX, UserCheck2, Phone, PhoneCall, UserPlus,
-  ExternalLink, UserCog, Building2, Ghost,
+  Users, Plus, Pencil, Loader2, RefreshCw, Search, X, Shield,
+  Trash2, MoreHorizontal, UserX, UserCheck2, Phone, UserPlus,
+  Building2, Ghost,
 } from "lucide-react";
-import { InviteMemberDialog } from "@/components/InviteMemberDialog";
+import { AddCollaboratorDialog } from "@/components/AddCollaboratorDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -68,31 +67,18 @@ const TAG_STYLES: Record<ProfileTag, string> = {
 };
 
 interface PoleRow {
-  id: string;
-  nom: string;
-  description: string | null;
-  responsable_id: string | null;
-  responsable_name: string | null;
-  manager_id: string | null;
-  manager_name: string | null;
-  target_staff: number;
-  member_count: number;
+  id: string; nom: string; description: string | null;
+  responsable_id: string | null; responsable_name: string | null;
+  manager_id: string | null; manager_name: string | null;
+  target_staff: number; member_count: number;
 }
 
 interface MemberRow {
-  user_id: string;
-  profile_id: string;
-  display_name: string;
-  email: string | null;
-  phone: string | null;
-  competences: string[] | null;
-  tags: string[];
-  pole_id: string | null;
-  pole_nom: string | null;
-  roles: string[];
-  role_row_ids: string[];
-  is_active: boolean;
-  has_account: boolean;
+  user_id: string; profile_id: string; display_name: string;
+  email: string | null; phone: string | null; competences: string[] | null;
+  tags: string[]; pole_id: string | null; pole_nom: string | null;
+  roles: string[]; role_row_ids: string[];
+  is_active: boolean; has_account: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -101,9 +87,7 @@ export default function StructureMembresPage() {
   const { user: currentUser, dbRole, dbRoles, startImpersonating } = useAuth();
   const navigate = useNavigate();
   const isAdmin = dbRole === "admin" || dbRole === "super_admin";
-  const isResponsable = dbRoles.includes("responsable");
   const isSuperAdmin = dbRoles.includes("super_admin");
-  const canInvite = isAdmin || isResponsable;
 
   const [loading, setLoading] = useState(true);
   const [poles, setPoles] = useState<PoleRow[]>([]);
@@ -123,17 +107,13 @@ export default function StructureMembresPage() {
   const [memberForm, setMemberForm] = useState({ name: "", email: "", phone: "", roles: ["benevole"] as string[], pole_id: "none", competences: "", tags: [] as string[] });
   const [memberSaving, setMemberSaving] = useState(false);
 
-  // Add member dialog
-  const [addOpen, setAddOpen] = useState(false);
-  const [addMode, setAddMode] = useState<"simple" | "invite">("simple");
-  const [addForm, setAddForm] = useState({ name: "", phone: "", email: "", role: "benevole", pole_id: "none", competences: "", sendInvite: false });
-  const [addSaving, setAddSaving] = useState(false);
+  // Add collaborator dialog
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   // Action modals
   const [deactivateTarget, setDeactivateTarget] = useState<MemberRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MemberRow | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [inviteOpen, setInviteOpen] = useState(false);
 
   // ─── Fetch ─────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -143,16 +123,11 @@ export default function StructureMembresPage() {
       const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, phone, competences, pole_id, id, is_active, has_account, tags").order("display_name");
       const { data: roles } = await supabase.from("user_roles").select("id, user_id, role");
 
-      // Build multi-role map: user_id -> { roles: string[], ids: string[] }
       const roleMap = new Map<string, { roles: string[]; ids: string[] }>();
       for (const r of (roles || [])) {
         const existing = roleMap.get(r.user_id);
-        if (existing) {
-          existing.roles.push(r.role as string);
-          existing.ids.push(r.id);
-        } else {
-          roleMap.set(r.user_id, { roles: [r.role as string], ids: [r.id] });
-        }
+        if (existing) { existing.roles.push(r.role as string); existing.ids.push(r.id); }
+        else { roleMap.set(r.user_id, { roles: [r.role as string], ids: [r.id] }); }
       }
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
       const poleMap = new Map((polesData || []).map((p: any) => [p.id, p.nom]));
@@ -177,17 +152,14 @@ export default function StructureMembresPage() {
           user_id: p.user_id, profile_id: p.id, display_name: p.display_name,
           email: p.email, phone: p.phone || null, competences: p.competences,
           tags: p.tags ?? [], pole_id: p.pole_id, pole_nom: p.pole_id ? poleMap.get(p.pole_id) || null : null,
-          roles: userRoles?.roles ?? ["benevole"],
-          role_row_ids: userRoles?.ids ?? [],
+          roles: userRoles?.roles ?? ["benevole"], role_row_ids: userRoles?.ids ?? [],
           is_active: p.is_active !== false, has_account: p.has_account === true,
         };
       });
       setMembers(enrichedMembers);
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [toast]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -217,18 +189,13 @@ export default function StructureMembresPage() {
     setPoleSaving(true);
     try {
       const payload: any = { nom: poleForm.nom, description: poleForm.description || null, manager_id: poleForm.manager_id === "none" ? null : poleForm.manager_id, target_staff: poleForm.target_staff };
-      if (editingPole) {
-        await supabase.from("poles").update(payload).eq("id", editingPole.id);
-      } else {
-        await supabase.from("poles").insert(payload);
-      }
+      if (editingPole) await supabase.from("poles").update(payload).eq("id", editingPole.id);
+      else await supabase.from("poles").insert(payload);
       setPoleDialogOpen(false);
       fetchAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setPoleSaving(false);
-    }
+    } finally { setPoleSaving(false); }
   };
 
   // ─── Member Edit ───────────────────────────────────────────────────
@@ -247,53 +214,20 @@ export default function StructureMembresPage() {
         tags: memberForm.tags, pole_id: memberForm.pole_id === "none" ? null : memberForm.pole_id,
       } as any).eq("user_id", editMember.user_id);
 
-      // Sync multi-roles via delete + insert
       const oldRoles = new Set(editMember.roles);
       const newRoles = new Set(memberForm.roles);
       const rolesChanged = oldRoles.size !== newRoles.size || [...oldRoles].some((r) => !newRoles.has(r));
-
       if (rolesChanged) {
-        // Delete all existing roles
         await supabase.from("user_roles").delete().eq("user_id", editMember.user_id);
-        // Insert new roles
         if (memberForm.roles.length > 0) {
-          await supabase.from("user_roles").insert(
-            memberForm.roles.map((r) => ({ user_id: editMember.user_id, role: r as any }))
-          );
+          await supabase.from("user_roles").insert(memberForm.roles.map((r) => ({ user_id: editMember.user_id, role: r as any })));
         }
       }
       setEditMember(null);
       fetchAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setMemberSaving(false);
-    }
-  };
-
-  // ─── Add Member ────────────────────────────────────────────────────
-  const handleAddMember = async () => {
-    if (!addForm.name.trim()) return;
-    setAddSaving(true);
-    try {
-      if (addMode === "invite" && addForm.sendInvite && addForm.email.trim()) {
-        const res = await supabase.functions.invoke("invite-member", {
-          body: { email: addForm.email.trim(), display_name: addForm.name.trim(), role: addForm.role, pole_id: addForm.pole_id === "none" ? null : addForm.pole_id, redirect_to: `${window.location.origin}/set-password` },
-        });
-        if (res.error) throw new Error(res.error.message);
-        if (res.data?.error) throw new Error(res.data.error);
-      } else {
-        const fakeUserId = crypto.randomUUID();
-        await supabase.from("profiles").insert({ user_id: fakeUserId, display_name: addForm.name.trim(), email: addForm.email.trim() || null, phone: addForm.phone.trim() || null, pole_id: addForm.pole_id === "none" ? null : addForm.pole_id, has_account: false, is_active: true } as any);
-        await supabase.from("user_roles").insert({ user_id: fakeUserId, role: addForm.role as any });
-      }
-      setAddOpen(false);
-      fetchAll();
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setAddSaving(false);
-    }
+    } finally { setMemberSaving(false); }
   };
 
   // ─── Deactivate / Delete ───────────────────────────────────────────
@@ -307,9 +241,7 @@ export default function StructureMembresPage() {
       fetchAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setActionLoading(false);
-    }
+    } finally { setActionLoading(false); }
   };
   const handleReactivate = async (m: MemberRow) => {
     const res = await supabase.functions.invoke("manage-member", { body: { action: "reactivate", target_user_id: m.user_id } });
@@ -326,15 +258,7 @@ export default function StructureMembresPage() {
       fetchAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-  const handleTransformToUser = async (m: MemberRow) => {
-    if (!m.email) return;
-    const res = await supabase.functions.invoke("invite-member", { body: { email: m.email, display_name: m.display_name, role: m.roles[0] ?? "benevole", pole_id: m.pole_id, redirect_to: `${window.location.origin}/set-password` } });
-    if (res.error) toast({ title: "Erreur", description: res.error.message, variant: "destructive" });
-    else { toast({ title: "Invitation envoyée" }); fetchAll(); }
+    } finally { setActionLoading(false); }
   };
 
   const isSelf = (m: MemberRow) => m.user_id === currentUser?.id;
@@ -353,16 +277,11 @@ export default function StructureMembresPage() {
           <div className="flex items-center gap-3">
             <SidebarTrigger />
             <div>
-              <h1 className="text-xl font-bold text-foreground">Structure & Membres</h1>
-              <p className="text-sm text-muted-foreground">{poles.length} pôles · {members.length} membres</p>
+              <h1 className="text-xl font-bold text-foreground">Ressources Humaines</h1>
+              <p className="text-sm text-muted-foreground">{poles.length} pôles · {members.length} collaborateurs</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {canInvite && (
-              <Button size="sm" variant="default" onClick={() => setInviteOpen(true)} className="gap-1.5">
-                <UserPlus className="h-4 w-4" /> Inviter un membre
-              </Button>
-            )}
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-[200px] pl-8 text-xs" />
@@ -422,8 +341,8 @@ export default function StructureMembresPage() {
             <TabsContent value="annuaire" className="mt-4">
               <div className="flex justify-end mb-3">
                 {isAdmin && (
-                  <Button size="sm" onClick={() => { setAddForm({ name: "", phone: "", email: "", role: "benevole", pole_id: "none", competences: "", sendInvite: false }); setAddMode("simple"); setAddOpen(true); }}>
-                    <Plus className="h-4 w-4 mr-1" /> Ajouter un membre
+                  <Button size="sm" onClick={() => setAddDialogOpen(true)} className="gap-1.5">
+                    <UserPlus className="h-4 w-4" /> Ajouter un collaborateur
                   </Button>
                 )}
               </div>
@@ -482,13 +401,11 @@ export default function StructureMembresPage() {
                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => openEditMember(m)}><Pencil className="h-3.5 w-3.5 mr-2" /> Modifier</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openEditMember(m)}><Shield className="h-3.5 w-3.5 mr-2" /> Gérer les accès</DropdownMenuItem>
                                   {isSuperAdmin && !isSelf(m) && (
                                     <DropdownMenuItem onClick={() => { startImpersonating({ id: m.user_id, name: m.display_name, roles: m.roles }); navigate("/"); }}>
                                       <Ghost className="h-3.5 w-3.5 mr-2" /> Se connecter en tant que
                                     </DropdownMenuItem>
-                                  )}
-                                  {!m.has_account && m.email && (
-                                    <DropdownMenuItem onClick={() => handleTransformToUser(m)}><UserPlus className="h-3.5 w-3.5 mr-2" /> Inviter</DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
                                   {m.is_active ? (
@@ -548,14 +465,9 @@ export default function StructureMembresPage() {
             <div><Label>Rôles</Label>
               <div className="flex flex-wrap gap-2 mt-1">
                 {ASSIGNABLE_ROLES.map((r) => (
-                  <Badge
-                    key={r}
-                    variant="outline"
+                  <Badge key={r} variant="outline"
                     className={`cursor-pointer text-xs ${memberForm.roles.includes(r) ? (ROLE_STYLES[r] || ROLE_STYLES.benevole) : "opacity-40"}`}
-                    onClick={() => setMemberForm((f) => ({
-                      ...f,
-                      roles: f.roles.includes(r) ? f.roles.filter((x) => x !== r) : [...f.roles, r],
-                    }))}
+                    onClick={() => setMemberForm((f) => ({ ...f, roles: f.roles.includes(r) ? f.roles.filter((x) => x !== r) : [...f.roles, r] }))}
                   >
                     {ROLE_LABELS[r] || r}
                   </Badge>
@@ -576,9 +488,7 @@ export default function StructureMembresPage() {
               <Label>Tags Profil</Label>
               <div className="flex flex-wrap gap-2 mt-1">
                 {PROFILE_TAGS.map((t) => (
-                  <Badge
-                    key={t}
-                    variant="outline"
+                  <Badge key={t} variant="outline"
                     className={`cursor-pointer ${memberForm.tags.includes(t) ? TAG_STYLES[t] : "opacity-40"}`}
                     onClick={() => setMemberForm((f) => ({ ...f, tags: f.tags.includes(t) ? f.tags.filter((x) => x !== t) : [...f.tags, t] }))}
                   >
@@ -591,34 +501,6 @@ export default function StructureMembresPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditMember(null)}>Annuler</Button>
             <Button onClick={handleSaveMember} disabled={memberSaving}>{memberSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Add Member Dialog ── */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Ajouter un membre</DialogTitle></DialogHeader>
-          <Tabs value={addMode} onValueChange={(v) => setAddMode(v as any)}>
-            <TabsList className="w-full"><TabsTrigger value="simple" className="flex-1">Enregistrement simple</TabsTrigger><TabsTrigger value="invite" className="flex-1">Invitation numérique</TabsTrigger></TabsList>
-          </Tabs>
-          <div className="space-y-3 mt-2">
-            <div><Label>Nom *</Label><Input value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} /></div>
-            {addMode === "invite" && <div><Label>Email *</Label><Input value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value, sendInvite: true })} /></div>}
-            {addMode === "simple" && <>
-              <div><Label>Téléphone</Label><Input value={addForm.phone} onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })} /></div>
-              <div><Label>Email</Label><Input value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} /></div>
-            </>}
-            <div><Label>Pôle</Label>
-              <Select value={addForm.pole_id} onValueChange={(v) => setAddForm({ ...addForm, pole_id: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="none">Aucun</SelectItem>{polesRaw.map((p) => <SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Annuler</Button>
-            <Button onClick={handleAddMember} disabled={addSaving}>{addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ajouter"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -645,8 +527,8 @@ export default function StructureMembresPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Invite member dialog */}
-      <InviteMemberDialog open={inviteOpen} onOpenChange={setInviteOpen} onInvited={fetchAll} />
+      {/* ── Smart Add Collaborator Dialog ── */}
+      <AddCollaboratorDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} poles={polesRaw} onSuccess={fetchAll} />
     </main>
   );
 }
