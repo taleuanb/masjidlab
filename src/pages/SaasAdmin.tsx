@@ -30,6 +30,7 @@ import {
   RBAC_MODULE_HIERARCHY, getAllRbacModuleIds, getRegistryMeta,
   CATEGORY_LABELS, type RbacModuleGroup,
 } from "@/config/rbac-modules";
+import { DEFAULT_RBAC_MATRIX, getDefaultPermission } from "@/config/default-rbac";
 
 const ALL_POLES = MODULE_REGISTRY
   .filter((m) => !m.isCore)
