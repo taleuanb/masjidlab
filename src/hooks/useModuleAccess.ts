@@ -22,6 +22,7 @@ import {
   type PlanId,
   MODULE_MAP,
 } from "@/config/module-registry";
+import { hasDefaultView } from "@/config/default-rbac";
 
 export interface ModuleAccessResult {
   allowed: boolean;
