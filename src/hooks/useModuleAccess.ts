@@ -132,16 +132,33 @@ export function useModuleAccess(): UseModuleAccessReturn {
     }
 
     // C) Global RBAC filter — check global permissions (org_id IS NULL)
-    // Only block if an explicit entry exists with enabled=false.
-    // Missing entries default to ALLOWED (plan filter already restricts by subscription).
-    if (globalPerms.has(moduleKey) && !globalPerms.get(moduleKey)) {
-      return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
+    // If an explicit entry exists, use it. Otherwise, fallback to DEFAULT_RBAC_MATRIX.
+    const hasExplicitEntry = globalPerms.has(moduleKey);
+    if (hasExplicitEntry) {
+      if (!globalPerms.get(moduleKey)) {
+        return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
+      }
+    } else {
+      // No DB entry — use factory defaults as fallback
+      const anyRoleAllowed = effectiveRoles.some((r) => hasDefaultView(r, moduleKey));
+      if (!anyRoleAllowed) {
+        return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
+      }
     }
+
     // Also check parent-level permission for sub-modules (e.g. "education" for "education.eleves")
     if (moduleKey.includes(".")) {
       const parentKey = moduleKey.split(".")[0];
-      if (globalPerms.has(parentKey) && !globalPerms.get(parentKey)) {
-        return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
+      const parentExplicit = globalPerms.has(parentKey);
+      if (parentExplicit) {
+        if (!globalPerms.get(parentKey)) {
+          return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
+        }
+      } else {
+        const anyRoleAllowedParent = effectiveRoles.some((r) => hasDefaultView(r, parentKey));
+        if (!anyRoleAllowedParent) {
+          return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
+        }
       }
     }
 
