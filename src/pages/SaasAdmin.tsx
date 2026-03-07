@@ -481,51 +481,26 @@ function PermissionsTab() {
     }
   };
 
-  // ── Reset: rebuild from MODULE_REGISTRY defaults ──
-  const handleReset = async () => {
+  // ── Reset: apply DEFAULT_RBAC_MATRIX to UI state (preview before save) ──
+  const handleReset = () => {
     setResetting(true);
-    try {
-      // Delete all global rows
-      const { error: delErr } = await supabase
-        .from("role_permissions" as any)
-        .delete()
-        .is("org_id", null);
-      if (delErr) throw delErr;
-
-      // Re-insert from registry defaults
-      const allIds = getAllRbacModuleIds();
-      const rows: any[] = [];
-      for (const role of RBAC_ROLES) {
-        for (const modId of allIds) {
-          const parentOfChild = RBAC_MODULE_HIERARCHY.find((g) => g.children.some((c) => c.id === modId));
-          // Default: admin gets everything enabled, others disabled
-          const isAdmin = role.id === "admin";
-          rows.push({
-            org_id: null,
-            role: role.id,
-            module: modId,
-            parent_key: parentOfChild ? parentOfChild.id : null,
-            enabled: isAdmin,
-            can_view: isAdmin,
-            can_edit: isAdmin,
-            can_delete: isAdmin,
-          });
-        }
+    const m = buildEmptyMatrix();
+    const allIds = getAllRbacModuleIds();
+    for (const role of RBAC_ROLES) {
+      for (const modId of allIds) {
+        const def = getDefaultPermission(role.id, modId);
+        m[permKey(role.id, modId, "enabled")] = def.can_view;
+        m[permKey(role.id, modId, "can_view")] = def.can_view;
+        m[permKey(role.id, modId, "can_edit")] = def.can_edit;
+        m[permKey(role.id, modId, "can_delete")] = def.can_delete;
       }
-      const { error } = await supabase
-        .from("role_permissions" as any)
-        .upsert(rows, { onConflict: "org_id,role,module" });
-      if (error) throw error;
-
-      // Reload
-      const m = await loadMatrix();
-      setMatrix(m);
-      toast({ title: "Réinitialisation effectuée", description: "Les permissions globales ont été recréées depuis le registre." });
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setResetting(false);
     }
+    setMatrix(m);
+    setResetting(false);
+    toast({
+      title: "Configuration d'usine chargée",
+      description: "Prévisualisation active. Cliquez « Sauvegarder » pour appliquer.",
+    });
   };
 
   const categories = ["metiers", "logistique", "personnel"] as const;
