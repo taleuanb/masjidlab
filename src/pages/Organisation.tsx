@@ -86,6 +86,7 @@ const ROLE_STYLES: Record<AppRole, string> = {
 interface PoleRow {
   id: string;
   nom: string;
+  core_type: string | null;
   description: string | null;
   responsable_id: string | null;
   responsable_name: string | null;
