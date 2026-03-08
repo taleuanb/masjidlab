@@ -35,7 +35,7 @@ import {
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { MODULE_REGISTRY, PLAN_META, type PlanId } from "@/config/module-registry";
 import {
   RBAC_MODULE_HIERARCHY, getAllRbacModuleIds, getRegistryMeta,
