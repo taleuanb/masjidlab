@@ -1363,6 +1363,7 @@ export default function SaasAdminPage() {
   const openModules = (o: OrgRow) => {
     setEditOrg(o);
     setEditPoles([...o.active_poles]);
+    setEditPlan(o.subscription_plan ?? "starter");
   };
 
   const handleValidateOrg = async (o: OrgRow) => {
