@@ -63,6 +63,7 @@ const METIER_BLOCKS: NavBlock[] = [
       { title: "Classes", url: "/classes", icon: BookOpen, moduleKey: "education.classes" },
       { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList, moduleKey: "education.inscriptions" },
       { title: "Faire l'appel", url: "/appel", icon: UserCheck, moduleKey: "education.classes" },
+      { title: "Évaluations", url: "/evaluations", icon: ClipboardCheck, moduleKey: "education.classes" },
     ],
   },
   {
