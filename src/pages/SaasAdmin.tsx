@@ -3,7 +3,7 @@ import {
   Building2, Users, Globe, Loader2, RefreshCw, Check, Shield, Save,
   ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
   MoreHorizontal, Search, UserCog, KeyRound, Ban, LayoutDashboard, Crown,
-  UserPlus, TrendingUp, Activity,
+  UserPlus, TrendingUp, Activity, Settings2, Eye, ShieldOff, RotateCcw,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
