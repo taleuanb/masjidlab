@@ -138,7 +138,7 @@ export default function StructureMembresPage() {
         const resp = p.responsable_id ? profileMap.get(p.responsable_id) : null;
         const mgr = p.manager_id ? profileMap.get(p.manager_id) : null;
         return {
-          id: p.id, nom: p.nom, description: p.description,
+          id: p.id, nom: p.nom, core_type: p.core_type ?? null, description: p.description,
           responsable_id: p.responsable_id, responsable_name: resp?.display_name || null,
           manager_id: p.manager_id || null, manager_name: mgr?.display_name || null,
           target_staff: p.target_staff ?? 0, member_count: memberCount,
