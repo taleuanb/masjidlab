@@ -120,7 +120,7 @@ export default function StructureMembresPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: polesData } = await supabase.from("poles").select("id, nom, description, responsable_id, manager_id, target_staff").order("nom");
+      const { data: polesData } = await supabase.from("poles").select("id, nom, core_type, description, responsable_id, manager_id, target_staff").order("nom");
       const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, phone, competences, pole_id, id, is_active, has_account, tags").order("display_name");
       const { data: roles } = await supabase.from("user_roles").select("id, user_id, role");
 
