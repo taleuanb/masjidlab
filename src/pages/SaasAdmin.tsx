@@ -748,7 +748,22 @@ function OrganizationsTab({
   fetchAll: () => void;
   openModules: (o: OrgRow) => void;
   onValidate: (o: OrgRow) => void;
+  onSuspendToggle: (o: OrgRow) => void;
+  onImpersonate: (o: OrgRow) => void;
+  onResetPermissions: (o: OrgRow) => void;
 }) {
+  const [search, setSearch] = useState("");
+  const [planFilter, setPlanFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filtered = orgs.filter((o) => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || o.name.toLowerCase().includes(q) || (o.city?.toLowerCase().includes(q) ?? false);
+    const matchPlan = planFilter === "all" || (o.subscription_plan ?? "starter") === planFilter;
+    const matchStatus = statusFilter === "all" || (o.status ?? "active") === statusFilter;
+    return matchSearch && matchPlan && matchStatus;
+  });
+
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -759,71 +774,154 @@ function OrganizationsTab({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-primary" />
-          {orgs.length} organisation{orgs.length > 1 ? "s" : ""}
-        </CardTitle>
-        <Button variant="outline" size="sm" onClick={fetchAll}>
-          <RefreshCw className="h-4 w-4 mr-1" /> Rafraîchir
-        </Button>
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-primary" />
+            {orgs.length} organisation{orgs.length > 1 ? "s" : ""}
+          </CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Nom ou ville…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-9 w-[180px]"
+              />
+            </div>
+            <Select value={planFilter} onValueChange={setPlanFilter}>
+              <SelectTrigger className="h-9 w-[130px]">
+                <SelectValue placeholder="Plan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les plans</SelectItem>
+                <SelectItem value="starter">Starter</SelectItem>
+                <SelectItem value="pro">Pro</SelectItem>
+                <SelectItem value="elite">Elite</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-9 w-[130px]">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="suspended">Suspendue</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={fetchAll} className="h-9">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Mosquée</TableHead>
-              <TableHead>Statut</TableHead>
+              <TableHead>Localisation</TableHead>
               <TableHead>Plan</TableHead>
+              <TableHead>Statut</TableHead>
               <TableHead>Membres</TableHead>
-              <TableHead>Modules Actifs</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Création</TableHead>
+              <TableHead className="text-right w-12" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orgs.map((o) => (
-              <TableRow key={o.id}>
-                <TableCell className="font-medium">{o.name}</TableCell>
-                <TableCell>
-                  {(() => {
-                    const s = STATUS_BADGE[o.status ?? "active"] ?? STATUS_BADGE.active;
-                    return (
-                      <Badge variant="outline" className={`text-[10px] ${s.cls}`}>
-                        {s.label}
-                      </Badge>
-                    );
-                  })()}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="capitalize">
-                    {o.subscription_plan ?? "starter"}
-                  </Badge>
-                </TableCell>
-                <TableCell>{o.member_count}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {o.active_poles.map((p) => (
-                      <Badge key={p} variant="secondary" className="text-[10px]">
-                        {ALL_POLES.find((ap) => ap.id === p)?.label ?? p}
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex gap-1.5 justify-end">
-                    {(o.status === "pending" || !o.status) && o.status !== "active" && (
-                      <Button size="sm" variant="default" onClick={() => onValidate(o)} className="gap-1">
-                        <Check className="h-3.5 w-3.5" />
-                        Valider
-                      </Button>
-                    )}
-                    <Button size="sm" variant="outline" onClick={() => openModules(o)}>
-                      Modules
-                    </Button>
-                  </div>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  Aucune organisation trouvée.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : filtered.map((o) => {
+              const plan = o.subscription_plan ?? "starter";
+              const planBadgeCls = PLAN_BADGE[plan] ?? PLAN_BADGE.starter;
+              const statusInfo = STATUS_BADGE[o.status ?? "active"] ?? STATUS_BADGE.active;
+
+              return (
+                <TableRow key={o.id}>
+                  <TableCell className="font-medium">
+                    <div>
+                      <span>{o.name}</span>
+                      {o.owner_email && (
+                        <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">{o.owner_email}</p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {o.city ? (
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        {o.city}{o.postal_code ? ` (${o.postal_code})` : ""}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`capitalize text-[10px] ${planBadgeCls}`}>
+                      {plan}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-[10px] ${statusInfo.cls}`}>
+                      {statusInfo.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="tabular-nums">{o.member_count}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {o.created_at ? format(new Date(o.created_at), "dd MMM yyyy", { locale: fr }) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {o.status === "pending" && (
+                          <DropdownMenuItem onClick={() => onValidate(o)}>
+                            <Check className="h-4 w-4 mr-2" />
+                            Valider la mosquée
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => openModules(o)}>
+                          <Settings2 className="h-4 w-4 mr-2" />
+                          Gérer Plan & Modules
+                        </DropdownMenuItem>
+                        {o.owner_id && (
+                          <DropdownMenuItem onClick={() => onImpersonate(o)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Se connecter en tant que
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onResetPermissions(o)}>
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Réinitialiser permissions
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onSuspendToggle(o)}
+                          className={o.status === "suspended" ? "text-secondary" : "text-destructive"}
+                        >
+                          {o.status === "suspended" ? (
+                            <><Check className="h-4 w-4 mr-2" /> Réactiver l'accès</>
+                          ) : (
+                            <><ShieldOff className="h-4 w-4 mr-2" /> Suspendre l'accès</>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </CardContent>
