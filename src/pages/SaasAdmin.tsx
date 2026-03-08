@@ -1535,6 +1535,9 @@ export default function SaasAdminPage() {
               fetchAll={fetchAll}
               openModules={openModules}
               onValidate={handleValidateOrg}
+              onSuspendToggle={handleSuspendToggle}
+              onImpersonate={handleImpersonate}
+              onResetPermissions={handleResetPermissions}
             />
           </TabsContent>
 
