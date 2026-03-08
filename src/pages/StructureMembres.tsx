@@ -68,7 +68,7 @@ const TAG_STYLES: Record<ProfileTag, string> = {
 };
 
 interface PoleRow {
-  id: string; nom: string; description: string | null;
+  id: string; nom: string; core_type: string | null; description: string | null;
   responsable_id: string | null; responsable_name: string | null;
   manager_id: string | null; manager_name: string | null;
   target_staff: number; member_count: number;
