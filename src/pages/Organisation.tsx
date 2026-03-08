@@ -26,6 +26,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { CORE_TYPES, getDefaultPoleName } from "@/config/core-types";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +87,7 @@ const ROLE_STYLES: Record<AppRole, string> = {
 interface PoleRow {
   id: string;
   nom: string;
+  core_type: string | null;
   description: string | null;
   responsable_id: string | null;
   responsable_name: string | null;
@@ -125,7 +127,7 @@ export default function OrganisationPage() {
   // Pole dialog
   const [poleDialogOpen, setPoleDialogOpen] = useState(false);
   const [editingPole, setEditingPole] = useState<PoleRow | null>(null);
-  const [poleForm, setPoleForm] = useState({ nom: "", description: "", manager_id: "none", target_staff: 0 });
+  const [poleForm, setPoleForm] = useState({ nom: "", description: "", manager_id: "none", target_staff: 0, core_type: "" });
   const [poleSaving, setPoleSaving] = useState(false);
 
   // Member edit dialog
@@ -155,7 +157,7 @@ export default function OrganisationPage() {
     setLoading(true);
     try {
       // Poles
-      const { data: polesData } = await supabase.from("poles").select("id, nom, description, responsable_id, manager_id, target_staff").order("nom");
+      const { data: polesData } = await supabase.from("poles").select("id, nom, core_type, description, responsable_id, manager_id, target_staff").order("nom");
       
       // All profiles
       const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, phone, competences, pole_id, id, is_active, has_account").order("display_name");
@@ -174,6 +176,7 @@ export default function OrganisationPage() {
         return {
           id: p.id,
           nom: p.nom,
+          core_type: p.core_type ?? null,
           description: p.description,
           responsable_id: p.responsable_id,
           responsable_name: resp?.display_name || null,
@@ -213,12 +216,12 @@ export default function OrganisationPage() {
   // ─── Pole CRUD ─────────────────────────────────────────────────────
   const openAddPole = () => {
     setEditingPole(null);
-    setPoleForm({ nom: "", description: "", manager_id: "none", target_staff: 0 });
+    setPoleForm({ nom: "", description: "", manager_id: "none", target_staff: 0, core_type: "" });
     setPoleDialogOpen(true);
   };
   const openEditPole = (p: PoleRow) => {
     setEditingPole(p);
-    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff });
+    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff, core_type: p.core_type || "" });
     setPoleDialogOpen(true);
   };
   const handleDeletePole = async (p: PoleRow) => {
@@ -240,6 +243,7 @@ export default function OrganisationPage() {
     try {
       const payload: any = {
         nom: poleForm.nom,
+        core_type: poleForm.core_type || null,
         description: poleForm.description || null,
         manager_id: poleForm.manager_id === "none" ? null : poleForm.manager_id,
         target_staff: poleForm.target_staff,
@@ -814,8 +818,26 @@ export default function OrganisationPage() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Nom du pôle</Label>
-              <Input value={poleForm.nom} onChange={(e) => setPoleForm((f) => ({ ...f, nom: e.target.value }))} className="h-9" placeholder="Ex: Logistique" />
+              <Label className="text-xs">Type technique (core_type)</Label>
+              <Select value={poleForm.core_type || "custom"} onValueChange={(v) => {
+                const ct = v === "custom" ? "" : v;
+                const autoName = ct ? getDefaultPoleName(ct) : poleForm.nom;
+                setPoleForm((f) => ({ ...f, core_type: ct, nom: f.nom || autoName }));
+              }}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Choisir un type…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Personnalisé</SelectItem>
+                  {CORE_TYPES.map((ct) => (
+                    <SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Clé technique fixe — détermine le module métier lié</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nom affiché</Label>
+              <Input value={poleForm.nom} onChange={(e) => setPoleForm((f) => ({ ...f, nom: e.target.value }))} className="h-9" placeholder="Ex: Madrassa, Trésorerie…" />
+              <p className="text-[10px] text-muted-foreground">Libellé libre, renommable sans impact technique</p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Description</Label>

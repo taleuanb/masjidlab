@@ -9,6 +9,7 @@ import { AddCollaboratorDialog } from "@/components/AddCollaboratorDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { CORE_TYPES, getDefaultPoleName } from "@/config/core-types";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,7 @@ const TAG_STYLES: Record<ProfileTag, string> = {
 };
 
 interface PoleRow {
-  id: string; nom: string; description: string | null;
+  id: string; nom: string; core_type: string | null; description: string | null;
   responsable_id: string | null; responsable_name: string | null;
   manager_id: string | null; manager_name: string | null;
   target_staff: number; member_count: number;
@@ -99,7 +100,7 @@ export default function StructureMembresPage() {
   // Pole dialog
   const [poleDialogOpen, setPoleDialogOpen] = useState(false);
   const [editingPole, setEditingPole] = useState<PoleRow | null>(null);
-  const [poleForm, setPoleForm] = useState({ nom: "", description: "", manager_id: "none", target_staff: 0 });
+  const [poleForm, setPoleForm] = useState({ nom: "", description: "", manager_id: "none", target_staff: 0, core_type: "" });
   const [poleSaving, setPoleSaving] = useState(false);
 
   // Member edit dialog
@@ -119,7 +120,7 @@ export default function StructureMembresPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: polesData } = await supabase.from("poles").select("id, nom, description, responsable_id, manager_id, target_staff").order("nom");
+      const { data: polesData } = await supabase.from("poles").select("id, nom, core_type, description, responsable_id, manager_id, target_staff").order("nom");
       const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, phone, competences, pole_id, id, is_active, has_account, tags").order("display_name");
       const { data: roles } = await supabase.from("user_roles").select("id, user_id, role");
 
@@ -137,7 +138,7 @@ export default function StructureMembresPage() {
         const resp = p.responsable_id ? profileMap.get(p.responsable_id) : null;
         const mgr = p.manager_id ? profileMap.get(p.manager_id) : null;
         return {
-          id: p.id, nom: p.nom, description: p.description,
+          id: p.id, nom: p.nom, core_type: p.core_type ?? null, description: p.description,
           responsable_id: p.responsable_id, responsable_name: resp?.display_name || null,
           manager_id: p.manager_id || null, manager_name: mgr?.display_name || null,
           target_staff: p.target_staff ?? 0, member_count: memberCount,
@@ -167,12 +168,12 @@ export default function StructureMembresPage() {
   // ─── Pole CRUD ─────────────────────────────────────────────────────
   const openAddPole = () => {
     setEditingPole(null);
-    setPoleForm({ nom: "", description: "", manager_id: "none", target_staff: 0 });
+    setPoleForm({ nom: "", description: "", manager_id: "none", target_staff: 0, core_type: "" });
     setPoleDialogOpen(true);
   };
   const openEditPole = (p: PoleRow) => {
     setEditingPole(p);
-    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff });
+    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff, core_type: p.core_type || "" });
     setPoleDialogOpen(true);
   };
   const handleDeletePole = async (p: PoleRow) => {
@@ -188,7 +189,7 @@ export default function StructureMembresPage() {
     if (!poleForm.nom.trim()) return;
     setPoleSaving(true);
     try {
-      const payload: any = { nom: poleForm.nom, description: poleForm.description || null, manager_id: poleForm.manager_id === "none" ? null : poleForm.manager_id, target_staff: poleForm.target_staff };
+      const payload: any = { nom: poleForm.nom, core_type: poleForm.core_type || null, description: poleForm.description || null, manager_id: poleForm.manager_id === "none" ? null : poleForm.manager_id, target_staff: poleForm.target_staff };
       if (editingPole) await supabase.from("poles").update(payload).eq("id", editingPole.id);
       else await supabase.from("poles").insert(payload);
       setPoleDialogOpen(false);
@@ -434,7 +435,21 @@ export default function StructureMembresPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingPole ? "Modifier le pôle" : "Nouveau pôle"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Nom</Label><Input value={poleForm.nom} onChange={(e) => setPoleForm({ ...poleForm, nom: e.target.value })} /></div>
+            <div>
+              <Label>Type technique</Label>
+              <Select value={poleForm.core_type || "custom"} onValueChange={(v) => {
+                const ct = v === "custom" ? "" : v;
+                const autoName = ct ? getDefaultPoleName(ct) : poleForm.nom;
+                setPoleForm({ ...poleForm, core_type: ct, nom: poleForm.nom || autoName });
+              }}>
+                <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Personnalisé</SelectItem>
+                  {CORE_TYPES.map((ct) => <SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Nom affiché</Label><Input value={poleForm.nom} onChange={(e) => setPoleForm({ ...poleForm, nom: e.target.value })} placeholder="Ex: Madrassa, Trésorerie…" /></div>
             <div><Label>Description</Label><Textarea value={poleForm.description} onChange={(e) => setPoleForm({ ...poleForm, description: e.target.value })} rows={2} /></div>
             <div><Label>Responsable</Label>
               <Select value={poleForm.manager_id} onValueChange={(v) => setPoleForm({ ...poleForm, manager_id: v })}>
