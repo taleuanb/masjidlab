@@ -2019,6 +2019,10 @@ export default function SaasAdminPage() {
             />
           </TabsContent>
 
+          <TabsContent value="activity">
+            <ActivityLogTab />
+          </TabsContent>
+
           <TabsContent value="permissions">
             <PermissionsTab />
           </TabsContent>
