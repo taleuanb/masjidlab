@@ -818,8 +818,26 @@ export default function OrganisationPage() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Nom du pôle</Label>
-              <Input value={poleForm.nom} onChange={(e) => setPoleForm((f) => ({ ...f, nom: e.target.value }))} className="h-9" placeholder="Ex: Logistique" />
+              <Label className="text-xs">Type technique (core_type)</Label>
+              <Select value={poleForm.core_type || "custom"} onValueChange={(v) => {
+                const ct = v === "custom" ? "" : v;
+                const autoName = ct ? getDefaultPoleName(ct) : poleForm.nom;
+                setPoleForm((f) => ({ ...f, core_type: ct, nom: f.nom || autoName }));
+              }}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Choisir un type…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Personnalisé</SelectItem>
+                  {CORE_TYPES.map((ct) => (
+                    <SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Clé technique fixe — détermine le module métier lié</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nom affiché</Label>
+              <Input value={poleForm.nom} onChange={(e) => setPoleForm((f) => ({ ...f, nom: e.target.value }))} className="h-9" placeholder="Ex: Madrassa, Trésorerie…" />
+              <p className="text-[10px] text-muted-foreground">Libellé libre, renommable sans impact technique</p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Description</Label>
