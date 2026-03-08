@@ -189,7 +189,7 @@ export default function StructureMembresPage() {
     if (!poleForm.nom.trim()) return;
     setPoleSaving(true);
     try {
-      const payload: any = { nom: poleForm.nom, description: poleForm.description || null, manager_id: poleForm.manager_id === "none" ? null : poleForm.manager_id, target_staff: poleForm.target_staff };
+      const payload: any = { nom: poleForm.nom, core_type: poleForm.core_type || null, description: poleForm.description || null, manager_id: poleForm.manager_id === "none" ? null : poleForm.manager_id, target_staff: poleForm.target_staff };
       if (editingPole) await supabase.from("poles").update(payload).eq("id", editingPole.id);
       else await supabase.from("poles").insert(payload);
       setPoleDialogOpen(false);
