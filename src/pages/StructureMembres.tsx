@@ -168,12 +168,12 @@ export default function StructureMembresPage() {
   // ─── Pole CRUD ─────────────────────────────────────────────────────
   const openAddPole = () => {
     setEditingPole(null);
-    setPoleForm({ nom: "", description: "", manager_id: "none", target_staff: 0 });
+    setPoleForm({ nom: "", description: "", manager_id: "none", target_staff: 0, core_type: "" });
     setPoleDialogOpen(true);
   };
   const openEditPole = (p: PoleRow) => {
     setEditingPole(p);
-    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff });
+    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff, core_type: p.core_type || "" });
     setPoleDialogOpen(true);
   };
   const handleDeletePole = async (p: PoleRow) => {
