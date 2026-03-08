@@ -156,7 +156,7 @@ export default function OrganisationPage() {
     setLoading(true);
     try {
       // Poles
-      const { data: polesData } = await supabase.from("poles").select("id, nom, description, responsable_id, manager_id, target_staff").order("nom");
+      const { data: polesData } = await supabase.from("poles").select("id, nom, core_type, description, responsable_id, manager_id, target_staff").order("nom");
       
       // All profiles
       const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, email, phone, competences, pole_id, id, is_active, has_account").order("display_name");
