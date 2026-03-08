@@ -1044,6 +1044,8 @@ export default function SaasAdminPage() {
   const [orgs, setOrgs] = useState<OrgRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [activeUsers, setActiveUsers] = useState(0);
+  const [recentActivity, setRecentActivity] = useState<{ type: "org" | "user"; name: string; created_at: string }[]>([]);
 
   const [editOrg, setEditOrg] = useState<OrgRow | null>(null);
   const [editPoles, setEditPoles] = useState<string[]>([]);
@@ -1054,7 +1056,7 @@ export default function SaasAdminPage() {
     setLoading(true);
     try {
       const { data: orgsData } = await supabase.rpc("get_all_organizations");
-      const { data: profiles } = await supabase.from("profiles").select("org_id, email, user_id");
+      const { data: profiles } = await supabase.from("profiles").select("org_id, email, user_id, is_active, display_name, created_at");
 
       const orgCounts = new Map<string, number>();
       const ownerEmails = new Map<string, string>();
