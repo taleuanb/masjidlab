@@ -1,4 +1,4 @@
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useEffect, useState } from "react";
 import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { motion } from "framer-motion";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -12,7 +12,8 @@ import { useRole } from "@/contexts/RoleContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { DashboardErrorState } from "@/components/dashboard/DashboardShell";
-import { getVisibleWidgets, type WidgetDef } from "@/config/widget-registry";
+import { getVisibleWidgets, type WidgetDef, type DbWidgetConfig } from "@/config/widget-registry";
+import { supabase } from "@/integrations/supabase/client";
 
 // ── Section header ───────────────────────────────────────────────────
 function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
