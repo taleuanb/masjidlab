@@ -10,7 +10,7 @@ import {
   ClipboardList, UserCheck, SlidersHorizontal, ChevronDown,
   BookOpen, Heart, Radio, Globe, LogOut, Wallet, CreditCard,
   GraduationCap, ShieldCheck, FileText, Receipt, Package, Truck, UserCircle,
-  Settings, CreditCard as BillingIcon,
+  Settings, CreditCard as BillingIcon, ClipboardCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {

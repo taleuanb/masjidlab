@@ -193,8 +193,6 @@ const Evaluations = () => {
 
   // ── Average KPI ──
   const average = useMemo(() => {
-    const scores = Object.values(grades).map((g) => Number(g.score)).filter((n) => !isNaN(n) && g.score !== "");
-    // Need to re-check with proper filter
     const validScores = Object.values(grades).filter((g) => g.score !== "" && !isNaN(Number(g.score))).map((g) => Number(g.score));
     if (validScores.length === 0) return null;
     return validScores.reduce((a, b) => a + b, 0) / validScores.length;
