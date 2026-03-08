@@ -1085,6 +1085,23 @@ export default function SaasAdminPage() {
       }));
       setOrgs(rows);
       setTotalUsers((profiles ?? []).length);
+      setActiveUsers((profiles ?? []).filter((p: any) => p.is_active).length);
+
+      // Build recent activity feed (last 10 events from orgs + profiles)
+      const orgEvents = (orgsData ?? []).map((o: any) => ({
+        type: "org" as const,
+        name: o.name,
+        created_at: o.created_at ?? new Date().toISOString(),
+      }));
+      const userEvents = (profiles ?? []).map((p: any) => ({
+        type: "user" as const,
+        name: p.display_name ?? p.email ?? "Utilisateur",
+        created_at: p.created_at ?? new Date().toISOString(),
+      }));
+      const allEvents = [...orgEvents, ...userEvents]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 8);
+      setRecentActivity(allEvents);
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
