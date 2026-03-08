@@ -1285,6 +1285,8 @@ function ModuleGroupRows({
 export default function SaasAdminPage() {
   const { isSuperAdmin } = useRole();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { startImpersonating } = useAuth();
   const [orgs, setOrgs] = useState<OrgRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -1293,6 +1295,7 @@ export default function SaasAdminPage() {
 
   const [editOrg, setEditOrg] = useState<OrgRow | null>(null);
   const [editPoles, setEditPoles] = useState<string[]>([]);
+  const [editPlan, setEditPlan] = useState<string>("starter");
   const [saving, setSaving] = useState(false);
   const [validatingId, setValidatingId] = useState<string | null>(null);
 
