@@ -3,7 +3,7 @@ import {
   Building2, Users, Globe, Loader2, RefreshCw, Check, Shield, Save,
   ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
   MoreHorizontal, Search, UserCog, KeyRound, Ban, LayoutDashboard, Crown,
-  UserPlus, TrendingUp, Activity,
+  UserPlus, TrendingUp, Activity, Settings2, Eye, ShieldOff, RotateCcw,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -11,6 +11,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole, DB_ROLE_TO_UI } from "@/contexts/RoleContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +36,7 @@ import {
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { MODULE_REGISTRY, PLAN_META, type PlanId } from "@/config/module-registry";
 import {
   RBAC_MODULE_HIERARCHY, getAllRbacModuleIds, getRegistryMeta,
@@ -67,14 +68,22 @@ interface OrgRow {
   id: string;
   name: string;
   city: string | null;
+  postal_code: string | null;
   active_poles: string[];
   subscription_plan: string | null;
   chosen_plan: string | null;
   status: string | null;
   member_count: number;
+  owner_id: string | null;
   owner_email: string | null;
   created_at: string | null;
 }
+
+const PLAN_BADGE: Record<string, string> = {
+  starter: "bg-muted text-muted-foreground border-border",
+  pro: "bg-blue-500/10 text-blue-700 border-blue-400/30",
+  elite: "bg-amber-500/10 text-amber-700 border-amber-400/30",
+};
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
   pending:   { cls: "bg-amber-500/10 text-amber-600 border-amber-400/30", label: "En attente" },
@@ -733,14 +742,29 @@ function DashboardTab({
 
 // ── Organizations Tab ──────────────────────────────────────
 function OrganizationsTab({
-  orgs, loading, fetchAll, openModules, onValidate,
+  orgs, loading, fetchAll, openModules, onValidate, onSuspendToggle, onImpersonate, onResetPermissions,
 }: {
   orgs: OrgRow[];
   loading: boolean;
   fetchAll: () => void;
   openModules: (o: OrgRow) => void;
   onValidate: (o: OrgRow) => void;
+  onSuspendToggle: (o: OrgRow) => void;
+  onImpersonate: (o: OrgRow) => void;
+  onResetPermissions: (o: OrgRow) => void;
 }) {
+  const [search, setSearch] = useState("");
+  const [planFilter, setPlanFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const filtered = orgs.filter((o) => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || o.name.toLowerCase().includes(q) || (o.city?.toLowerCase().includes(q) ?? false);
+    const matchPlan = planFilter === "all" || (o.subscription_plan ?? "starter") === planFilter;
+    const matchStatus = statusFilter === "all" || (o.status ?? "active") === statusFilter;
+    return matchSearch && matchPlan && matchStatus;
+  });
+
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -751,71 +775,154 @@ function OrganizationsTab({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-primary" />
-          {orgs.length} organisation{orgs.length > 1 ? "s" : ""}
-        </CardTitle>
-        <Button variant="outline" size="sm" onClick={fetchAll}>
-          <RefreshCw className="h-4 w-4 mr-1" /> Rafraîchir
-        </Button>
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-primary" />
+            {orgs.length} organisation{orgs.length > 1 ? "s" : ""}
+          </CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Nom ou ville…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-9 w-[180px]"
+              />
+            </div>
+            <Select value={planFilter} onValueChange={setPlanFilter}>
+              <SelectTrigger className="h-9 w-[130px]">
+                <SelectValue placeholder="Plan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les plans</SelectItem>
+                <SelectItem value="starter">Starter</SelectItem>
+                <SelectItem value="pro">Pro</SelectItem>
+                <SelectItem value="elite">Elite</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-9 w-[130px]">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="suspended">Suspendue</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={fetchAll} className="h-9">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Mosquée</TableHead>
-              <TableHead>Statut</TableHead>
+              <TableHead>Localisation</TableHead>
               <TableHead>Plan</TableHead>
+              <TableHead>Statut</TableHead>
               <TableHead>Membres</TableHead>
-              <TableHead>Modules Actifs</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Création</TableHead>
+              <TableHead className="text-right w-12" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orgs.map((o) => (
-              <TableRow key={o.id}>
-                <TableCell className="font-medium">{o.name}</TableCell>
-                <TableCell>
-                  {(() => {
-                    const s = STATUS_BADGE[o.status ?? "active"] ?? STATUS_BADGE.active;
-                    return (
-                      <Badge variant="outline" className={`text-[10px] ${s.cls}`}>
-                        {s.label}
-                      </Badge>
-                    );
-                  })()}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="capitalize">
-                    {o.subscription_plan ?? "starter"}
-                  </Badge>
-                </TableCell>
-                <TableCell>{o.member_count}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {o.active_poles.map((p) => (
-                      <Badge key={p} variant="secondary" className="text-[10px]">
-                        {ALL_POLES.find((ap) => ap.id === p)?.label ?? p}
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex gap-1.5 justify-end">
-                    {(o.status === "pending" || !o.status) && o.status !== "active" && (
-                      <Button size="sm" variant="default" onClick={() => onValidate(o)} className="gap-1">
-                        <Check className="h-3.5 w-3.5" />
-                        Valider
-                      </Button>
-                    )}
-                    <Button size="sm" variant="outline" onClick={() => openModules(o)}>
-                      Modules
-                    </Button>
-                  </div>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  Aucune organisation trouvée.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : filtered.map((o) => {
+              const plan = o.subscription_plan ?? "starter";
+              const planBadgeCls = PLAN_BADGE[plan] ?? PLAN_BADGE.starter;
+              const statusInfo = STATUS_BADGE[o.status ?? "active"] ?? STATUS_BADGE.active;
+
+              return (
+                <TableRow key={o.id}>
+                  <TableCell className="font-medium">
+                    <div>
+                      <span>{o.name}</span>
+                      {o.owner_email && (
+                        <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">{o.owner_email}</p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {o.city ? (
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        {o.city}{o.postal_code ? ` (${o.postal_code})` : ""}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`capitalize text-[10px] ${planBadgeCls}`}>
+                      {plan}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-[10px] ${statusInfo.cls}`}>
+                      {statusInfo.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="tabular-nums">{o.member_count}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {o.created_at ? format(new Date(o.created_at), "dd MMM yyyy", { locale: fr }) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {o.status === "pending" && (
+                          <DropdownMenuItem onClick={() => onValidate(o)}>
+                            <Check className="h-4 w-4 mr-2" />
+                            Valider la mosquée
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => openModules(o)}>
+                          <Settings2 className="h-4 w-4 mr-2" />
+                          Gérer Plan & Modules
+                        </DropdownMenuItem>
+                        {o.owner_id && (
+                          <DropdownMenuItem onClick={() => onImpersonate(o)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Se connecter en tant que
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onResetPermissions(o)}>
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Réinitialiser permissions
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onSuspendToggle(o)}
+                          className={o.status === "suspended" ? "text-secondary" : "text-destructive"}
+                        >
+                          {o.status === "suspended" ? (
+                            <><Check className="h-4 w-4 mr-2" /> Réactiver l'accès</>
+                          ) : (
+                            <><ShieldOff className="h-4 w-4 mr-2" /> Suspendre l'accès</>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </CardContent>
@@ -1179,6 +1286,8 @@ function ModuleGroupRows({
 export default function SaasAdminPage() {
   const { isSuperAdmin } = useRole();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { startImpersonating } = useAuth();
   const [orgs, setOrgs] = useState<OrgRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -1187,6 +1296,7 @@ export default function SaasAdminPage() {
 
   const [editOrg, setEditOrg] = useState<OrgRow | null>(null);
   const [editPoles, setEditPoles] = useState<string[]>([]);
+  const [editPlan, setEditPlan] = useState<string>("starter");
   const [saving, setSaving] = useState(false);
   const [validatingId, setValidatingId] = useState<string | null>(null);
 
@@ -1213,11 +1323,13 @@ export default function SaasAdminPage() {
         id: o.id,
         name: o.name,
         city: o.city ?? null,
+        postal_code: o.postal_code ?? null,
         active_poles: o.active_poles ?? [],
         subscription_plan: o.subscription_plan,
         chosen_plan: o.chosen_plan ?? o.subscription_plan,
         status: o.status ?? "active",
         member_count: orgCounts.get(o.id) ?? 0,
+        owner_id: o.owner_id ?? null,
         owner_email: ownerEmails.get(o.id) ?? null,
         created_at: o.created_at ?? null,
       }));
@@ -1252,6 +1364,7 @@ export default function SaasAdminPage() {
   const openModules = (o: OrgRow) => {
     setEditOrg(o);
     setEditPoles([...o.active_poles]);
+    setEditPlan(o.subscription_plan ?? "starter");
   };
 
   const handleValidateOrg = async (o: OrgRow) => {
@@ -1299,16 +1412,61 @@ export default function SaasAdminPage() {
     try {
       const { error } = await supabase
         .from("organizations")
-        .update({ active_poles: editPoles })
+        .update({ active_poles: editPoles, subscription_plan: editPlan } as any)
         .eq("id", editOrg.id);
       if (error) throw error;
-      toast({ title: "Modules mis à jour", description: `${editOrg.name} — ${editPoles.length} modules actifs.` });
+      toast({ title: "Plan & modules mis à jour", description: `${editOrg.name} — Plan ${editPlan}, ${editPoles.length} modules actifs.` });
       setEditOrg(null);
       fetchAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSuspendToggle = async (o: OrgRow) => {
+    const newStatus = o.status === "suspended" ? "active" : "suspended";
+    try {
+      const { error } = await supabase
+        .from("organizations")
+        .update({ status: newStatus } as any)
+        .eq("id", o.id);
+      if (error) throw error;
+      toast({ title: newStatus === "suspended" ? "Accès suspendu" : "Accès réactivé", description: o.name });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleImpersonate = async (o: OrgRow) => {
+    if (!o.owner_id) return;
+    try {
+      // Fetch the owner's profile and roles
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("display_name").eq("user_id", o.owner_id).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", o.owner_id),
+      ]);
+      startImpersonating({
+        id: o.owner_id,
+        name: profile?.display_name ?? o.owner_email ?? "Utilisateur",
+        roles: (roles ?? []).map((r: any) => r.role),
+      });
+      toast({ title: "Mode Ghost activé", description: `Vous voyez l'app en tant que ${profile?.display_name ?? o.owner_email}.` });
+      navigate("/");
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleResetPermissions = async (o: OrgRow) => {
+    try {
+      const { error } = await supabase.rpc("clone_default_permissions", { p_org_id: o.id });
+      if (error) throw error;
+      toast({ title: "Permissions réinitialisées", description: `Les permissions d'usine ont été appliquées à ${o.name}.` });
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
     }
   };
 
@@ -1377,6 +1535,9 @@ export default function SaasAdminPage() {
               fetchAll={fetchAll}
               openModules={openModules}
               onValidate={handleValidateOrg}
+              onSuspendToggle={handleSuspendToggle}
+              onImpersonate={handleImpersonate}
+              onResetPermissions={handleResetPermissions}
             />
           </TabsContent>
 
@@ -1400,23 +1561,42 @@ export default function SaasAdminPage() {
       </div>
 
       <Dialog open={!!editOrg} onOpenChange={() => setEditOrg(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Modules — {editOrg?.name}</DialogTitle>
+            <DialogTitle>Plan & Modules — {editOrg?.name}</DialogTitle>
+            <DialogDescription>Modifiez le plan d'abonnement et les modules actifs.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            {ALL_POLES.map((pole) => (
-              <label
-                key={pole.id}
-                className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/50 transition-colors"
-              >
-                <Checkbox
-                  checked={editPoles.includes(pole.id)}
-                  onCheckedChange={() => togglePole(pole.id)}
-                />
-                <span className="text-sm font-medium">{pole.label}</span>
-              </label>
-            ))}
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Plan d'abonnement</label>
+              <Select value={editPlan} onValueChange={setEditPlan}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="starter">Starter</SelectItem>
+                  <SelectItem value="pro">Pro</SelectItem>
+                  <SelectItem value="elite">Elite</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Modules actifs</label>
+              <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                {ALL_POLES.map((pole) => (
+                  <label
+                    key={pole.id}
+                    className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                  >
+                    <Checkbox
+                      checked={editPoles.includes(pole.id)}
+                      onCheckedChange={() => togglePole(pole.id)}
+                    />
+                    <span className="text-sm font-medium">{pole.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOrg(null)}>Annuler</Button>
