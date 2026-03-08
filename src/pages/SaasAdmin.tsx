@@ -1412,16 +1412,61 @@ export default function SaasAdminPage() {
     try {
       const { error } = await supabase
         .from("organizations")
-        .update({ active_poles: editPoles })
+        .update({ active_poles: editPoles, subscription_plan: editPlan } as any)
         .eq("id", editOrg.id);
       if (error) throw error;
-      toast({ title: "Modules mis à jour", description: `${editOrg.name} — ${editPoles.length} modules actifs.` });
+      toast({ title: "Plan & modules mis à jour", description: `${editOrg.name} — Plan ${editPlan}, ${editPoles.length} modules actifs.` });
       setEditOrg(null);
       fetchAll();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSuspendToggle = async (o: OrgRow) => {
+    const newStatus = o.status === "suspended" ? "active" : "suspended";
+    try {
+      const { error } = await supabase
+        .from("organizations")
+        .update({ status: newStatus } as any)
+        .eq("id", o.id);
+      if (error) throw error;
+      toast({ title: newStatus === "suspended" ? "Accès suspendu" : "Accès réactivé", description: o.name });
+      fetchAll();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleImpersonate = async (o: OrgRow) => {
+    if (!o.owner_id) return;
+    try {
+      // Fetch the owner's profile and roles
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("display_name").eq("user_id", o.owner_id).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", o.owner_id),
+      ]);
+      startImpersonating({
+        id: o.owner_id,
+        name: profile?.display_name ?? o.owner_email ?? "Utilisateur",
+        roles: (roles ?? []).map((r: any) => r.role),
+      });
+      toast({ title: "Mode Ghost activé", description: `Vous voyez l'app en tant que ${profile?.display_name ?? o.owner_email}.` });
+      navigate("/");
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleResetPermissions = async (o: OrgRow) => {
+    try {
+      const { error } = await supabase.rpc("clone_default_permissions", { p_org_id: o.id });
+      if (error) throw error;
+      toast({ title: "Permissions réinitialisées", description: `Les permissions d'usine ont été appliquées à ${o.name}.` });
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
     }
   };
 
