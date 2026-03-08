@@ -2031,6 +2031,10 @@ export default function SaasAdminPage() {
           <TabsContent value="permissions">
             <PermissionsTab />
           </TabsContent>
+
+          <TabsContent value="widgets">
+            <WidgetsTab />
+          </TabsContent>
         </Tabs>
       </div>
 
