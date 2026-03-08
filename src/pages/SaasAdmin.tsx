@@ -741,7 +741,7 @@ function DashboardTab({
 
 // ── Organizations Tab ──────────────────────────────────────
 function OrganizationsTab({
-  orgs, loading, fetchAll, openModules, onValidate,
+  orgs, loading, fetchAll, openModules, onValidate, onSuspendToggle, onImpersonate, onResetPermissions,
 }: {
   orgs: OrgRow[];
   loading: boolean;
