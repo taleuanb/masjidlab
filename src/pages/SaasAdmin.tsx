@@ -1,11 +1,14 @@
-import { useState, useEffect, useCallback, Fragment } from "react";
+import { useState, useEffect, useCallback, Fragment, useMemo } from "react";
 import {
   Building2, Users, Globe, Loader2, RefreshCw, Check, Shield, Save,
   ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
-  MoreHorizontal, Search, UserCog, KeyRound, Ban, LayoutDashboard,
+  MoreHorizontal, Search, UserCog, KeyRound, Ban, LayoutDashboard, Crown,
+  UserPlus, TrendingUp, Activity,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole, DB_ROLE_TO_UI } from "@/contexts/RoleContext";
 import { useToast } from "@/hooks/use-toast";
