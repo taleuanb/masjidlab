@@ -108,34 +108,53 @@ interface GlobalUser {
   email: string | null;
   phone: string | null;
   is_active: boolean;
+  has_account: boolean;
   org_id: string | null;
   org_name: string | null;
   roles: string[];
+  competences: string[];
+  pole_id: string | null;
   created_at: string;
 }
 
+const ITEMS_PER_PAGE = 20;
+
 function UsersTab() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { startImpersonating } = useAuth();
   const [users, setUsers] = useState<GlobalUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [orgFilter, setOrgFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
+  const [page, setPage] = useState(1);
 
-  // Edit dialog
+  // Edit profile dialog
   const [editUser, setEditUser] = useState<GlobalUser | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Edit access dialog
+  const [accessUser, setAccessUser] = useState<GlobalUser | null>(null);
+  const [accessRole, setAccessRole] = useState("");
+  const [accessPole, setAccessPole] = useState("");
+  const [savingAccess, setSavingAccess] = useState(false);
+  const [poles, setPoles] = useState<{ id: string; nom: string }[]>([]);
+
+  // Details dialog
+  const [detailUser, setDetailUser] = useState<GlobalUser | null>(null);
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch profiles, roles, and orgs in parallel
-      const [profilesRes, rolesRes, orgsRes] = await Promise.all([
-        supabase.from("profiles").select("id, user_id, display_name, email, phone, is_active, org_id, created_at"),
+      const [profilesRes, rolesRes, orgsRes, polesRes] = await Promise.all([
+        supabase.from("profiles").select("id, user_id, display_name, email, phone, is_active, has_account, org_id, competences, pole_id, created_at"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.rpc("get_all_organizations"),
+        supabase.from("poles").select("id, nom"),
       ]);
 
       const profiles = profilesRes.data ?? [];
@@ -145,8 +164,8 @@ function UsersTab() {
       const orgMap = new Map<string, string>();
       organizations.forEach((o: any) => orgMap.set(o.id, o.name));
       setOrgs(organizations.map((o: any) => ({ id: o.id, name: o.name })));
+      setPoles((polesRes.data ?? []) as any[]);
 
-      // Group roles by user_id
       const roleMap = new Map<string, string[]>();
       roles.forEach((r: any) => {
         const list = roleMap.get(r.user_id) ?? [];
@@ -161,9 +180,12 @@ function UsersTab() {
         email: p.email,
         phone: p.phone,
         is_active: p.is_active,
+        has_account: p.has_account,
         org_id: p.org_id,
         org_name: p.org_id ? (orgMap.get(p.org_id) ?? "—") : null,
         roles: roleMap.get(p.user_id) ?? [],
+        competences: p.competences ?? [],
+        pole_id: p.pole_id,
         created_at: p.created_at,
       }));
 
@@ -177,14 +199,29 @@ function UsersTab() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  const filteredUsers = users.filter((u) => {
+  const filteredUsers = useMemo(() => {
     const q = search.toLowerCase();
-    const matchesSearch = !q || 
-      u.display_name.toLowerCase().includes(q) || 
-      (u.email?.toLowerCase().includes(q) ?? false);
-    const matchesOrg = orgFilter === "all" || u.org_id === orgFilter;
-    return matchesSearch && matchesOrg;
-  });
+    return users.filter((u) => {
+      const matchesSearch = !q ||
+        u.display_name.toLowerCase().includes(q) ||
+        (u.email?.toLowerCase().includes(q) ?? false);
+      const matchesOrg = orgFilter === "all" || u.org_id === orgFilter;
+      const matchesRole = roleFilter === "all" || u.roles.includes(roleFilter);
+      return matchesSearch && matchesOrg && matchesRole;
+    });
+  }, [users, search, orgFilter, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
+  const paginatedUsers = filteredUsers.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  useEffect(() => { setPage(1); }, [search, orgFilter, roleFilter]);
+
+  // Unique roles for filter
+  const availableRoles = useMemo(() => {
+    const set = new Set<string>();
+    users.forEach((u) => u.roles.forEach((r) => set.add(r)));
+    return Array.from(set).sort();
+  }, [users]);
 
   const openEdit = (u: GlobalUser) => {
     setEditUser(u);
@@ -211,6 +248,43 @@ function UsersTab() {
     }
   };
 
+  const openAccess = (u: GlobalUser) => {
+    setAccessUser(u);
+    setAccessRole(u.roles[0] ?? "benevole");
+    setAccessPole(u.pole_id ?? "");
+  };
+
+  const handleSaveAccess = async () => {
+    if (!accessUser) return;
+    setSavingAccess(true);
+    try {
+      // Update role: delete existing non-super_admin, insert new
+      await supabase.from("user_roles").delete().eq("user_id", accessUser.user_id).neq("role", "super_admin");
+      const orgId = accessUser.org_id;
+      const { error: roleErr } = await supabase.from("user_roles").insert({
+        user_id: accessUser.user_id,
+        role: accessRole as any,
+        ...(orgId ? { org_id: orgId } : {}),
+      });
+      if (roleErr) throw roleErr;
+
+      // Update pole
+      const { error: poleErr } = await supabase
+        .from("profiles")
+        .update({ pole_id: accessPole || null })
+        .eq("id", accessUser.profile_id);
+      if (poleErr) throw poleErr;
+
+      toast({ title: "Accès mis à jour" });
+      setAccessUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingAccess(false);
+    }
+  };
+
   const handleResetPassword = async (u: GlobalUser) => {
     if (!u.email) {
       toast({ title: "Pas d'email", description: "Cet utilisateur n'a pas d'adresse email.", variant: "destructive" });
@@ -219,7 +293,7 @@ function UsersTab() {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(u.email);
       if (error) throw error;
-      toast({ title: "Email envoyé", description: `Un email de réinitialisation a été envoyé à ${u.email}.` });
+      toast({ title: "Email envoyé", description: `Réinitialisation envoyée à ${u.email}.` });
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     }
@@ -228,17 +302,19 @@ function UsersTab() {
   const handleToggleActive = async (u: GlobalUser) => {
     try {
       const { error } = await supabase.functions.invoke("manage-member", {
-        body: {
-          action: u.is_active ? "deactivate" : "reactivate",
-          target_user_id: u.user_id,
-        },
+        body: { action: u.is_active ? "deactivate" : "reactivate", target_user_id: u.user_id },
       });
       if (error) throw error;
-      toast({ title: u.is_active ? "Utilisateur désactivé" : "Utilisateur réactivé" });
+      toast({ title: u.is_active ? "Compte désactivé" : "Compte réactivé" });
       fetchUsers();
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     }
+  };
+
+  const handleImpersonate = async (u: GlobalUser) => {
+    startImpersonating({ id: u.user_id, name: u.display_name, roles: u.roles });
+    navigate("/");
   };
 
   if (loading) {
@@ -253,19 +329,25 @@ function UsersTab() {
     <>
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              {users.length} utilisateur{users.length > 1 ? "s" : ""} inscrits
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="relative">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                {filteredUsers.length} utilisateur{filteredUsers.length > 1 ? "s" : ""}
+                <span className="text-muted-foreground font-normal text-sm">/ {users.length} total</span>
+              </CardTitle>
+              <Button variant="outline" size="sm" onClick={fetchUsers}>
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Rechercher nom ou email…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8 h-9 w-[220px]"
+                  className="pl-8 h-9"
                 />
               </div>
               <Select value={orgFilter} onValueChange={setOrgFilter}>
@@ -279,9 +361,17 @@ function UsersTab() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={fetchUsers}>
-                <RefreshCw className="h-3.5 w-3.5" />
-              </Button>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="h-9 w-[160px]">
+                  <SelectValue placeholder="Rôle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les rôles</SelectItem>
+                  {availableRoles.map((r) => (
+                    <SelectItem key={r} value={r}>{DB_ROLE_TO_UI[r] ?? r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -290,28 +380,41 @@ function UsersTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Utilisateur</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Organisation</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Institution</TableHead>
                 <TableHead>Rôle(s)</TableHead>
-                <TableHead>Inscription</TableHead>
                 <TableHead>Statut</TableHead>
+                <TableHead>Inscription</TableHead>
                 <TableHead className="text-right w-12" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.length === 0 ? (
+              {paginatedUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Aucun utilisateur trouvé.
                   </TableCell>
                 </TableRow>
-              ) : filteredUsers.map((u) => (
+              ) : paginatedUsers.map((u) => (
                 <TableRow key={u.profile_id}>
-                  <TableCell className="font-medium">{u.display_name}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{u.email ?? "—"}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{u.display_name}</span>
+                      <span className="text-xs text-muted-foreground">{u.email ?? "—"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-[10px] ${u.has_account
+                      ? "bg-primary/10 text-primary border-primary/30"
+                      : "bg-muted text-muted-foreground border-border"
+                    }`}>
+                      {u.has_account ? "SaaS" : "Profil Local"}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     {u.org_name ? (
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-[10px] bg-secondary/50 border-border">
+                        <Building2 className="h-3 w-3 mr-1" />
                         {u.org_name}
                       </Badge>
                     ) : (
@@ -320,23 +423,25 @@ function UsersTab() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {u.roles.map((r) => (
+                      {u.roles.length === 0 ? (
+                        <span className="text-muted-foreground text-xs">Aucun</span>
+                      ) : u.roles.map((r) => (
                         <Badge key={r} variant="outline" className={`text-[10px] ${ROLE_BADGE[r] ?? ""}`}>
                           {DB_ROLE_TO_UI[r] ?? r}
                         </Badge>
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(u.created_at), "dd MMM yyyy", { locale: fr })}
-                  </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={u.is_active
-                      ? "bg-green-500/10 text-green-700 border-green-400/30 text-[10px]"
-                      : "bg-destructive/10 text-destructive border-destructive/30 text-[10px]"
-                    }>
+                    <Badge variant="outline" className={`text-[10px] ${u.is_active
+                      ? "bg-green-500/10 text-green-700 border-green-400/30"
+                      : "bg-destructive/10 text-destructive border-destructive/30"
+                    }`}>
                       {u.is_active ? "Actif" : "Désactivé"}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {format(new Date(u.created_at), "dd MMM yyyy", { locale: fr })}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -346,21 +451,34 @@ function UsersTab() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleImpersonate(u)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Se connecter en tant que
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => openEdit(u)}>
                           <UserCog className="h-4 w-4 mr-2" />
                           Modifier le profil
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openAccess(u)}>
+                          <Shield className="h-4 w-4 mr-2" />
+                          Modifier les accès
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDetailUser(u)}>
+                          <Activity className="h-4 w-4 mr-2" />
+                          Voir la fiche complète
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleResetPassword(u)}>
                           <KeyRound className="h-4 w-4 mr-2" />
                           Réinitialiser le mot de passe
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleToggleActive(u)}
                           className={u.is_active ? "text-destructive" : "text-green-700"}
                         >
                           <Ban className="h-4 w-4 mr-2" />
-                          {u.is_active ? "Désactiver" : "Réactiver"}
+                          {u.is_active ? "Désactiver le compte" : "Réactiver le compte"}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -369,6 +487,22 @@ function UsersTab() {
               ))}
             </TableBody>
           </Table>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <span className="text-xs text-muted-foreground">
+                Page {page} / {totalPages}
+              </span>
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                  Précédent
+                </Button>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                  Suivant
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -396,6 +530,95 @@ function UsersTab() {
               Enregistrer
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Access Dialog */}
+      <Dialog open={!!accessUser} onOpenChange={() => setAccessUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier les accès</DialogTitle>
+            <DialogDescription>Changez le rôle et le pôle de {accessUser?.display_name}.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Rôle</label>
+              <Select value={accessRole} onValueChange={setAccessRole}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RBAC_ROLES.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Pôle d'affectation</label>
+              <Select value={accessPole} onValueChange={setAccessPole}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Aucun pôle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Aucun pôle</SelectItem>
+                  {poles.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAccessUser(null)}>Annuler</Button>
+            <Button onClick={handleSaveAccess} disabled={savingAccess}>
+              {savingAccess ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailUser} onOpenChange={() => setDetailUser(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Fiche de {detailUser?.display_name}</DialogTitle>
+            <DialogDescription>Détails complets du profil utilisateur.</DialogDescription>
+          </DialogHeader>
+          {detailUser && (
+            <div className="space-y-3 py-2 text-sm">
+              <div className="grid grid-cols-[120px_1fr] gap-y-2">
+                <span className="text-muted-foreground">Email</span>
+                <span>{detailUser.email ?? "—"}</span>
+                <span className="text-muted-foreground">Téléphone</span>
+                <span>{detailUser.phone ?? "—"}</span>
+                <span className="text-muted-foreground">Type</span>
+                <span>{detailUser.has_account ? "Compte SaaS" : "Profil Local"}</span>
+                <span className="text-muted-foreground">Institution</span>
+                <span>{detailUser.org_name ?? "—"}</span>
+                <span className="text-muted-foreground">Rôle(s)</span>
+                <div className="flex flex-wrap gap-1">
+                  {detailUser.roles.map((r) => (
+                    <Badge key={r} variant="outline" className={`text-[10px] ${ROLE_BADGE[r] ?? ""}`}>
+                      {DB_ROLE_TO_UI[r] ?? r}
+                    </Badge>
+                  ))}
+                </div>
+                <span className="text-muted-foreground">Statut</span>
+                <Badge variant="outline" className={`text-[10px] w-fit ${detailUser.is_active
+                  ? "bg-green-500/10 text-green-700 border-green-400/30"
+                  : "bg-destructive/10 text-destructive border-destructive/30"
+                }`}>
+                  {detailUser.is_active ? "Actif" : "Désactivé"}
+                </Badge>
+                <span className="text-muted-foreground">Compétences</span>
+                <span>{detailUser.competences.length > 0 ? detailUser.competences.join(", ") : "—"}</span>
+                <span className="text-muted-foreground">Inscription</span>
+                <span>{format(new Date(detailUser.created_at), "dd MMMM yyyy à HH:mm", { locale: fr })}</span>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
