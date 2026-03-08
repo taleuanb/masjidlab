@@ -34,6 +34,7 @@ import ElevesPage from "./pages/Eleves";
 import ClassesPage from "./pages/Classes";
 import InscriptionsPage from "./pages/Inscriptions";
 import AttendancePage from "./pages/Attendance";
+import EvaluationsPage from "./pages/Evaluations";
 import ContratsStaffPage from "./pages/ContratsStaff";
 import DocumentsPage from "./pages/Documents";
 import DonateursPage from "./pages/Donateurs";
