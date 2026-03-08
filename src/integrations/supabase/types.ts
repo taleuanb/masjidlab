@@ -336,6 +336,51 @@ export type Database = {
           },
         ]
       }
+      madrasa_attendance: {
+        Row: {
+          created_at: string | null
+          date: string
+          enrollment_id: string
+          id: string
+          notes: string | null
+          org_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string
+          enrollment_id: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          enrollment_id?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_attendance_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_attendance_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       madrasa_class_subjects: {
         Row: {
           class_id: string
@@ -469,6 +514,168 @@ export type Database = {
           },
           {
             foreignKeyName: "madrasa_enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_evaluations: {
+        Row: {
+          class_id: string
+          created_at: string | null
+          date: string
+          id: string
+          max_points: number | null
+          org_id: string
+          subject_id: string | null
+          title: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string | null
+          date: string
+          id?: string
+          max_points?: number | null
+          org_id: string
+          subject_id?: string | null
+          title: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          max_points?: number | null
+          org_id?: string
+          subject_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_evaluations_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluations_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_fees: {
+        Row: {
+          amount: number
+          created_at: string | null
+          due_date: string
+          id: string
+          org_id: string
+          status: string
+          student_id: string
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          due_date: string
+          id?: string
+          org_id: string
+          status?: string
+          student_id: string
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          due_date?: string
+          id?: string
+          org_id?: string
+          status?: string
+          student_id?: string
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_fees_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_fees_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_fees_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "finance_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_grades: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          evaluation_id: string
+          id: string
+          org_id: string
+          score: number | null
+          student_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          evaluation_id: string
+          id?: string
+          org_id: string
+          score?: number | null
+          student_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          evaluation_id?: string
+          id?: string
+          org_id?: string
+          score?: number | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_grades_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_grades_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_grades_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "madrasa_students"
