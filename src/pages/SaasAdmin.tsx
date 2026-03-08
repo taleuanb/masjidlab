@@ -4,6 +4,7 @@ import {
   ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
   MoreHorizontal, Search, UserCog, KeyRound, Ban, LayoutDashboard, Crown,
   UserPlus, TrendingUp, Activity, Settings2, Eye, ShieldOff, RotateCcw,
+  PlusCircle, FileText, ArrowRight,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
