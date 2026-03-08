@@ -122,6 +122,7 @@ const AppLayout = () => {
             <Route path="/eleves" element={<ElevesPage />} />
             <Route path="/classes" element={<ClassesPage />} />
             <Route path="/inscriptions" element={<InscriptionsPage />} />
+            <Route path="/appel" element={<AttendancePage />} />
             <Route path="/contrats-staff" element={<ContratsStaffPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/donateurs" element={<DonateursPage />} />
