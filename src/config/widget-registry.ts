@@ -15,6 +15,10 @@ export interface WidgetDef {
   colSpan: 1 | 2 | 3;
   /** Lazy-loaded component */
   component: React.LazyExoticComponent<ComponentType<any>>;
+  /** Plans required (from DB config) */
+  requiredPlans?: string[];
+  /** Globally enabled (from DB config) */
+  isEnabled?: boolean;
 }
 
 // ─── Lazy imports ───────────────────────────────────────────────────
@@ -32,11 +36,9 @@ const EducationFinanceWidget = lazy(() => import("@/components/dashboard/Educati
 // ─── All roles shorthand ────────────────────────────────────────────
 const ADMIN_ROLES = ["super_admin", "admin", "responsable"];
 const EDUCATION_ROLES = ["super_admin", "admin", "responsable", "enseignant"];
-const ALL_ROLES: string[] = []; // empty = everyone
 
 // ─── Registry ───────────────────────────────────────────────────────
 export const WIDGET_REGISTRY: WidgetDef[] = [
-  // ── KPIs (always, except enseignant handled inside component) ──
   {
     id: "org-kpis",
     section: "Vue d'ensemble",
@@ -47,8 +49,6 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 3,
     component: OrgKpiStats,
   },
-
-  // ── Éducation (highest weight for Madrassa-first display) ──
   {
     id: "edu-assiduité",
     section: "École Madrassa",
@@ -99,8 +99,6 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 1,
     component: EducationFinanceWidget,
   },
-
-  // ── Logistique ──
   {
     id: "rooms-occupancy",
     section: "Gestion des Espaces",
@@ -121,8 +119,6 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 1,
     component: EventsTimelineWidget,
   },
-
-  // ── Finance ──
   {
     id: "finance-overview",
     section: "Finance & Social",
@@ -157,14 +153,56 @@ function poleIsActive(requiredPole: string, activePoles: string[]): boolean {
   return aliases.some((a) => activePoles.includes(a));
 }
 
+// ─── DB config overlay type ─────────────────────────────────────────
+export interface DbWidgetConfig {
+  widget_key: string;
+  label: string;
+  required_plans: string[];
+  allowed_roles: string[];
+  required_pole: string | null;
+  priority: number;
+  is_enabled: boolean;
+}
+
+/**
+ * Merge DB configs into local registry: DB overrides priority, roles, plans, enabled.
+ */
+export function mergeDbConfigs(dbConfigs: DbWidgetConfig[]): WidgetDef[] {
+  const dbMap = new Map<string, DbWidgetConfig>();
+  dbConfigs.forEach((c) => dbMap.set(c.widget_key, c));
+
+  return WIDGET_REGISTRY.map((w) => {
+    const db = dbMap.get(w.id);
+    if (!db) return { ...w, isEnabled: true };
+    return {
+      ...w,
+      allowedRoles: db.allowed_roles.length > 0 ? db.allowed_roles : w.allowedRoles,
+      defaultWeight: db.priority,
+      requiredPole: db.required_pole ?? w.requiredPole,
+      requiredPlans: db.required_plans,
+      isEnabled: db.is_enabled,
+    };
+  });
+}
+
 // ─── Filtering engine ───────────────────────────────────────────────
 export function getVisibleWidgets(
   activePoles: string[],
   userDbRoles: string[],
   isSuperAdmin: boolean,
+  orgPlan?: string | null,
+  dbConfigs?: DbWidgetConfig[],
 ): WidgetDef[] {
-  return WIDGET_REGISTRY
+  const registry = dbConfigs ? mergeDbConfigs(dbConfigs) : WIDGET_REGISTRY;
+
+  return registry
     .filter((w) => {
+      // DB-level kill switch
+      if (w.isEnabled === false) return false;
+      // Plan check (if DB config provides plans)
+      if (w.requiredPlans && orgPlan && !w.requiredPlans.includes(orgPlan)) {
+        if (!isSuperAdmin) return false;
+      }
       // Pole check
       if (w.requiredPole && !poleIsActive(w.requiredPole, activePoles)) return false;
       // Role check (empty = all, super_admin bypasses)

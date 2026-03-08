@@ -4,8 +4,9 @@ import {
   ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
   MoreHorizontal, Search, UserCog, KeyRound, Ban, LayoutDashboard, Crown,
   UserPlus, TrendingUp, Activity, Settings2, Eye, ShieldOff, RotateCcw,
-  PlusCircle, FileText, ArrowRight,
+  PlusCircle, FileText, ArrowRight, LayoutGrid,
 } from "lucide-react";
+import { WidgetsTab } from "@/components/saas/WidgetsTab";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
@@ -1980,6 +1981,10 @@ export default function SaasAdminPage() {
               <Shield className="h-3.5 w-3.5" />
               Sécurité & RBAC
             </TabsTrigger>
+            <TabsTrigger value="widgets" className="gap-1.5">
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Widgets
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -2025,6 +2030,10 @@ export default function SaasAdminPage() {
 
           <TabsContent value="permissions">
             <PermissionsTab />
+          </TabsContent>
+
+          <TabsContent value="widgets">
+            <WidgetsTab />
           </TabsContent>
         </Tabs>
       </div>
