@@ -1506,7 +1506,244 @@ function ModuleGroupRows({
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────
+// ── Activity Log Tab ───────────────────────────────────────
+type ActivityEventType = "institution" | "member" | "invitation" | "update";
+
+interface ActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  label: string;
+  entityName: string;
+  detail?: string;
+  created_at: string;
+  isPending?: boolean;
+  orgId?: string;
+  userId?: string;
+}
+
+const EVENT_TYPE_META: Record<ActivityEventType, { icon: typeof PlusCircle; badge: string; badgeCls: string }> = {
+  institution: { icon: PlusCircle, badge: "Institution", badgeCls: "bg-primary/10 text-primary border-primary/30" },
+  member: { icon: UserPlus, badge: "Membre", badgeCls: "bg-emerald-500/10 text-emerald-700 border-emerald-400/30" },
+  invitation: { icon: Mail, badge: "Invitation", badgeCls: "bg-blue-500/10 text-blue-700 border-blue-400/30" },
+  update: { icon: RefreshCw, badge: "Mise à jour", badgeCls: "bg-amber-500/10 text-amber-700 border-amber-400/30" },
+};
+
+const ACTIVITY_FILTERS = [
+  { id: "all", label: "Tout" },
+  { id: "institution", label: "Institutions" },
+  { id: "member", label: "Membres" },
+  { id: "invitation", label: "Invitations" },
+  { id: "update", label: "Mises à jour" },
+] as const;
+
+function ActivityLogTab() {
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string>("all");
+  const navigate = useNavigate();
+
+  const fetchActivity = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [orgsRes, profilesRes, invitationsRes] = await Promise.all([
+        supabase.rpc("get_all_organizations"),
+        supabase.from("profiles").select("id, user_id, display_name, email, created_at"),
+        supabase.from("invitations").select("id, email, role, status, created_at, org_id, org_name"),
+      ]);
+
+      const orgsData = (orgsRes.data ?? []) as any[];
+      const profiles = profilesRes.data ?? [];
+      const invitations = invitationsRes.data ?? [];
+
+      const allEvents: ActivityEvent[] = [];
+
+      // Org creation events
+      orgsData.forEach((o: any) => {
+        allEvents.push({
+          id: `org-${o.id}`,
+          type: "institution",
+          label: "Nouvelle institution créée",
+          entityName: o.name,
+          created_at: o.created_at ?? new Date().toISOString(),
+          isPending: o.status === "pending",
+          orgId: o.id,
+        });
+        // Plan/status change detection (show if subscription_plan differs from chosen_plan)
+        if (o.subscription_plan && o.chosen_plan && o.subscription_plan !== o.chosen_plan) {
+          allEvents.push({
+            id: `update-plan-${o.id}`,
+            type: "update",
+            label: `Plan modifié : ${o.chosen_plan} → ${o.subscription_plan}`,
+            entityName: o.name,
+            created_at: o.created_at ?? new Date().toISOString(),
+            orgId: o.id,
+          });
+        }
+        if (o.status === "suspended") {
+          allEvents.push({
+            id: `update-suspended-${o.id}`,
+            type: "update",
+            label: "Accès suspendu",
+            entityName: o.name,
+            created_at: o.created_at ?? new Date().toISOString(),
+            orgId: o.id,
+          });
+        }
+      });
+
+      // Profile creation events
+      profiles.forEach((p: any) => {
+        allEvents.push({
+          id: `user-${p.id}`,
+          type: "member",
+          label: "Nouveau membre inscrit",
+          entityName: p.display_name ?? p.email ?? "Utilisateur",
+          detail: p.email,
+          created_at: p.created_at ?? new Date().toISOString(),
+          userId: p.user_id,
+        });
+      });
+
+      // Invitation events
+      invitations.forEach((inv: any) => {
+        allEvents.push({
+          id: `inv-${inv.id}`,
+          type: "invitation",
+          label: `Invitation envoyée par ${inv.email}`,
+          entityName: inv.org_name ?? "Organisation",
+          detail: `Rôle : ${inv.role} — ${inv.status}`,
+          created_at: inv.created_at ?? new Date().toISOString(),
+          orgId: inv.org_id,
+        });
+      });
+
+      allEvents.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setEvents(allEvents);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchActivity(); }, [fetchActivity]);
+
+  const filtered = useMemo(() => {
+    if (filter === "all") return events;
+    return events.filter((e) => e.type === filter);
+  }, [events, filter]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            Journal d'activité
+            <span className="text-muted-foreground font-normal text-sm">({filtered.length} événements)</span>
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={fetchActivity}>
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {ACTIVITY_FILTERS.map((f) => (
+            <Button
+              key={f.id}
+              variant={filter === f.id ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setFilter(f.id)}
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <ScrollArea className="h-[600px]">
+          <div className="relative pl-8 pr-4 py-4 space-y-0">
+            {/* Timeline line */}
+            <div className="absolute left-[19px] top-4 bottom-4 w-px bg-border" />
+
+            {filtered.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Aucun événement.</p>
+            ) : filtered.map((event) => {
+              const meta = EVENT_TYPE_META[event.type];
+              const Icon = meta.icon;
+              return (
+                <div
+                  key={event.id}
+                  className={`relative flex items-start gap-3 py-3 px-3 rounded-lg transition-colors hover:bg-accent/50 ${
+                    event.isPending ? "border-l-2 border-l-amber-400 bg-amber-500/5" : ""
+                  }`}
+                >
+                  {/* Timeline dot */}
+                  <div className="absolute left-[-20px] top-4 h-6 w-6 rounded-full bg-background border-2 border-border flex items-center justify-center">
+                    <Icon className="h-3 w-3 text-muted-foreground" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className={`text-[10px] ${meta.badgeCls}`}>
+                        {meta.badge}
+                      </Badge>
+                      <span className="font-semibold text-sm truncate">{event.entityName}</span>
+                      {event.isPending && (
+                        <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-400/30">
+                          En attente
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5">{event.label}</p>
+                    {event.detail && (
+                      <p className="text-xs text-muted-foreground/70">{event.detail}</p>
+                    )}
+                    <span className="text-xs text-muted-foreground mt-1 block">
+                      {formatDistanceToNow(new Date(event.created_at), { addSuffix: true, locale: fr })}
+                      {" — "}
+                      {format(new Date(event.created_at), "dd MMM yyyy HH:mm", { locale: fr })}
+                    </span>
+                  </div>
+
+                  {/* Action button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1 shrink-0"
+                    onClick={() => {
+                      if (event.type === "member") {
+                        // Navigate to users tab — we use the tab system
+                        const el = document.querySelector('[data-state][value="users"]') as HTMLButtonElement | null;
+                        el?.click();
+                      } else {
+                        const el = document.querySelector('[data-state][value="organizations"]') as HTMLButtonElement | null;
+                        el?.click();
+                      }
+                    }}
+                  >
+                    Détails
+                    <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 export default function SaasAdminPage() {
   const { isSuperAdmin } = useRole();
   const { toast } = useToast();
