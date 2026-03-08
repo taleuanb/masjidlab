@@ -1158,6 +1158,45 @@ export type Database = {
           },
         ]
       }
+      saas_widget_configs: {
+        Row: {
+          allowed_roles: string[]
+          created_at: string | null
+          id: string
+          is_enabled: boolean
+          label: string
+          priority: number
+          required_plans: string[]
+          required_pole: string | null
+          updated_at: string | null
+          widget_key: string
+        }
+        Insert: {
+          allowed_roles?: string[]
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          label: string
+          priority?: number
+          required_plans?: string[]
+          required_pole?: string | null
+          updated_at?: string | null
+          widget_key: string
+        }
+        Update: {
+          allowed_roles?: string[]
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          label?: string
+          priority?: number
+          required_plans?: string[]
+          required_pole?: string | null
+          updated_at?: string | null
+          widget_key?: string
+        }
+        Relationships: []
+      }
       skills_library: {
         Row: {
           created_at: string
