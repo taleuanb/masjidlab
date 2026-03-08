@@ -1981,6 +1981,10 @@ export default function SaasAdminPage() {
               <Shield className="h-3.5 w-3.5" />
               Sécurité & RBAC
             </TabsTrigger>
+            <TabsTrigger value="widgets" className="gap-1.5">
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Widgets
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
