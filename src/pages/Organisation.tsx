@@ -175,6 +175,7 @@ export default function OrganisationPage() {
         return {
           id: p.id,
           nom: p.nom,
+          core_type: p.core_type ?? null,
           description: p.description,
           responsable_id: p.responsable_id,
           responsable_name: resp?.display_name || null,
