@@ -4,8 +4,9 @@ import {
   ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
   MoreHorizontal, Search, UserCog, KeyRound, Ban, LayoutDashboard, Crown,
   UserPlus, TrendingUp, Activity, Settings2, Eye, ShieldOff, RotateCcw,
-  PlusCircle, FileText, ArrowRight,
+  PlusCircle, FileText, ArrowRight, LayoutGrid,
 } from "lucide-react";
+import { WidgetsTab } from "@/components/saas/WidgetsTab";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
