@@ -1,3 +1,4 @@
+import { Suspense, useMemo } from "react";
 import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { motion } from "framer-motion";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -6,21 +7,14 @@ import { WeatherPrayerWidget } from "@/components/WeatherPrayerWidget";
 import { QuickActions } from "@/components/QuickActions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/contexts/RoleContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
-
 import { DashboardErrorState } from "@/components/dashboard/DashboardShell";
-import { OrgKpiStats } from "@/components/dashboard/OrgKpiStats";
-import { RoomsOccupancyWidget } from "@/components/dashboard/RoomsOccupancyWidget";
-import { EventsTimelineWidget } from "@/components/dashboard/EventsTimelineWidget";
-import { FinanceWidget } from "@/components/dashboard/FinanceWidget";
-import { AssetsWidget } from "@/components/dashboard/AssetsWidget";
-import { EducationEffectifsWidget } from "@/components/dashboard/EducationEffectifsWidget";
-import { EducationInscriptionsWidget } from "@/components/dashboard/EducationInscriptionsWidget";
-import { EducationAlertesWidget } from "@/components/dashboard/EducationAlertesWidget";
+import { getVisibleWidgets, type WidgetDef } from "@/config/widget-registry";
 
-// ── Section header ───────────────────────────────────────────────────────────
+// ── Section header ───────────────────────────────────────────────────
 function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
   return (
     <div className="flex items-center gap-2 pt-2">
@@ -31,23 +25,53 @@ function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
   );
 }
 
+// ── Widget wrapper with Suspense ─────────────────────────────────────
+function WidgetSlot({ widget, index }: { widget: WidgetDef; index: number }) {
+  const colClass =
+    widget.colSpan === 3
+      ? "col-span-1 sm:col-span-2 lg:col-span-3"
+      : widget.colSpan === 2
+      ? "col-span-1 lg:col-span-2"
+      : "";
+
+  return (
+    <motion.div
+      className={colClass}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+    >
+      <Suspense fallback={<Skeleton className="h-48 rounded-xl" />}>
+        <widget.component />
+      </Suspense>
+    </motion.div>
+  );
+}
+
 export default function Dashboard() {
-  const { role, isSuperAdmin } = useRole();
+  const { isSuperAdmin, userDbRoles, role } = useRole();
   const { impersonatedUser } = useAuth();
   const { orgId, activePoles, loading: orgLoading } = useOrganization();
 
-  const isAdmin = role === "Admin Mosquée" || role === "Super Admin" || isSuperAdmin;
   const isChef = role === "Responsable";
-  const isEnseignant = role === "Enseignant / Oustaz";
 
-  const hasFinance = activePoles.includes("finance") || activePoles.includes("social");
-  const hasEducation = activePoles.includes("education");
-  const hasLogistics = activePoles.includes("logistics") || activePoles.includes("logistique") || activePoles.includes("operations");
+  // ── Registry-driven filtering ──
+  const visibleWidgets = useMemo(
+    () => getVisibleWidgets(activePoles, userDbRoles, isSuperAdmin && !impersonatedUser),
+    [activePoles, userDbRoles, isSuperAdmin, impersonatedUser],
+  );
 
-  // Who can see logistics widgets
-  const canSeeLogistics = hasLogistics && (isAdmin || isChef);
-  // Who can see education widgets
-  const canSeeEducation = hasEducation && (isAdmin || isChef || isEnseignant);
+  // Group by section preserving weight order
+  const sections = useMemo(() => {
+    const map = new Map<string, { emoji: string; widgets: WidgetDef[] }>();
+    for (const w of visibleWidgets) {
+      if (!map.has(w.section)) {
+        map.set(w.section, { emoji: w.sectionEmoji, widgets: [] });
+      }
+      map.get(w.section)!.widgets.push(w);
+    }
+    return Array.from(map.entries());
+  }, [visibleWidgets]);
 
   if (!orgLoading && !orgId) {
     return <DashboardErrorState />;
@@ -102,56 +126,25 @@ export default function Dashboard() {
       </header>
 
       <main className="p-6 space-y-6">
-        {/* ── KPIs — visible pour tous sauf enseignant ── */}
-        {!isEnseignant && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-            <OrgKpiStats />
-          </motion.div>
-        )}
-
-        {/* ══════════ SECTION LOGISTIQUE ══════════ */}
-        {canSeeLogistics && (
-          <section className="space-y-4">
-            <SectionHeader emoji="📍" title="Gestion des Espaces" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <RoomsOccupancyWidget />
-              </div>
-              <div>
-                <EventsTimelineWidget />
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Enseignant : Timeline seule (pas besoin du pôle logistique) */}
-        {isEnseignant && !canSeeLogistics && (
-          <div className="max-w-2xl">
-            <EventsTimelineWidget />
-          </div>
-        )}
-
-        {/* ══════════ SECTION FINANCE ══════════ */}
-        {hasFinance && (isAdmin || isChef) && (
-          <section className="space-y-4">
-            <SectionHeader emoji="💰" title="Finance & Social" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FinanceWidget />
-              {hasLogistics && <AssetsWidget />}
-            </div>
-          </section>
-        )}
-
-        {/* ══════════ SECTION ÉDUCATION ══════════ */}
-        {canSeeEducation && (
-          <section className="space-y-4">
-            <SectionHeader emoji="📚" title="École Madrassa" />
+        {sections.map(([sectionName, { emoji, widgets }]) => (
+          <section key={sectionName} className="space-y-4">
+            {/* KPIs span full width without a section header */}
+            {sectionName !== "Vue d'ensemble" && (
+              <SectionHeader emoji={emoji} title={sectionName} />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <EducationEffectifsWidget />
-              <EducationInscriptionsWidget />
-              <EducationAlertesWidget />
+              {widgets.map((w, i) => (
+                <WidgetSlot key={w.id} widget={w} index={i} />
+              ))}
             </div>
           </section>
+        ))}
+
+        {sections.length === 0 && !orgLoading && (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <p className="text-sm font-medium">Aucun module activé pour votre profil</p>
+            <p className="text-xs mt-1">Contactez l'administrateur pour accéder aux fonctionnalités.</p>
+          </div>
         )}
       </main>
 
