@@ -3,11 +3,10 @@ import {
   Building2, Plus, Trash2, Pencil, Loader2, Save,
   Layers, Tag, Package, RefreshCw, X, CheckCircle2,
   Snowflake, Wifi, Mic, Monitor, Speaker, Lock,
-  Landmark, Truck, BookOpen, Heart, Radio, Zap, Crown, Star, GraduationCap, Check, ArrowRight,
+  GraduationCap,
 } from "lucide-react";
 import {
-  PLAN_IDS, PLAN_META,
-  getBusinessModules, getModulesForPlan, isPlanAtLeast, MODULE_MAP,
+  getBusinessModules, isPlanAtLeast, MODULE_MAP,
   type PlanId,
 } from "@/config/module-registry";
 
@@ -476,161 +475,6 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* ═══════════ PLAN & MODULES ═══════════ */}
-          <TabsContent value="poles" className="space-y-6">
-
-            {/* ── Cartes de Plan ── */}
-            <div>
-              <h2 className="text-sm font-semibold mb-1">Abonnement</h2>
-              <p className="text-xs text-muted-foreground mb-4">Comparez les plans et les modules métier inclus.</p>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {PLAN_IDS.map((plan) => {
-                  const isCurrent = currentPlan === plan;
-                  const planMeta = PLAN_META[plan];
-                  const PlanIcon = planMeta.icon;
-                  const modules = getModulesForPlan(plan);
-                  const isUpgrade = PLAN_META[plan].order > PLAN_META[currentPlan].order;
-
-                  return (
-                    <Card
-                      key={plan}
-                      className={`relative transition-all ${
-                        isCurrent
-                          ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                          : "border-border"
-                      }`}
-                    >
-                      {isCurrent && (
-                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
-                          <Badge className="bg-primary text-primary-foreground text-[10px] px-2.5 py-0.5 shadow-sm">
-                            Plan Actuel
-                          </Badge>
-                        </div>
-                      )}
-                      <CardHeader className="pb-3 pt-5 text-center">
-                        <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full ${
-                          isCurrent ? "gradient-emerald" : "bg-muted"
-                        }`}>
-                          <PlanIcon className={`h-5 w-5 ${isCurrent ? "text-primary-foreground" : "text-muted-foreground"}`} />
-                        </div>
-                        <CardTitle className="text-base mt-2">{planMeta.label}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pb-4 px-4">
-                        <ul className="space-y-2">
-                          {modules.map((mod) => (
-                            <li key={mod.id} className="flex items-center gap-2 text-xs">
-                              <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                              <span className="text-foreground">{mod.label}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {isUpgrade && (
-                          <Button size="sm" className="w-full mt-4 gap-1.5" variant="default">
-                            Passer à {planMeta.label}
-                            <ArrowRight className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {isCurrent && (
-                          <p className="text-center text-[11px] text-muted-foreground mt-4">
-                            Votre plan actif
-                          </p>
-                        )}
-                        {!isCurrent && !isUpgrade && (
-                          <p className="text-center text-[11px] text-muted-foreground mt-4">
-                            Inclus dans votre plan
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* ── Gestion des Modules Métier ── */}
-
-            <div>
-              <h2 className="text-sm font-semibold mb-1">Gestion des Modules Métier</h2>
-              <p className="text-xs text-muted-foreground mb-4">
-                Activez ou désactivez les modules inclus dans votre abonnement.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {BUSINESS_MODULES.map((mod) => {
-                  const isActive = activePoles.includes(mod.id);
-                  const included = isPlanAtLeast(currentPlan, mod.minPlan);
-                  const PoleIcon = mod.icon;
-                  const badgePlan = PLAN_META[mod.minPlan];
-                  const BadgeIcon = badgePlan.icon;
-
-                  return (
-                    <div
-                      key={mod.id}
-                      className={`relative flex items-start gap-4 rounded-xl border p-4 transition-colors ${
-                        included
-                          ? isActive
-                            ? "bg-primary/5 border-primary/25"
-                            : "bg-card border-border"
-                          : "bg-muted/30 border-border opacity-70"
-                      }`}
-                    >
-                      <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                        included && isActive ? "gradient-emerald" : "bg-muted"
-                      }`}>
-                        {included ? (
-                          <PoleIcon className={`h-4 w-4 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
-                        ) : (
-                          <Lock className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold">{mod.label}</p>
-                          {!included && (
-                            <Badge
-                              variant="outline"
-                              className={`gap-1 text-[10px] px-1.5 py-0 h-4 ${badgePlan.badgeCls}`}
-                            >
-                              <Lock className="h-2.5 w-2.5" />
-                              Plan {badgePlan.label}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                          {mod.description}
-                        </p>
-                        {!included && (
-                          <button className="mt-1.5 text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-1">
-                            <ArrowRight className="h-3 w-3" />
-                            Débloquer avec le plan {badgePlan.label}
-                          </button>
-                        )}
-                      </div>
-
-                      {included ? (
-                        <Switch
-                          checked={isActive}
-                          disabled={!canManageModules || polesLoading}
-                          onCheckedChange={() => togglePole(mod.id)}
-                          className="mt-0.5 shrink-0"
-                        />
-                      ) : (
-                        <Lock className="h-4 w-4 text-muted-foreground/40 mt-1.5 shrink-0" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {!canManageModules && (
-                <p className="text-xs text-muted-foreground text-center pt-3">
-                  Seul un administrateur ou responsable peut gérer les modules métier.
-                </p>
-              )}
-            </div>
-          </TabsContent>
 
           {/* ═══════════ ESPACES ═══════════ */}
 
