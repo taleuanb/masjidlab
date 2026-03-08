@@ -3,11 +3,10 @@ import {
   Building2, Plus, Trash2, Pencil, Loader2, Save,
   Layers, Tag, Package, RefreshCw, X, CheckCircle2,
   Snowflake, Wifi, Mic, Monitor, Speaker, Lock,
-  Landmark, Truck, BookOpen, Heart, Radio, Zap, Crown, Star, GraduationCap, Check, ArrowRight,
+  GraduationCap,
 } from "lucide-react";
 import {
-  PLAN_IDS, PLAN_META,
-  getBusinessModules, getModulesForPlan, isPlanAtLeast, MODULE_MAP,
+  getBusinessModules, isPlanAtLeast, MODULE_MAP,
   type PlanId,
 } from "@/config/module-registry";
 
