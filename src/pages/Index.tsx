@@ -16,7 +16,20 @@ import { RoomsOccupancyWidget } from "@/components/dashboard/RoomsOccupancyWidge
 import { EventsTimelineWidget } from "@/components/dashboard/EventsTimelineWidget";
 import { FinanceWidget } from "@/components/dashboard/FinanceWidget";
 import { AssetsWidget } from "@/components/dashboard/AssetsWidget";
-import { EducationWidget } from "@/components/dashboard/EducationWidget";
+import { EducationEffectifsWidget } from "@/components/dashboard/EducationEffectifsWidget";
+import { EducationInscriptionsWidget } from "@/components/dashboard/EducationInscriptionsWidget";
+import { EducationAlertesWidget } from "@/components/dashboard/EducationAlertesWidget";
+
+// ── Section header ───────────────────────────────────────────────────────────
+function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
+  return (
+    <div className="flex items-center gap-2 pt-2">
+      <span className="text-lg">{emoji}</span>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+      <Separator className="flex-1" />
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { role, isSuperAdmin } = useRole();
@@ -29,15 +42,20 @@ export default function Dashboard() {
 
   const hasFinance = activePoles.includes("finance") || activePoles.includes("social");
   const hasEducation = activePoles.includes("education");
-  const hasLogistics = activePoles.includes("logistics") || activePoles.includes("logistique");
+  const hasLogistics = activePoles.includes("logistics") || activePoles.includes("logistique") || activePoles.includes("operations");
 
-  // Org guard
+  // Who can see logistics widgets
+  const canSeeLogistics = hasLogistics && (isAdmin || isChef);
+  // Who can see education widgets
+  const canSeeEducation = hasEducation && (isAdmin || isChef || isEnseignant);
+
   if (!orgLoading && !orgId) {
     return <DashboardErrorState />;
   }
 
   return (
     <div className="flex-1 overflow-auto">
+      {/* ── Header ── */}
       <header className="sticky top-0 z-10 border-b bg-card/90 backdrop-blur-sm">
         <div className="flex items-center gap-3 px-6 py-3">
           <SidebarTrigger />
@@ -59,7 +77,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Bloc spirituel — visible sauf Responsable */}
         {!isChef && (
           <div className="px-6 pb-4 text-center space-y-1 mb-2">
             <p
@@ -85,42 +102,56 @@ export default function Dashboard() {
       </header>
 
       <main className="p-6 space-y-6">
-        {/* KPIs — visible pour tous sauf enseignant */}
+        {/* ── KPIs — visible pour tous sauf enseignant ── */}
         {!isEnseignant && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
             <OrgKpiStats />
           </motion.div>
         )}
 
-        {/* ── Admin / Responsable : Salles + Timeline ── */}
-        {(isAdmin || isChef) && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <RoomsOccupancyWidget />
+        {/* ══════════ SECTION LOGISTIQUE ══════════ */}
+        {canSeeLogistics && (
+          <section className="space-y-4">
+            <SectionHeader emoji="📍" title="Gestion des Espaces" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <RoomsOccupancyWidget />
+              </div>
+              <div>
+                <EventsTimelineWidget />
+              </div>
             </div>
-            <div>
-              <EventsTimelineWidget />
-            </div>
-          </div>
+          </section>
         )}
 
-        {/* ── Enseignant : Timeline seule ── */}
-        {isEnseignant && (
+        {/* Enseignant : Timeline seule (pas besoin du pôle logistique) */}
+        {isEnseignant && !canSeeLogistics && (
           <div className="max-w-2xl">
             <EventsTimelineWidget />
           </div>
         )}
 
-        {/* ── Widgets métier conditionnels ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {hasFinance && (isAdmin || isChef) && <FinanceWidget />}
-          {hasLogistics && (isAdmin || isChef) && <AssetsWidget />}
-        </div>
+        {/* ══════════ SECTION FINANCE ══════════ */}
+        {hasFinance && (isAdmin || isChef) && (
+          <section className="space-y-4">
+            <SectionHeader emoji="💰" title="Finance & Social" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FinanceWidget />
+              {hasLogistics && <AssetsWidget />}
+            </div>
+          </section>
+        )}
 
-        {hasEducation && (isAdmin || isChef) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <EducationWidget />
-          </div>
+        {/* ══════════ SECTION ÉDUCATION ══════════ */}
+        {canSeeEducation && (
+          <section className="space-y-4">
+            <SectionHeader emoji="📚" title="École Madrassa" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <EducationEffectifsWidget />
+              <EducationInscriptionsWidget />
+              <EducationAlertesWidget />
+            </div>
+          </section>
         )}
       </main>
 
