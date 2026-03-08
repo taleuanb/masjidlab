@@ -1221,11 +1221,13 @@ export default function SaasAdminPage() {
         id: o.id,
         name: o.name,
         city: o.city ?? null,
+        postal_code: o.postal_code ?? null,
         active_poles: o.active_poles ?? [],
         subscription_plan: o.subscription_plan,
         chosen_plan: o.chosen_plan ?? o.subscription_plan,
         status: o.status ?? "active",
         member_count: orgCounts.get(o.id) ?? 0,
+        owner_id: o.owner_id ?? null,
         owner_email: ownerEmails.get(o.id) ?? null,
         created_at: o.created_at ?? null,
       }));
