@@ -691,6 +691,7 @@ export type Database = {
       }
       poles: {
         Row: {
+          core_type: string | null
           created_at: string
           description: string | null
           id: string
@@ -701,6 +702,7 @@ export type Database = {
           target_staff: number
         }
         Insert: {
+          core_type?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -711,6 +713,7 @@ export type Database = {
           target_staff?: number
         }
         Update: {
+          core_type?: string | null
           created_at?: string
           description?: string | null
           id?: string
