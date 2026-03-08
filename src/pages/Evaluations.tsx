@@ -78,6 +78,20 @@ const Evaluations = () => {
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
+  // ── Subjects for selected class (dedicated query for freshness) ──
+  const { data: classSubjects = [], isLoading: loadingSubjects } = useQuery({
+    queryKey: ["class_subjects", selectedClassId],
+    enabled: !!selectedClassId && !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_class_subjects")
+        .select("subject_id, subject:madrasa_subjects(id, name)")
+        .eq("class_id", selectedClassId!);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => r.subject).filter(Boolean) as { id: string; name: string }[];
+    },
+  });
+
   // ── Evaluations for selected class ──
   const { data: evaluations = [], isLoading: loadingEvals } = useQuery({
     queryKey: ["evaluations", selectedClassId],
