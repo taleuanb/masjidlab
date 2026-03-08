@@ -1363,8 +1363,10 @@ export default function SaasAdminPage() {
             <DashboardTab
               orgs={orgs}
               totalUsers={totalUsers}
+              activeUsers={activeUsers}
               loading={loading}
               fetchAll={fetchAll}
+              recentActivity={recentActivity}
             />
           </TabsContent>
 
