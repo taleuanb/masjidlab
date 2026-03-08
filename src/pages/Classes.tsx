@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter } from "lucide-react";
+import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,14 +21,28 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 
+type ClassRow = {
+  id: string;
+  nom: string;
+  niveau: string | null;
+  prof_id: string | null;
+  salle_id: string | null;
+  prof: { display_name: string } | null;
+  salle: { name: string } | null;
+  subjects: { id: string; name: string }[];
+};
+
 const Classes = () => {
   const { orgId } = useOrganization();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingClass, setEditingClass] = useState<ClassRow | null>(null);
   const [form, setForm] = useState({ nom: "", niveau: "", prof_id: "", salle_id: "" });
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [filterNiveau, setFilterNiveau] = useState<string>("all");
+
+  const isEditing = !!editingClass;
 
   // ── Fetch classes with joined prof, salle, and subjects ──
   const { data: classes = [], isLoading } = useQuery({
@@ -55,7 +69,7 @@ const Classes = () => {
         }
       }
 
-      return (data ?? []).map((c: any) => ({ ...c, subjects: subjectMap[c.id] ?? [] }));
+      return (data ?? []).map((c: any) => ({ ...c, subjects: subjectMap[c.id] ?? [] })) as ClassRow[];
     },
   });
 
@@ -95,22 +109,46 @@ const Classes = () => {
   });
 
   // ── Mutations ──
-  const createClass = useMutation({
+  const saveClass = useMutation({
     mutationFn: async () => {
       if (!form.nom.trim()) throw new Error("Nom requis");
-      const { data: created, error } = await supabase
-        .from("madrasa_classes")
-        .insert({ nom: form.nom.trim(), niveau: form.niveau || null, prof_id: form.prof_id || null, salle_id: form.salle_id || null, org_id: orgId! })
-        .select("id")
-        .single();
-      if (error) throw error;
-      if (selectedSubjects.length > 0) {
-        const links = selectedSubjects.map((sid) => ({ class_id: created.id, subject_id: sid }));
-        const { error: linkErr } = await supabase.from("madrasa_class_subjects").insert(links);
-        if (linkErr) throw linkErr;
+
+      if (isEditing) {
+        // Update class
+        const { error } = await supabase
+          .from("madrasa_classes")
+          .update({ nom: form.nom.trim(), niveau: form.niveau || null, prof_id: form.prof_id || null, salle_id: form.salle_id || null })
+          .eq("id", editingClass.id);
+        if (error) throw error;
+
+        // Sync subjects: delete old, insert new
+        await supabase.from("madrasa_class_subjects").delete().eq("class_id", editingClass.id);
+        if (selectedSubjects.length > 0) {
+          const links = selectedSubjects.map((sid) => ({ class_id: editingClass.id, subject_id: sid }));
+          const { error: linkErr } = await supabase.from("madrasa_class_subjects").insert(links);
+          if (linkErr) throw linkErr;
+        }
+      } else {
+        // Create class
+        const { data: created, error } = await supabase
+          .from("madrasa_classes")
+          .insert({ nom: form.nom.trim(), niveau: form.niveau || null, prof_id: form.prof_id || null, salle_id: form.salle_id || null, org_id: orgId! })
+          .select("id")
+          .single();
+        if (error) throw error;
+        if (selectedSubjects.length > 0) {
+          const links = selectedSubjects.map((sid) => ({ class_id: created.id, subject_id: sid }));
+          const { error: linkErr } = await supabase.from("madrasa_class_subjects").insert(links);
+          if (linkErr) throw linkErr;
+        }
       }
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["madrasa_classes", orgId] }); setDialogOpen(false); resetForm(); toast({ title: "Classe créée" }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["madrasa_classes", orgId] });
+      setDialogOpen(false);
+      resetForm();
+      toast({ title: isEditing ? "Classe modifiée" : "Classe créée" });
+    },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
@@ -124,8 +162,20 @@ const Classes = () => {
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
-  const resetForm = () => { setForm({ nom: "", niveau: "", prof_id: "", salle_id: "" }); setSelectedSubjects([]); };
+  const resetForm = () => { setForm({ nom: "", niveau: "", prof_id: "", salle_id: "" }); setSelectedSubjects([]); setEditingClass(null); };
   const toggleSubject = (id: string) => setSelectedSubjects((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+
+  const openEdit = (c: ClassRow) => {
+    setEditingClass(c);
+    setForm({ nom: c.nom, niveau: c.niveau ?? "", prof_id: c.prof_id ?? "", salle_id: c.salle_id ?? "" });
+    setSelectedSubjects(c.subjects.map((s) => s.id));
+    setDialogOpen(true);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setDialogOpen(true);
+  };
 
   return (
     <main className="flex-1 overflow-y-auto">
@@ -136,7 +186,7 @@ const Classes = () => {
           <BookOpen className="h-5 w-5 text-accent" />
           <h1 className="text-xl font-bold text-foreground">Classes</h1>
           <Badge variant="secondary" className="ml-1">{classes.length}</Badge>
-          <Button size="sm" className="ml-auto gradient-positive border-0" onClick={() => { resetForm(); setDialogOpen(true); }}>
+          <Button size="sm" className="ml-auto gradient-positive border-0" onClick={openCreate}>
             <Plus className="h-4 w-4" /> Nouvelle classe
           </Button>
         </div>
@@ -166,28 +216,33 @@ const Classes = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {classes.filter((c: any) => filterNiveau === "all" || c.niveau === filterNiveau).map((c: any) => (
-              <Card key={c.id} className="group relative">
+            {classes.filter((c) => filterNiveau === "all" || c.niveau === filterNiveau).map((c) => (
+              <Card key={c.id} className="group relative cursor-pointer hover:border-primary/30 transition-colors" onClick={() => openEdit(c)}>
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-base">{c.nom}</CardTitle>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Supprimer « {c.nom} » ?</AlertDialogTitle>
-                          <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="text-muted-foreground">Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteClass.mutate(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); openEdit(c); }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={(e) => e.stopPropagation()}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer « {c.nom} » ?</AlertDialogTitle>
+                            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="text-muted-foreground">Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteClass.mutate(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -200,7 +255,7 @@ const Classes = () => {
                   )}
                   {c.subjects.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {c.subjects.map((s: any) => (
+                      {c.subjects.map((s) => (
                         <Badge key={s.id} variant="secondary" className="text-[10px] font-normal">{s.name}</Badge>
                       ))}
                     </div>
@@ -215,12 +270,12 @@ const Classes = () => {
         )}
       </div>
 
-      {/* ── Create Dialog ── */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* ── Create / Edit Dialog ── */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Nouvelle classe</DialogTitle>
-            <DialogDescription>Créez une classe et liez-la à des matières.</DialogDescription>
+            <DialogTitle>{isEditing ? "Modifier la classe" : "Nouvelle classe"}</DialogTitle>
+            <DialogDescription>{isEditing ? `Modifiez « ${editingClass?.nom} » et ses matières.` : "Créez une classe et liez-la à des matières."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
@@ -258,10 +313,10 @@ const Classes = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDialogOpen(false)} className="text-muted-foreground">Annuler</Button>
-            <Button onClick={() => createClass.mutate()} disabled={createClass.isPending || !form.nom.trim()} className="gradient-positive border-0">
-              {createClass.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Créer
+            <Button variant="ghost" onClick={() => { setDialogOpen(false); resetForm(); }} className="text-muted-foreground">Annuler</Button>
+            <Button onClick={() => saveClass.mutate()} disabled={saveClass.isPending || !form.nom.trim()} className="gradient-positive border-0">
+              {saveClass.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isEditing ? "Enregistrer" : "Créer"}
             </Button>
           </DialogFooter>
         </DialogContent>
