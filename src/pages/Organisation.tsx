@@ -220,7 +220,7 @@ export default function OrganisationPage() {
   };
   const openEditPole = (p: PoleRow) => {
     setEditingPole(p);
-    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff });
+    setPoleForm({ nom: p.nom, description: p.description || "", manager_id: p.manager_id || "none", target_staff: p.target_staff, core_type: p.core_type || "" });
     setPoleDialogOpen(true);
   };
   const handleDeletePole = async (p: PoleRow) => {
