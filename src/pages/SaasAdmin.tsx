@@ -67,14 +67,22 @@ interface OrgRow {
   id: string;
   name: string;
   city: string | null;
+  postal_code: string | null;
   active_poles: string[];
   subscription_plan: string | null;
   chosen_plan: string | null;
   status: string | null;
   member_count: number;
+  owner_id: string | null;
   owner_email: string | null;
   created_at: string | null;
 }
+
+const PLAN_BADGE: Record<string, string> = {
+  starter: "bg-muted text-muted-foreground border-border",
+  pro: "bg-blue-500/10 text-blue-700 border-blue-400/30",
+  elite: "bg-amber-500/10 text-amber-700 border-amber-400/30",
+};
 
 const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
   pending:   { cls: "bg-amber-500/10 text-amber-600 border-amber-400/30", label: "En attente" },
