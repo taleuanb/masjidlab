@@ -126,7 +126,7 @@ export default function OrganisationPage() {
   // Pole dialog
   const [poleDialogOpen, setPoleDialogOpen] = useState(false);
   const [editingPole, setEditingPole] = useState<PoleRow | null>(null);
-  const [poleForm, setPoleForm] = useState({ nom: "", description: "", manager_id: "none", target_staff: 0 });
+  const [poleForm, setPoleForm] = useState({ nom: "", description: "", manager_id: "none", target_staff: 0, core_type: "" });
   const [poleSaving, setPoleSaving] = useState(false);
 
   // Member edit dialog
