@@ -44,6 +44,7 @@ import LandingPage from "./pages/Landing";
 import SetupIdentityPage from "./pages/SetupIdentity";
 import SetupPlanPage from "./pages/SetupPlan";
 import SetupSuccessPage from "./pages/SetupSuccess";
+import BillingPage from "./pages/Billing";
 import { Loader2 } from "lucide-react";
 import { isVitrineDomain } from "@/lib/domain";
 

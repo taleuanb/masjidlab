@@ -24,17 +24,16 @@ export default function BillingPage() {
   const { toast } = useToast();
   const { dbRole } = useAuth();
   const { orgId, activePoles, org } = useOrganization();
+  const [polesLoading, setPolesLoading] = useState(false);
 
   const isSuperAdmin = dbRole === "super_admin";
   const isAdmin = dbRole === "admin" || isSuperAdmin;
+  const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
 
   // Route guard: only admin or super_admin
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
-
-  const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
-  const [polesLoading, setPolesLoading] = useState(false);
 
   const togglePole = async (poleId: string) => {
     if (!orgId) return;
