@@ -115,7 +115,7 @@ const AppLayout = () => {
             <Route path="/organisation" element={<StructureMembresPage />} />
             <Route path="/mon-equipe" element={<MonEquipePage />} />
             <Route path="/configuration" element={<SettingsPage />} />
-            <Route path="/configuration/plan" element={<SettingsPage />} />
+            <Route path="/configuration/plan" element={<BillingPage />} />
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/saas-admin" element={<SaasAdminPage />} />
             <Route path="/eleves" element={<ElevesPage />} />
