@@ -1561,23 +1561,42 @@ export default function SaasAdminPage() {
       </div>
 
       <Dialog open={!!editOrg} onOpenChange={() => setEditOrg(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Modules — {editOrg?.name}</DialogTitle>
+            <DialogTitle>Plan & Modules — {editOrg?.name}</DialogTitle>
+            <DialogDescription>Modifiez le plan d'abonnement et les modules actifs.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            {ALL_POLES.map((pole) => (
-              <label
-                key={pole.id}
-                className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/50 transition-colors"
-              >
-                <Checkbox
-                  checked={editPoles.includes(pole.id)}
-                  onCheckedChange={() => togglePole(pole.id)}
-                />
-                <span className="text-sm font-medium">{pole.label}</span>
-              </label>
-            ))}
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Plan d'abonnement</label>
+              <Select value={editPlan} onValueChange={setEditPlan}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="starter">Starter</SelectItem>
+                  <SelectItem value="pro">Pro</SelectItem>
+                  <SelectItem value="elite">Elite</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Modules actifs</label>
+              <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                {ALL_POLES.map((pole) => (
+                  <label
+                    key={pole.id}
+                    className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                  >
+                    <Checkbox
+                      checked={editPoles.includes(pole.id)}
+                      onCheckedChange={() => togglePole(pole.id)}
+                    />
+                    <span className="text-sm font-medium">{pole.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOrg(null)}>Annuler</Button>
