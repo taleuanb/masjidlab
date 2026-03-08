@@ -1,0 +1,1 @@
+ALTER FUNCTION public.clone_default_permissions(uuid) SET search_path = 'public';
