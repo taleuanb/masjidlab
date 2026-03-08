@@ -513,82 +513,220 @@ function PendingApprovalsTab({
 }
 
 // ── Dashboard Tab ──────────────────────────────────────────
+const PLAN_COLORS: Record<string, string> = {
+  starter: "hsl(220, 15%, 70%)",
+  pro: "hsl(38, 92%, 50%)",
+  elite: "hsl(222, 68%, 15%)",
+};
+
 function DashboardTab({
-  orgs, totalUsers, loading, fetchAll,
+  orgs, totalUsers, activeUsers, loading, fetchAll, recentActivity,
 }: {
   orgs: OrgRow[];
   totalUsers: number;
+  activeUsers: number;
   loading: boolean;
   fetchAll: () => void;
+  recentActivity: { type: "org" | "user"; name: string; created_at: string }[];
 }) {
   const pendingCount = orgs.filter((o) => o.status === "pending").length;
-  const activeCount = orgs.filter((o) => o.status === "active").length;
+  const paidCount = orgs.filter((o) => o.subscription_plan === "pro" || o.subscription_plan === "elite").length;
+
+  const planData = useMemo(() => {
+    const counts: Record<string, number> = { starter: 0, pro: 0, elite: 0 };
+    orgs.forEach((o) => {
+      const plan = o.subscription_plan ?? "starter";
+      if (counts[plan] !== undefined) counts[plan]++;
+      else counts.starter++;
+    });
+    return Object.entries(counts)
+      .filter(([, v]) => v > 0)
+      .map(([key, value]) => ({
+        name: key.charAt(0).toUpperCase() + key.slice(1),
+        value,
+        color: PLAN_COLORS[key] ?? PLAN_COLORS.starter,
+      }));
+  }, [orgs]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Mosquées</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Institutions</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <Building2 className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold">{orgs.length}</span>
-            </div>
+            <span className="text-2xl font-bold">{orgs.length}</span>
+            <p className="text-xs text-muted-foreground mt-1">
+              <span className="text-secondary font-medium">+{orgs.filter(o => {
+                const d = new Date(o.created_at ?? "");
+                const now = new Date();
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+              }).length}</span> ce mois
+            </p>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Mosquées actives</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Utilisateurs Actifs</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/10">
+              <Users className="h-4 w-4 text-secondary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-600" />
-              <span className="text-2xl font-bold">{activeCount}</span>
-            </div>
+            <span className="text-2xl font-bold">{activeUsers}</span>
+            <p className="text-xs text-muted-foreground mt-1">
+              sur <span className="font-medium">{totalUsers}</span> inscrits
+            </p>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Abonnements Pro/Elite</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "hsl(38, 92%, 50%, 0.1)" }}>
+              <Crown className="h-4 w-4" style={{ color: "hsl(38, 92%, 50%)" }} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <span className="text-2xl font-bold">{paidCount}</span>
+            <p className="text-xs text-muted-foreground mt-1">
+              <span className="font-medium">{orgs.length > 0 ? Math.round((paidCount / orgs.length) * 100) : 0}%</span> du parc
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">En attente</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "hsl(38, 92%, 50%, 0.1)" }}>
+              <Clock className="h-4 w-4" style={{ color: "hsl(38, 92%, 50%)" }} />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-500" />
-              <span className="text-2xl font-bold">{pendingCount}</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Utilisateurs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold">{totalUsers}</span>
-            </div>
+            <span className="text-2xl font-bold">{pendingCount}</span>
+            <p className="text-xs text-muted-foreground mt-1">
+              demande{pendingCount > 1 ? "s" : ""} d'onboarding
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-3">
-            <CardTitle className="text-sm text-muted-foreground">
-              {ALL_POLES.length} modules métiers disponibles
+      {/* Charts + Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Plan distribution chart */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Répartition par Plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {planData.length > 0 ? (
+              <div className="flex flex-col items-center">
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={planData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {planData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`${value} mosquée${value > 1 ? "s" : ""}`, name]}
+                      contentStyle={{
+                        borderRadius: "8px",
+                        border: "1px solid hsl(var(--border))",
+                        background: "hsl(var(--card))",
+                        color: "hsl(var(--card-foreground))",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex gap-4 mt-2">
+                  {planData.map((d) => (
+                    <div key={d.name} className="flex items-center gap-1.5">
+                      <div className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+                      <span className="text-xs text-muted-foreground">{d.name} ({d.value})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent activity feed */}
+        <Card className="lg:col-span-3">
+          <CardHeader className="flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Activity className="h-4 w-4 text-accent" />
+              Derniers événements
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={fetchAll}>
-              <RefreshCw className="h-4 w-4 mr-1" /> Rafraîchir
+            <Button variant="ghost" size="sm" onClick={fetchAll} className="h-7 px-2">
+              <RefreshCw className="h-3 w-3" />
             </Button>
           </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[240px]">
+              <div className="space-y-0">
+                {recentActivity.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Aucune activité récente</p>
+                ) : recentActivity.map((event, i) => (
+                  <div key={i} className="flex items-center gap-3 px-6 py-3 border-b last:border-0">
+                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                      event.type === "org"
+                        ? "bg-primary/10"
+                        : "bg-secondary/10"
+                    }`}>
+                      {event.type === "org" ? (
+                        <Building2 className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <UserPlus className="h-3.5 w-3.5 text-secondary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${
+                          event.type === "org"
+                            ? "bg-primary/5 text-primary border-primary/20"
+                            : "bg-secondary/5 text-secondary border-secondary/20"
+                        }`}>
+                          {event.type === "org" ? "Mosquée" : "Inscription"}
+                        </Badge>
+                        <span className="text-sm font-medium truncate">{event.name}</span>
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      {formatDistanceToNow(new Date(event.created_at), { addSuffix: true, locale: fr })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
         </Card>
-      )}
+      </div>
     </div>
   );
 }
