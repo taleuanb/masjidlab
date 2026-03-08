@@ -435,7 +435,21 @@ export default function StructureMembresPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingPole ? "Modifier le pôle" : "Nouveau pôle"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Nom</Label><Input value={poleForm.nom} onChange={(e) => setPoleForm({ ...poleForm, nom: e.target.value })} /></div>
+            <div>
+              <Label>Type technique</Label>
+              <Select value={poleForm.core_type || "custom"} onValueChange={(v) => {
+                const ct = v === "custom" ? "" : v;
+                const autoName = ct ? getDefaultPoleName(ct) : poleForm.nom;
+                setPoleForm({ ...poleForm, core_type: ct, nom: poleForm.nom || autoName });
+              }}>
+                <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Personnalisé</SelectItem>
+                  {CORE_TYPES.map((ct) => <SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Nom affiché</Label><Input value={poleForm.nom} onChange={(e) => setPoleForm({ ...poleForm, nom: e.target.value })} placeholder="Ex: Madrassa, Trésorerie…" /></div>
             <div><Label>Description</Label><Textarea value={poleForm.description} onChange={(e) => setPoleForm({ ...poleForm, description: e.target.value })} rows={2} /></div>
             <div><Label>Responsable</Label>
               <Select value={poleForm.manager_id} onValueChange={(v) => setPoleForm({ ...poleForm, manager_id: v })}>
