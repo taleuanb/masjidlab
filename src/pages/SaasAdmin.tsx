@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback, Fragment } from "react";
 import {
   Building2, Users, Globe, Loader2, RefreshCw, Check, Shield, Save,
   ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
+  MoreHorizontal, Search, UserCog, KeyRound, Ban, LayoutDashboard,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
-import { useRole } from "@/contexts/RoleContext";
+import { useRole, DB_ROLE_TO_UI } from "@/contexts/RoleContext";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -14,13 +15,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
@@ -44,7 +52,6 @@ const RBAC_ROLES = [
   { id: "parent", label: "Parent" },
 ];
 
-// ── Permission keys per sub-module ────────────────────────
 const PERM_COLS = ["can_view", "can_edit", "can_delete"] as const;
 type PermCol = (typeof PERM_COLS)[number];
 const PERM_LABELS: Record<PermCol, string> = {
@@ -71,6 +78,317 @@ const STATUS_BADGE: Record<string, { cls: string; label: string }> = {
   active:    { cls: "bg-green-500/10 text-green-700 border-green-400/30", label: "Active" },
   suspended: { cls: "bg-destructive/10 text-destructive border-destructive/30", label: "Suspendue" },
 };
+
+const ROLE_BADGE: Record<string, string> = {
+  super_admin: "bg-purple-500/10 text-purple-700 border-purple-400/30",
+  admin: "bg-primary/10 text-primary border-primary/30",
+  responsable: "bg-blue-500/10 text-blue-700 border-blue-400/30",
+  enseignant: "bg-emerald-500/10 text-emerald-700 border-emerald-400/30",
+  benevole: "bg-orange-500/10 text-orange-700 border-orange-400/30",
+  parent: "bg-pink-500/10 text-pink-700 border-pink-400/30",
+};
+
+// ── Global Users ──────────────────────────────────────────
+interface GlobalUser {
+  profile_id: string;
+  user_id: string;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  is_active: boolean;
+  org_id: string | null;
+  org_name: string | null;
+  roles: string[];
+  created_at: string;
+}
+
+function UsersTab() {
+  const { toast } = useToast();
+  const [users, setUsers] = useState<GlobalUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [orgFilter, setOrgFilter] = useState<string>("all");
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
+
+  // Edit dialog
+  const [editUser, setEditUser] = useState<GlobalUser | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Fetch profiles, roles, and orgs in parallel
+      const [profilesRes, rolesRes, orgsRes] = await Promise.all([
+        supabase.from("profiles").select("id, user_id, display_name, email, phone, is_active, org_id, created_at"),
+        supabase.from("user_roles").select("user_id, role"),
+        supabase.rpc("get_all_organizations"),
+      ]);
+
+      const profiles = profilesRes.data ?? [];
+      const roles = rolesRes.data ?? [];
+      const organizations = (orgsRes.data ?? []) as any[];
+
+      const orgMap = new Map<string, string>();
+      organizations.forEach((o: any) => orgMap.set(o.id, o.name));
+      setOrgs(organizations.map((o: any) => ({ id: o.id, name: o.name })));
+
+      // Group roles by user_id
+      const roleMap = new Map<string, string[]>();
+      roles.forEach((r: any) => {
+        const list = roleMap.get(r.user_id) ?? [];
+        list.push(r.role);
+        roleMap.set(r.user_id, list);
+      });
+
+      const mapped: GlobalUser[] = profiles.map((p: any) => ({
+        profile_id: p.id,
+        user_id: p.user_id,
+        display_name: p.display_name,
+        email: p.email,
+        phone: p.phone,
+        is_active: p.is_active,
+        org_id: p.org_id,
+        org_name: p.org_id ? (orgMap.get(p.org_id) ?? "—") : null,
+        roles: roleMap.get(p.user_id) ?? [],
+        created_at: p.created_at,
+      }));
+
+      setUsers(mapped);
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const filteredUsers = users.filter((u) => {
+    const q = search.toLowerCase();
+    const matchesSearch = !q || 
+      u.display_name.toLowerCase().includes(q) || 
+      (u.email?.toLowerCase().includes(q) ?? false);
+    const matchesOrg = orgFilter === "all" || u.org_id === orgFilter;
+    return matchesSearch && matchesOrg;
+  });
+
+  const openEdit = (u: GlobalUser) => {
+    setEditUser(u);
+    setEditName(u.display_name);
+    setEditPhone(u.phone ?? "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ display_name: editName, phone: editPhone || null })
+        .eq("id", editUser.profile_id);
+      if (error) throw error;
+      toast({ title: "Profil mis à jour" });
+      setEditUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleResetPassword = async (u: GlobalUser) => {
+    if (!u.email) {
+      toast({ title: "Pas d'email", description: "Cet utilisateur n'a pas d'adresse email.", variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(u.email);
+      if (error) throw error;
+      toast({ title: "Email envoyé", description: `Un email de réinitialisation a été envoyé à ${u.email}.` });
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleToggleActive = async (u: GlobalUser) => {
+    try {
+      const { error } = await supabase.functions.invoke("manage-member", {
+        body: {
+          action: u.is_active ? "deactivate" : "reactivate",
+          target_user_id: u.user_id,
+        },
+      });
+      if (error) throw error;
+      toast({ title: u.is_active ? "Utilisateur désactivé" : "Utilisateur réactivé" });
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              {users.length} utilisateur{users.length > 1 ? "s" : ""} inscrits
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher nom ou email…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-8 h-9 w-[220px]"
+                />
+              </div>
+              <Select value={orgFilter} onValueChange={setOrgFilter}>
+                <SelectTrigger className="h-9 w-[180px]">
+                  <SelectValue placeholder="Organisation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les orgs</SelectItem>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={fetchUsers}>
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Utilisateur</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Organisation</TableHead>
+                <TableHead>Rôle(s)</TableHead>
+                <TableHead>Inscription</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="text-right w-12" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Aucun utilisateur trouvé.
+                  </TableCell>
+                </TableRow>
+              ) : filteredUsers.map((u) => (
+                <TableRow key={u.profile_id}>
+                  <TableCell className="font-medium">{u.display_name}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">{u.email ?? "—"}</TableCell>
+                  <TableCell>
+                    {u.org_name ? (
+                      <Badge variant="outline" className="text-[10px]">
+                        {u.org_name}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {u.roles.map((r) => (
+                        <Badge key={r} variant="outline" className={`text-[10px] ${ROLE_BADGE[r] ?? ""}`}>
+                          {DB_ROLE_TO_UI[r] ?? r}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {format(new Date(u.created_at), "dd MMM yyyy", { locale: fr })}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={u.is_active
+                      ? "bg-green-500/10 text-green-700 border-green-400/30 text-[10px]"
+                      : "bg-destructive/10 text-destructive border-destructive/30 text-[10px]"
+                    }>
+                      {u.is_active ? "Actif" : "Désactivé"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEdit(u)}>
+                          <UserCog className="h-4 w-4 mr-2" />
+                          Modifier le profil
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleResetPassword(u)}>
+                          <KeyRound className="h-4 w-4 mr-2" />
+                          Réinitialiser le mot de passe
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleToggleActive(u)}
+                          className={u.is_active ? "text-destructive" : "text-green-700"}
+                        >
+                          <Ban className="h-4 w-4 mr-2" />
+                          {u.is_active ? "Désactiver" : "Réactiver"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le profil</DialogTitle>
+            <DialogDescription>Modifiez les informations de {editUser?.display_name}.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Nom d'affichage</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Téléphone</label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+33…" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUser(null)}>Annuler</Button>
+            <Button onClick={handleSaveEdit} disabled={savingEdit || !editName.trim()}>
+              {savingEdit ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 // ── Pending Approvals Tab ──────────────────────────────────
 function PendingApprovalsTab({
@@ -193,18 +511,19 @@ function PendingApprovalsTab({
 
 // ── Dashboard Tab ──────────────────────────────────────────
 function DashboardTab({
-  orgs, totalUsers, loading, fetchAll, openModules, onValidate,
+  orgs, totalUsers, loading, fetchAll,
 }: {
   orgs: OrgRow[];
   totalUsers: number;
   loading: boolean;
   fetchAll: () => void;
-  openModules: (o: OrgRow) => void;
-  onValidate: (o: OrgRow) => void;
 }) {
+  const pendingCount = orgs.filter((o) => o.status === "pending").length;
+  const activeCount = orgs.filter((o) => o.status === "active").length;
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Mosquées</CardTitle>
@@ -213,6 +532,28 @@ function DashboardTab({
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
               <span className="text-2xl font-bold">{orgs.length}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Mosquées actives</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Check className="h-5 w-5 text-green-600" />
+              <span className="text-2xl font-bold">{activeCount}</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">En attente</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-500" />
+              <span className="text-2xl font-bold">{pendingCount}</span>
             </div>
           </CardContent>
         </Card>
@@ -227,17 +568,6 @@ function DashboardTab({
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Modules Disponibles</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold">{ALL_POLES.length}</span>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {loading ? (
@@ -247,81 +577,112 @@ function DashboardTab({
       ) : (
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base">Organisations</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">
+              {ALL_POLES.length} modules métiers disponibles
+            </CardTitle>
             <Button variant="outline" size="sm" onClick={fetchAll}>
               <RefreshCw className="h-4 w-4 mr-1" /> Rafraîchir
             </Button>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                 <TableHead>Mosquée</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Membres</TableHead>
-                  <TableHead>Modules Actifs</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orgs.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-medium">{o.name}</TableCell>
-                    <TableCell>
-                      {(() => {
-                        const s = STATUS_BADGE[o.status ?? "active"] ?? STATUS_BADGE.active;
-                        return (
-                          <Badge variant="outline" className={`text-[10px] ${s.cls}`}>
-                            {s.label}
-                          </Badge>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {o.subscription_plan ?? "starter"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{o.member_count}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {o.active_poles.map((p) => (
-                          <Badge key={p} variant="secondary" className="text-[10px]">
-                            {ALL_POLES.find((ap) => ap.id === p)?.label ?? p}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-1.5 justify-end">
-                        {(o.status === "pending" || !o.status) && o.status !== "active" && (
-                          <Button size="sm" variant="default" onClick={() => onValidate(o)} className="gap-1">
-                            <Check className="h-3.5 w-3.5" />
-                            Valider
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline" onClick={() => openModules(o)}>
-                          Modules
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
         </Card>
       )}
     </div>
   );
 }
 
+// ── Organizations Tab ──────────────────────────────────────
+function OrganizationsTab({
+  orgs, loading, fetchAll, openModules, onValidate,
+}: {
+  orgs: OrgRow[];
+  loading: boolean;
+  fetchAll: () => void;
+  openModules: (o: OrgRow) => void;
+  onValidate: (o: OrgRow) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-primary" />
+          {orgs.length} organisation{orgs.length > 1 ? "s" : ""}
+        </CardTitle>
+        <Button variant="outline" size="sm" onClick={fetchAll}>
+          <RefreshCw className="h-4 w-4 mr-1" /> Rafraîchir
+        </Button>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Mosquée</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead>Plan</TableHead>
+              <TableHead>Membres</TableHead>
+              <TableHead>Modules Actifs</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {orgs.map((o) => (
+              <TableRow key={o.id}>
+                <TableCell className="font-medium">{o.name}</TableCell>
+                <TableCell>
+                  {(() => {
+                    const s = STATUS_BADGE[o.status ?? "active"] ?? STATUS_BADGE.active;
+                    return (
+                      <Badge variant="outline" className={`text-[10px] ${s.cls}`}>
+                        {s.label}
+                      </Badge>
+                    );
+                  })()}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="capitalize">
+                    {o.subscription_plan ?? "starter"}
+                  </Badge>
+                </TableCell>
+                <TableCell>{o.member_count}</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {o.active_poles.map((p) => (
+                      <Badge key={p} variant="secondary" className="text-[10px]">
+                        {ALL_POLES.find((ap) => ap.id === p)?.label ?? p}
+                      </Badge>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex gap-1.5 justify-end">
+                    {(o.status === "pending" || !o.status) && o.status !== "active" && (
+                      <Button size="sm" variant="default" onClick={() => onValidate(o)} className="gap-1">
+                        <Check className="h-3.5 w-3.5" />
+                        Valider
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => openModules(o)}>
+                      Modules
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Permissions Tab ────────────────────────────────────────
-/**
- * Permission value per module per role.
- * Key format: `${roleId}::${moduleId}::${permCol}`
- */
 type PermMatrix = Record<string, boolean>;
 
 function permKey(roleId: string, moduleId: string, col: PermCol | "enabled"): string {
@@ -350,7 +711,6 @@ function PermissionsTab() {
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-  // ── Load global permissions from DB (org_id IS NULL) ──
   const loadMatrix = useCallback(async (): Promise<PermMatrix> => {
     const m = buildEmptyMatrix();
     const { data, error } = await supabase
@@ -372,7 +732,6 @@ function PermissionsTab() {
     return m;
   }, []);
 
-  // Load on mount
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -387,7 +746,6 @@ function PermissionsTab() {
     })();
   }, [loadMatrix, toast]);
 
-  // ── Toggle logic ──
   const toggleEnabled = (roleId: string, groupId: string) => {
     setMatrix((prev) => {
       const next = { ...prev };
@@ -444,7 +802,6 @@ function PermissionsTab() {
     });
   };
 
-  // ── Save (always org_id = NULL) ──
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -481,7 +838,6 @@ function PermissionsTab() {
     }
   };
 
-  // ── Reset: apply DEFAULT_RBAC_MATRIX to UI state (preview before save) ──
   const handleReset = () => {
     setResetting(true);
     const m = buildEmptyMatrix();
@@ -600,7 +956,6 @@ function ModuleGroupRows({
 
   return (
     <Fragment>
-      {/* ── Parent row ── */}
       <TableRow className="bg-muted/20">
         <TableCell className="font-semibold">
           <div className="flex items-center gap-2">
@@ -630,7 +985,6 @@ function ModuleGroupRows({
         ))}
       </TableRow>
 
-      {/* ── Children rows ── */}
       {hasChildren && expanded && group.children.map((child) => (
         <TableRow key={child.id}>
           <TableCell className="pl-10">
@@ -705,7 +1059,6 @@ export default function SaasAdminPage() {
         if (p.org_id) orgCounts.set(p.org_id, (orgCounts.get(p.org_id) ?? 0) + 1);
       });
 
-      // Map owner_id → email
       for (const o of (orgsData ?? []) as any[]) {
         if (o.owner_id) {
           const ownerProfile = (profiles ?? []).find((p: any) => p.user_id === o.owner_id);
@@ -751,7 +1104,6 @@ export default function SaasAdminPage() {
         (id: string) => !MODULE_REGISTRY.find((m) => m.id === id)?.isCore
       );
 
-      // 1. Set status to active + subscription_plan from chosen_plan + activate modules
       const { error } = await supabase
         .from("organizations")
         .update({
@@ -802,6 +1154,8 @@ export default function SaasAdminPage() {
 
   if (!isSuperAdmin) return <Navigate to="/" replace />;
 
+  const pendingCount = orgs.filter((o) => o.status === "pending").length;
+
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
@@ -812,42 +1166,68 @@ export default function SaasAdminPage() {
               <Shield className="h-5 w-5 text-primary" />
               Console SaaS
             </h1>
-            <p className="text-sm text-muted-foreground">Administration globale des mosquées</p>
+            <p className="text-sm text-muted-foreground">Supervision globale de la plateforme MASJIDLAB</p>
           </div>
         </div>
 
-        <Tabs defaultValue="pending" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="pending" className="gap-1.5">
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList className="flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="overview" className="gap-1.5">
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Vue d'ensemble
+            </TabsTrigger>
+            <TabsTrigger value="organizations" className="gap-1.5">
+              <Building2 className="h-3.5 w-3.5" />
+              Organisations
+            </TabsTrigger>
+            <TabsTrigger value="users" className="gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              Utilisateurs
+            </TabsTrigger>
+            <TabsTrigger value="onboarding" className="gap-1.5">
               <Clock className="h-3.5 w-3.5" />
-              Demandes en attente
-              {orgs.filter((o) => o.status === "pending").length > 0 && (
+              Onboarding
+              {pendingCount > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px]">
-                  {orgs.filter((o) => o.status === "pending").length}
+                  {pendingCount}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="permissions">Permissions & RBAC</TabsTrigger>
+            <TabsTrigger value="permissions" className="gap-1.5">
+              <Shield className="h-3.5 w-3.5" />
+              Sécurité & RBAC
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="pending">
-            <PendingApprovalsTab
-              orgs={orgs}
-              loading={loading}
-              onValidate={handleValidateOrg}
-              validatingId={validatingId}
-            />
-          </TabsContent>
-
-          <TabsContent value="dashboard">
+          <TabsContent value="overview">
             <DashboardTab
               orgs={orgs}
               totalUsers={totalUsers}
               loading={loading}
               fetchAll={fetchAll}
+            />
+          </TabsContent>
+
+          <TabsContent value="organizations">
+            <OrganizationsTab
+              orgs={orgs}
+              loading={loading}
+              fetchAll={fetchAll}
               openModules={openModules}
               onValidate={handleValidateOrg}
+            />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UsersTab />
+          </TabsContent>
+
+          <TabsContent value="onboarding">
+            <PendingApprovalsTab
+              orgs={orgs}
+              loading={loading}
+              onValidate={handleValidateOrg}
+              validatingId={validatingId}
             />
           </TabsContent>
 
