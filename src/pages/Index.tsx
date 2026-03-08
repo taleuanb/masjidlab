@@ -52,14 +52,31 @@ function WidgetSlot({ widget, index }: { widget: WidgetDef; index: number }) {
 export default function Dashboard() {
   const { isSuperAdmin, userDbRoles, role } = useRole();
   const { impersonatedUser } = useAuth();
-  const { orgId, activePoles, loading: orgLoading } = useOrganization();
+  const { orgId, activePoles, loading: orgLoading, org } = useOrganization();
 
   const isChef = role === "Responsable";
 
+  // ── Fetch DB widget configs ──
+  const [dbConfigs, setDbConfigs] = useState<DbWidgetConfig[] | undefined>(undefined);
+  useEffect(() => {
+    supabase
+      .from("saas_widget_configs")
+      .select("widget_key, label, required_plans, allowed_roles, required_pole, priority, is_enabled")
+      .then(({ data }) => {
+        if (data && data.length > 0) setDbConfigs(data as DbWidgetConfig[]);
+      });
+  }, []);
+
   // ── Registry-driven filtering ──
   const visibleWidgets = useMemo(
-    () => getVisibleWidgets(activePoles, userDbRoles, isSuperAdmin && !impersonatedUser),
-    [activePoles, userDbRoles, isSuperAdmin, impersonatedUser],
+    () => getVisibleWidgets(
+      activePoles,
+      userDbRoles,
+      isSuperAdmin && !impersonatedUser,
+      org?.subscription_plan,
+      dbConfigs,
+    ),
+    [activePoles, userDbRoles, isSuperAdmin, impersonatedUser, org?.subscription_plan, dbConfigs],
   );
 
   // Group by section preserving weight order
