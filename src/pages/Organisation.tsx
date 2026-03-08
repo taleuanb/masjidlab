@@ -242,6 +242,7 @@ export default function OrganisationPage() {
     try {
       const payload: any = {
         nom: poleForm.nom,
+        core_type: poleForm.core_type || null,
         description: poleForm.description || null,
         manager_id: poleForm.manager_id === "none" ? null : poleForm.manager_id,
         target_staff: poleForm.target_staff,
