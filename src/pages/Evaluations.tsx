@@ -78,6 +78,20 @@ const Evaluations = () => {
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
+  // ── Subjects for selected class (dedicated query for freshness) ──
+  const { data: classSubjects = [], isLoading: loadingSubjects } = useQuery({
+    queryKey: ["class_subjects", selectedClassId],
+    enabled: !!selectedClassId && !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_class_subjects")
+        .select("subject_id, subject:madrasa_subjects(id, name)")
+        .eq("class_id", selectedClassId!);
+      if (error) throw error;
+      return (data ?? []).map((r: any) => r.subject).filter(Boolean) as { id: string; name: string }[];
+    },
+  });
+
   // ── Evaluations for selected class ──
   const { data: evaluations = [], isLoading: loadingEvals } = useQuery({
     queryKey: ["evaluations", selectedClassId],
@@ -362,12 +376,18 @@ const Evaluations = () => {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Matière</Label>
-                <Select value={evalForm.subject_id} onValueChange={(v) => setEvalForm((f) => ({ ...f, subject_id: v }))}>
-                  <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner une matière" /></SelectTrigger>
-                  <SelectContent>
-                    {selectedClass.subjects.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
-                  </SelectContent>
-                </Select>
+                {loadingSubjects ? (
+                  <p className="text-xs text-muted-foreground py-2">Chargement…</p>
+                ) : classSubjects.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">Aucune matière liée à cette classe. Configurez-les dans Classes.</p>
+                ) : (
+                  <Select value={evalForm.subject_id} onValueChange={(v) => setEvalForm((f) => ({ ...f, subject_id: v }))}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Sélectionner une matière" /></SelectTrigger>
+                    <SelectContent>
+                      {classSubjects.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Barème</Label>
