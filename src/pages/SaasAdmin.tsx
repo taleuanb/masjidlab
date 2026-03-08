@@ -1972,6 +1972,10 @@ export default function SaasAdminPage() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="activity" className="gap-1.5">
+              <FileText className="h-3.5 w-3.5" />
+              Journal d'activité
+            </TabsTrigger>
             <TabsTrigger value="permissions" className="gap-1.5">
               <Shield className="h-3.5 w-3.5" />
               Sécurité & RBAC
