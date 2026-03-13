@@ -71,32 +71,37 @@ export function useMadrasaFees() {
   });
 
   const encaisserMutation = useMutation({
-    mutationFn: async ({ feeId, amount }: { feeId: string; amount: number }) => {
+    mutationFn: async ({ feeId, amount, studentNom, studentPrenom, dueDate }: {
+      feeId: string; amount: number; studentNom: string; studentPrenom: string; dueDate: string;
+    }) => {
       if (!orgId) throw new Error("org_id manquant");
 
-      const { error } = await supabase
+      // 1. Create finance transaction first (if this fails, fee stays untouched)
+      const { error: txError } = await supabase.from("finance_transactions").insert({
+        org_id: orgId,
+        titre: `Paiement frais scolaires : ${studentPrenom} ${studentNom} - ${dueDate}`,
+        montant: amount,
+        type: "recette",
+        categorie: "Éducation",
+      });
+
+      if (txError) throw txError;
+
+      // 2. Only then update fee status
+      const { error: feeError } = await supabase
         .from("madrasa_fees")
         .update({ status: "paid" })
         .eq("id", feeId)
         .eq("org_id", orgId);
 
-      if (error) throw error;
-
-      // Create finance transaction for traceability
-      await supabase.from("finance_transactions").insert({
-        org_id: orgId,
-        titre: "Frais de scolarité",
-        montant: amount,
-        type: "recette",
-        categorie: "Scolarité",
-      });
+      if (feeError) throw feeError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["madrasa-fees", orgId] });
-      toast({ title: "Encaissement enregistré", description: "Le paiement a été validé avec succès." });
+      toast({ title: "Encaissement réussi", description: "Le paiement a été validé et enregistré en comptabilité." });
     },
     onError: () => {
-      toast({ title: "Erreur", description: "Impossible d'enregistrer l'encaissement.", variant: "destructive" });
+      toast({ title: "Erreur", description: "Impossible d'enregistrer l'encaissement. Aucune modification effectuée.", variant: "destructive" });
     },
   });
 
