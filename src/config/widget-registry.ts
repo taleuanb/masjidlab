@@ -32,10 +32,14 @@ const EducationInscriptionsWidget = lazy(() => import("@/components/dashboard/Ed
 const EducationAlertesWidget = lazy(() => import("@/components/dashboard/EducationAlertesWidget").then((m) => ({ default: m.EducationAlertesWidget })));
 const EducationAssiduiteWidget = lazy(() => import("@/components/dashboard/EducationAssiduiteWidget").then((m) => ({ default: m.EducationAssiduiteWidget })));
 const EducationFinanceWidget = lazy(() => import("@/components/dashboard/EducationFinanceWidget").then((m) => ({ default: m.EducationFinanceWidget })));
+const StudentProgressWidget = lazy(() => import("@/components/dashboard/StudentProgressWidget").then((m) => ({ default: m.StudentProgressWidget })));
+const ParentInvoicesWidget = lazy(() => import("@/components/dashboard/ParentInvoicesWidget").then((m) => ({ default: m.ParentInvoicesWidget })));
+const SchoolAgendaWidget = lazy(() => import("@/components/dashboard/SchoolAgendaWidget").then((m) => ({ default: m.SchoolAgendaWidget })));
 
 // ─── All roles shorthand ────────────────────────────────────────────
 const ADMIN_ROLES = ["super_admin", "admin", "responsable"];
 const EDUCATION_ROLES = ["super_admin", "admin", "responsable", "enseignant"];
+const PARENT_ROLES = ["parent"];
 
 // ─── Registry ───────────────────────────────────────────────────────
 export const WIDGET_REGISTRY: WidgetDef[] = [
