@@ -39,6 +39,7 @@ import ContratsStaffPage from "./pages/ContratsStaff";
 import DocumentsPage from "./pages/Documents";
 import DonateursPage from "./pages/Donateurs";
 import RecusFiscauxPage from "./pages/RecusFiscaux";
+import FraisScolaritePage from "./pages/FraisScolarite";
 import NotFound from "./pages/NotFound";
 import JoinPage from "./pages/JoinPage";
 import WelcomePage from "./pages/Welcome";
