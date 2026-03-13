@@ -334,20 +334,21 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* ══════════ GROUPE A : ADMINISTRATION ══════════ */}
-        {visibleAdminItems.length > 0 && (
+        {/* ══════════ PARENT SIMPLIFIED NAV ══════════ */}
+        {isParentOnly ? (
           <SidebarGroup className="py-1">
             <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
-              <Settings className="h-3 w-3" />
-              Administration
+              <UserCircle className="h-3 w-3" />
+              Mon Espace Famille
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-px">
-                {visibleAdminItems.map((item) => (
+                {PARENT_NAV_ITEMS.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
+                        end={item.url === "/dashboard"}
                         className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                       >
@@ -360,56 +361,86 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        )}
+        ) : (
+          <>
+            {/* ══════════ GROUPE A : ADMINISTRATION ══════════ */}
+            {visibleAdminItems.length > 0 && (
+              <SidebarGroup className="py-1">
+                <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                  <Settings className="h-3 w-3" />
+                  Administration
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-px">
+                    {visibleAdminItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to={item.url}
+                            className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
-        {/* ══════════ GROUPE B : PÔLES MÉTIERS ══════════ */}
-        {(visibleMetierBlocks.length > 0 || showLogistique || showPersonnel) && (
-          <SidebarGroup className="py-1">
-            <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
-              <Building2 className="h-3 w-3" />
-              Pôles Métiers
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <div className="space-y-px">
-                {visibleMetierBlocks.map((block) => (
-                  <SidebarBlock key={block.id} block={block} location={location} isModuleVisible={isModuleVisible} />
-                ))}
-                {showLogistique && (
-                  <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} isModuleVisible={isModuleVisible} />
-                )}
-                {showPersonnel && (
-                  <SidebarBlock block={PERSONNEL_BLOCK} location={location} isModuleVisible={isModuleVisible} />
-                )}
-              </div>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+            {/* ══════════ GROUPE B : PÔLES MÉTIERS ══════════ */}
+            {(visibleMetierBlocks.length > 0 || showLogistique || showPersonnel) && (
+              <SidebarGroup className="py-1">
+                <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                  <Building2 className="h-3 w-3" />
+                  Pôles Métiers
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <div className="space-y-px">
+                    {visibleMetierBlocks.map((block) => (
+                      <SidebarBlock key={block.id} block={block} location={location} isModuleVisible={isModuleVisible} />
+                    ))}
+                    {showLogistique && (
+                      <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} isModuleVisible={isModuleVisible} />
+                    )}
+                    {showPersonnel && (
+                      <SidebarBlock block={PERSONNEL_BLOCK} location={location} isModuleVisible={isModuleVisible} />
+                    )}
+                  </div>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
-        {/* ══════════ GROUPE C : MON ESPACE ══════════ */}
-        <SidebarGroup className="py-1">
-          <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
-            <UserCircle className="h-3 w-3" />
-            Mon Espace
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-px">
-              {MON_ESPACE_ITEMS.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+            {/* ══════════ GROUPE C : MON ESPACE ══════════ */}
+            <SidebarGroup className="py-1">
+              <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                <UserCircle className="h-3 w-3" />
+                Mon Espace
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-px">
+                  {MON_ESPACE_ITEMS.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          className="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
 
       {/* ── Footer ── */}
