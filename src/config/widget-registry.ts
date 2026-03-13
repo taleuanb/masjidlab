@@ -103,6 +103,38 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 1,
     component: EducationFinanceWidget,
   },
+  // ── Parent widgets ──
+  {
+    id: "parent-progress",
+    section: "Suivi Famille",
+    sectionEmoji: "👨‍👩‍👧‍👦",
+    requiredPole: "education",
+    allowedRoles: PARENT_ROLES,
+    defaultWeight: 950,
+    colSpan: 1,
+    component: StudentProgressWidget,
+  },
+  {
+    id: "parent-invoices",
+    section: "Suivi Famille",
+    sectionEmoji: "👨‍👩‍👧‍👦",
+    requiredPole: "education",
+    allowedRoles: PARENT_ROLES,
+    defaultWeight: 940,
+    colSpan: 1,
+    component: ParentInvoicesWidget,
+  },
+  {
+    id: "parent-agenda",
+    section: "Suivi Famille",
+    sectionEmoji: "👨‍👩‍👧‍👦",
+    requiredPole: "education",
+    allowedRoles: PARENT_ROLES,
+    defaultWeight: 930,
+    colSpan: 1,
+    component: SchoolAgendaWidget,
+  },
+  // ── Admin/Staff widgets ──
   {
     id: "rooms-occupancy",
     section: "Gestion des Espaces",
