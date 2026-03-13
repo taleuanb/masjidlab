@@ -32,10 +32,14 @@ const EducationInscriptionsWidget = lazy(() => import("@/components/dashboard/Ed
 const EducationAlertesWidget = lazy(() => import("@/components/dashboard/EducationAlertesWidget").then((m) => ({ default: m.EducationAlertesWidget })));
 const EducationAssiduiteWidget = lazy(() => import("@/components/dashboard/EducationAssiduiteWidget").then((m) => ({ default: m.EducationAssiduiteWidget })));
 const EducationFinanceWidget = lazy(() => import("@/components/dashboard/EducationFinanceWidget").then((m) => ({ default: m.EducationFinanceWidget })));
+const StudentProgressWidget = lazy(() => import("@/components/dashboard/StudentProgressWidget").then((m) => ({ default: m.StudentProgressWidget })));
+const ParentInvoicesWidget = lazy(() => import("@/components/dashboard/ParentInvoicesWidget").then((m) => ({ default: m.ParentInvoicesWidget })));
+const SchoolAgendaWidget = lazy(() => import("@/components/dashboard/SchoolAgendaWidget").then((m) => ({ default: m.SchoolAgendaWidget })));
 
 // ─── All roles shorthand ────────────────────────────────────────────
 const ADMIN_ROLES = ["super_admin", "admin", "responsable"];
 const EDUCATION_ROLES = ["super_admin", "admin", "responsable", "enseignant"];
+const PARENT_ROLES = ["parent"];
 
 // ─── Registry ───────────────────────────────────────────────────────
 export const WIDGET_REGISTRY: WidgetDef[] = [
@@ -99,6 +103,38 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 1,
     component: EducationFinanceWidget,
   },
+  // ── Parent widgets ──
+  {
+    id: "parent-progress",
+    section: "Suivi Famille",
+    sectionEmoji: "👨‍👩‍👧‍👦",
+    requiredPole: "education",
+    allowedRoles: PARENT_ROLES,
+    defaultWeight: 950,
+    colSpan: 1,
+    component: StudentProgressWidget,
+  },
+  {
+    id: "parent-invoices",
+    section: "Suivi Famille",
+    sectionEmoji: "👨‍👩‍👧‍👦",
+    requiredPole: "education",
+    allowedRoles: PARENT_ROLES,
+    defaultWeight: 940,
+    colSpan: 1,
+    component: ParentInvoicesWidget,
+  },
+  {
+    id: "parent-agenda",
+    section: "Suivi Famille",
+    sectionEmoji: "👨‍👩‍👧‍👦",
+    requiredPole: "education",
+    allowedRoles: PARENT_ROLES,
+    defaultWeight: 930,
+    colSpan: 1,
+    component: SchoolAgendaWidget,
+  },
+  // ── Admin/Staff widgets ──
   {
     id: "rooms-occupancy",
     section: "Gestion des Espaces",
