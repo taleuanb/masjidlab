@@ -114,7 +114,13 @@ export default function FraisScolaritePage() {
 
   const handleEncaisser = () => {
     if (!confirmFee) return;
-    encaisser.mutate({ feeId: confirmFee.id, amount: confirmFee.amount });
+    encaisser.mutate({
+      feeId: confirmFee.id,
+      amount: confirmFee.amount,
+      studentNom: confirmFee.student_nom,
+      studentPrenom: confirmFee.student_prenom,
+      dueDate: confirmFee.due_date,
+    });
     setConfirmFee(null);
   };
 
