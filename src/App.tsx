@@ -39,6 +39,7 @@ import ContratsStaffPage from "./pages/ContratsStaff";
 import DocumentsPage from "./pages/Documents";
 import DonateursPage from "./pages/Donateurs";
 import RecusFiscauxPage from "./pages/RecusFiscaux";
+import FraisScolaritePage from "./pages/FraisScolarite";
 import NotFound from "./pages/NotFound";
 import JoinPage from "./pages/JoinPage";
 import WelcomePage from "./pages/Welcome";
@@ -129,6 +130,7 @@ const AppLayout = () => {
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/donateurs" element={<DonateursPage />} />
             <Route path="/recus-fiscaux" element={<RecusFiscauxPage />} />
+            <Route path="/frais-scolarite" element={<FraisScolaritePage />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
