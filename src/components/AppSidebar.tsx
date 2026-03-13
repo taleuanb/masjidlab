@@ -128,6 +128,13 @@ const MON_ESPACE_ITEMS: NavItem[] = [
   { title: "Mes Missions", url: "/missions", icon: ClipboardList },
 ];
 
+// ── PARENT SIMPLIFIED NAV ──
+const PARENT_NAV_ITEMS: NavItem[] = [
+  { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Mes Enfants", url: "/eleves", icon: GraduationCap },
+  { title: "Factures", url: "/frais-scolarite", icon: CreditCard },
+];
+
 const roleIcons: Record<UserRole, React.ElementType> = {
   "Super Admin": Globe,
   "Admin Mosquée": ShieldCheck,
