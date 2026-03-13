@@ -77,31 +77,38 @@ export function useMadrasaFees() {
       if (!orgId) throw new Error("org_id manquant");
 
       // 1. Create finance transaction first (if this fails, fee stays untouched)
-      const { error: txError } = await supabase.from("finance_transactions").insert({
+      const { data: txData, error: txError } = await supabase.from("finance_transactions").insert({
         org_id: orgId,
         titre: `Paiement frais scolaires : ${studentPrenom} ${studentNom} - ${dueDate}`,
         montant: amount,
         type: "recette",
-        categorie: "Éducation",
-      });
+        categorie: "Scolarité",
+      }).select("id").single();
 
-      if (txError) throw txError;
+      if (txError) {
+        console.error("Erreur insertion finance_transactions:", txError);
+        throw new Error(`Échec écriture comptable : ${txError.message}`);
+      }
 
-      // 2. Only then update fee status
+      // 2. Only then update fee status + link transaction_id
       const { error: feeError } = await supabase
         .from("madrasa_fees")
-        .update({ status: "paid" })
+        .update({ status: "paid", transaction_id: txData.id })
         .eq("id", feeId)
         .eq("org_id", orgId);
 
-      if (feeError) throw feeError;
+      if (feeError) {
+        console.error("Erreur mise à jour madrasa_fees:", feeError);
+        throw new Error(`Échec mise à jour du frais : ${feeError.message}`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["madrasa-fees", orgId] });
-      toast({ title: "Encaissement réussi", description: "Le paiement a été validé et enregistré en comptabilité." });
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
+      toast({ title: "Encaissement réussi ✓", description: "Le paiement a été validé et enregistré en comptabilité." });
     },
-    onError: () => {
-      toast({ title: "Erreur", description: "Impossible d'enregistrer l'encaissement. Aucune modification effectuée.", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Erreur d'encaissement", description: error.message, variant: "destructive" });
     },
   });
 
