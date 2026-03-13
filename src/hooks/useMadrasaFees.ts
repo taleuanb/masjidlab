@@ -81,7 +81,7 @@ export function useMadrasaFees() {
         org_id: orgId,
         titre: `Paiement frais scolaires : ${studentPrenom} ${studentNom} - ${dueDate}`,
         montant: amount,
-        type: "recette",
+        type: "income",
         categorie: "Scolarité",
       }).select("id").single();
 
