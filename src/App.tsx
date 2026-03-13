@@ -130,6 +130,7 @@ const AppLayout = () => {
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/donateurs" element={<DonateursPage />} />
             <Route path="/recus-fiscaux" element={<RecusFiscauxPage />} />
+            <Route path="/frais-scolarite" element={<FraisScolaritePage />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
