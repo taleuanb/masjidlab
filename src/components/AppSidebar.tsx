@@ -217,14 +217,14 @@ function SidebarBlock({
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { role, setRole, pole, setPole, displayName, isSuperAdmin } = useRole();
+  const { role, setRole, pole, setPole, displayName, isSuperAdmin, userDbRoles } = useRole();
   const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
   const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
   const { hasAccess, isBypassing } = useModuleAccess();
 
   const isParentOnly = useMemo(() => {
-    return dbRoles.length > 0 && dbRoles.every((r) => r === "parent") && !isSuperAdmin;
-  }, [dbRoles, isSuperAdmin]);
+    return userDbRoles.length > 0 && userDbRoles.every((r) => r === "parent") && !isSuperAdmin;
+  }, [userDbRoles, isSuperAdmin]);
 
   const isGhostActive = !!impersonatedUser;
   const isPreviewingOtherRole = !isGhostActive && isSuperAdmin && role !== "Super Admin";
