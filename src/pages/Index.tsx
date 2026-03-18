@@ -57,12 +57,17 @@ export default function Dashboard() {
   const isChef = role === "Responsable";
 
   // ── Resolve effective roles for widget filtering ──
-  // When Super Admin previews a role, restrict widgets to that role only
-  const isPreviewingRole = isSuperAdmin && !impersonatedUser && role !== "Super Admin";
-  const effectiveRoles = isPreviewingRole
+  // Ghost mode: use impersonated user's roles
+  // Role preview: restrict to previewed role only
+  const isGhostMode = !!impersonatedUser;
+  const isPreviewingRole = isSuperAdmin && !isGhostMode && role !== "Super Admin";
+
+  const effectiveRoles = isGhostMode
+    ? (impersonatedUser.roles ?? [])
+    : isPreviewingRole
     ? [UI_ROLE_TO_DB[role] ?? "benevole"]
     : userDbRoles;
-  const effectiveSuperAdmin = isSuperAdmin && !impersonatedUser && !isPreviewingRole;
+  const effectiveSuperAdmin = isSuperAdmin && !isGhostMode && !isPreviewingRole;
 
   // ── Fetch DB widget configs ──
   const [dbConfigs, setDbConfigs] = useState<DbWidgetConfig[] | undefined>(undefined);
