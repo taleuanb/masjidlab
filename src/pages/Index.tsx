@@ -79,12 +79,12 @@ export default function Dashboard() {
   const visibleWidgets = useMemo(
     () => getVisibleWidgets(
       activePoles,
-      userDbRoles,
-      isSuperAdmin && !impersonatedUser,
+      effectiveRoles,
+      effectiveSuperAdmin,
       org?.subscription_plan,
       dbConfigs,
     ),
-    [activePoles, userDbRoles, isSuperAdmin, impersonatedUser, org?.subscription_plan, dbConfigs],
+    [activePoles, effectiveRoles, effectiveSuperAdmin, org?.subscription_plan, dbConfigs],
   );
 
   // Group by section preserving weight order
