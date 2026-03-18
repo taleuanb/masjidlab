@@ -8,7 +8,7 @@ import { QuickActions } from "@/components/QuickActions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRole } from "@/contexts/RoleContext";
+import { useRole, UI_ROLE_TO_DB } from "@/contexts/RoleContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { DashboardErrorState } from "@/components/dashboard/DashboardShell";
@@ -56,6 +56,14 @@ export default function Dashboard() {
 
   const isChef = role === "Responsable";
 
+  // ── Resolve effective roles for widget filtering ──
+  // When Super Admin previews a role, restrict widgets to that role only
+  const isPreviewingRole = isSuperAdmin && !impersonatedUser && role !== "Super Admin";
+  const effectiveRoles = isPreviewingRole
+    ? [UI_ROLE_TO_DB[role] ?? "benevole"]
+    : userDbRoles;
+  const effectiveSuperAdmin = isSuperAdmin && !impersonatedUser && !isPreviewingRole;
+
   // ── Fetch DB widget configs ──
   const [dbConfigs, setDbConfigs] = useState<DbWidgetConfig[] | undefined>(undefined);
   useEffect(() => {
@@ -71,12 +79,12 @@ export default function Dashboard() {
   const visibleWidgets = useMemo(
     () => getVisibleWidgets(
       activePoles,
-      userDbRoles,
-      isSuperAdmin && !impersonatedUser,
+      effectiveRoles,
+      effectiveSuperAdmin,
       org?.subscription_plan,
       dbConfigs,
     ),
-    [activePoles, userDbRoles, isSuperAdmin, impersonatedUser, org?.subscription_plan, dbConfigs],
+    [activePoles, effectiveRoles, effectiveSuperAdmin, org?.subscription_plan, dbConfigs],
   );
 
   // Group by section preserving weight order
