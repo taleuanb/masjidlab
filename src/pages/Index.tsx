@@ -56,6 +56,14 @@ export default function Dashboard() {
 
   const isChef = role === "Responsable";
 
+  // ── Resolve effective roles for widget filtering ──
+  // When Super Admin previews a role, restrict widgets to that role only
+  const isPreviewingRole = isSuperAdmin && !impersonatedUser && role !== "Super Admin";
+  const effectiveRoles = isPreviewingRole
+    ? [UI_ROLE_TO_DB[role] ?? "benevole"]
+    : userDbRoles;
+  const effectiveSuperAdmin = isSuperAdmin && !impersonatedUser && !isPreviewingRole;
+
   // ── Fetch DB widget configs ──
   const [dbConfigs, setDbConfigs] = useState<DbWidgetConfig[] | undefined>(undefined);
   useEffect(() => {
