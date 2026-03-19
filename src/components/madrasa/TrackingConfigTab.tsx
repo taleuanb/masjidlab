@@ -184,22 +184,22 @@ function FormBuilderDialog({
           .replace(/^_|_$/g, "") || `champ_${i}`,
       }));
 
-      const payload = {
-        subject_id: subject.id,
-        org_id: orgId,
-        form_schema_json: finalFields as unknown as Record<string, unknown>[],
-      };
+      const schemaJson = finalFields as unknown as Json;
 
       if (existingConfig?.id) {
         const { error } = await supabase
           .from("madrasa_session_configs")
-          .update({ form_schema_json: payload.form_schema_json })
+          .update({ form_schema_json: schemaJson })
           .eq("id", existingConfig.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("madrasa_session_configs")
-          .insert(payload);
+          .insert({
+            subject_id: subject.id,
+            org_id: orgId,
+            form_schema_json: schemaJson,
+          });
         if (error) throw error;
       }
     },
