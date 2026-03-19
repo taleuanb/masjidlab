@@ -65,6 +65,8 @@ const Attendance = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [threshold, setThreshold] = useState(3);
+  const [reportStudent, setReportStudent] = useState<{ id: string; prenom: string; nom: string } | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const today = format(new Date(), "yyyy-MM-dd");
   const todayLabel = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
