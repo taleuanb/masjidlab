@@ -718,6 +718,48 @@ export type Database = {
           },
         ]
       }
+      madrasa_session_configs: {
+        Row: {
+          created_at: string | null
+          form_schema_json: Json
+          id: string
+          org_id: string
+          subject_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          form_schema_json?: Json
+          id?: string
+          org_id: string
+          subject_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          form_schema_json?: Json
+          id?: string
+          org_id?: string
+          subject_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_session_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_session_configs_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       madrasa_settings: {
         Row: {
           allow_public_registration: boolean | null
@@ -749,6 +791,71 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: true
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_student_progress: {
+        Row: {
+          class_id: string
+          config_id: string
+          created_at: string | null
+          data_json: Json
+          id: string
+          lesson_date: string
+          org_id: string
+          student_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          class_id: string
+          config_id: string
+          created_at?: string | null
+          data_json?: Json
+          id?: string
+          lesson_date?: string
+          org_id: string
+          student_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          class_id?: string
+          config_id?: string
+          created_at?: string | null
+          data_json?: Json
+          id?: string
+          lesson_date?: string
+          org_id?: string
+          student_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_student_progress_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_student_progress_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_session_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_student_progress_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_student_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_students"
             referencedColumns: ["id"]
           },
         ]
