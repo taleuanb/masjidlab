@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardCheck, Loader2, Check, ChevronLeft, Users, AlertTriangle,
-  UserCheck, UserX, Clock, ArrowLeft,
+  UserCheck, UserX, Clock, ArrowLeft, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AttendanceHistory } from "@/components/AttendanceHistory";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
