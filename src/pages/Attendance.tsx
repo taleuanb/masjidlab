@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardCheck, Loader2, Check, ChevronLeft, Users, AlertTriangle,
-  UserCheck, UserX, Clock, ArrowLeft,
+  UserCheck, UserX, Clock, ArrowLeft, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AttendanceHistory } from "@/components/AttendanceHistory";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -303,7 +305,7 @@ const Attendance = () => {
   if (!selectedClass) {
     return (
       <main className="flex-1 overflow-auto">
-        <div className="p-4 md:p-6 space-y-5 max-w-3xl mx-auto">
+        <div className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto">
           <div className="flex items-center gap-3">
             <SidebarTrigger />
             <ClipboardCheck className="h-6 w-6 text-primary" />
@@ -313,40 +315,59 @@ const Attendance = () => {
             </div>
           </div>
 
-          {loadingClasses ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : classes.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <ClipboardCheck className="h-10 w-10 mx-auto opacity-30 mb-3" />
-                <p className="font-medium">Aucune classe assignée</p>
-                <p className="text-xs mt-1">Demandez à l'administrateur de vous assigner une classe.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {classes.map((cls) => (
-                <button
-                  key={cls.id}
-                  onClick={() => handleSelectClass(cls)}
-                  className="text-left rounded-xl border bg-card p-4 hover:border-primary/50 hover:bg-accent/30 transition-all active:scale-[0.98]"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-foreground">{cls.nom}</span>
-                    {cls.niveau && (
-                      <Badge variant="outline" className="text-[10px]">{cls.niveau}</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{cls.studentCount} élève{cls.studentCount > 1 ? "s" : ""}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+          <Tabs defaultValue="appel" className="w-full">
+            <TabsList>
+              <TabsTrigger value="appel" className="gap-1.5">
+                <ClipboardCheck className="h-3.5 w-3.5" />
+                Appel du jour
+              </TabsTrigger>
+              <TabsTrigger value="historique" className="gap-1.5">
+                <History className="h-3.5 w-3.5" />
+                Historique
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="appel" className="mt-4">
+              {loadingClasses ? (
+                <div className="flex justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : classes.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    <ClipboardCheck className="h-10 w-10 mx-auto opacity-30 mb-3" />
+                    <p className="font-medium">Aucune classe assignée</p>
+                    <p className="text-xs mt-1">Demandez à l'administrateur de vous assigner une classe.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {classes.map((cls) => (
+                    <button
+                      key={cls.id}
+                      onClick={() => handleSelectClass(cls)}
+                      className="text-left rounded-xl border bg-card p-4 hover:border-primary/50 hover:bg-accent/30 transition-all active:scale-[0.98]"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground">{cls.nom}</span>
+                        {cls.niveau && (
+                          <Badge variant="outline" className="text-[10px]">{cls.niveau}</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                        <Users className="h-4 w-4" />
+                        <span>{cls.studentCount} élève{cls.studentCount > 1 ? "s" : ""}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="historique" className="mt-4">
+              <AttendanceHistory />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     );
