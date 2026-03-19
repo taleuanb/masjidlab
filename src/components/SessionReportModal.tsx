@@ -99,7 +99,7 @@ export function SessionReportModal({
   const effectiveSubjectId = subjectId ?? pickedSubjectId;
 
   const schema: SchemaField[] = activeConfig?.form_schema_json
-    ? (activeConfig.form_schema_json as SchemaField[])
+    ? (activeConfig.form_schema_json as unknown as SchemaField[])
     : [];
 
   // ── Existing progress for today ──
