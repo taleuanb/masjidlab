@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Settings2, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Loader2, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
