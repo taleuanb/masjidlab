@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Trash2, Loader2, BookOpen, Layers } from "lucide-react";
+import { TrackingConfigTab } from "@/components/madrasa/TrackingConfigTab";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -329,10 +330,12 @@ export function MadrasaSettingsPanel() {
           <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="subjects">Matières</TabsTrigger>
           <TabsTrigger value="levels">Niveaux</TabsTrigger>
+          <TabsTrigger value="tracking">Suivis</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralTab /></TabsContent>
         <TabsContent value="subjects"><SubjectsTab /></TabsContent>
         <TabsContent value="levels"><LevelsTab /></TabsContent>
+        <TabsContent value="tracking"><TrackingConfigTab /></TabsContent>
       </Tabs>
     </div>
   );
