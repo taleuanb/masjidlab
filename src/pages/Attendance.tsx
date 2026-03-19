@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardCheck, Loader2, Check, ChevronLeft, Users, AlertTriangle,
-  UserCheck, UserX, Clock, ArrowLeft, History,
+  UserCheck, UserX, Clock, ArrowLeft, History, Notebook,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AttendanceHistory } from "@/components/AttendanceHistory";
+import { SessionReportModal } from "@/components/SessionReportModal";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -64,6 +65,8 @@ const Attendance = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [threshold, setThreshold] = useState(3);
+  const [reportStudent, setReportStudent] = useState<{ id: string; prenom: string; nom: string } | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const today = format(new Date(), "yyyy-MM-dd");
   const todayLabel = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
@@ -455,6 +458,19 @@ const Attendance = () => {
                         {s.absenceCount} abs.
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setReportStudent({ id: s.student_id, prenom: s.prenom, nom: s.nom });
+                        setReportOpen(true);
+                      }}
+                      className="flex items-center gap-1 text-[10px] font-medium text-accent hover:text-accent/80 border border-accent/30 rounded-md px-2 py-1 hover:bg-accent/10 transition-colors shrink-0"
+                      title="Faire le suivi"
+                    >
+                      <Notebook className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Suivi</span>
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-4 gap-1.5">
@@ -514,6 +530,14 @@ const Attendance = () => {
           </div>
         </div>
       )}
+
+      {/* Session Report Modal */}
+      <SessionReportModal
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        student={reportStudent}
+        classId={selectedClass?.id ?? ""}
+      />
     </main>
   );
 };
