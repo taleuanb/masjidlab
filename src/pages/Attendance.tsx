@@ -530,6 +530,14 @@ const Attendance = () => {
           </div>
         </div>
       )}
+
+      {/* Session Report Modal */}
+      <SessionReportModal
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        student={reportStudent}
+        classId={selectedClass?.id ?? ""}
+      />
     </main>
   );
 };
