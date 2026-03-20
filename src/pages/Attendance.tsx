@@ -51,6 +51,7 @@ const STATUS_CONFIG: Record<AttendanceStatus, { label: string; icon: React.Eleme
 };
 
 const Attendance = () => {
+  const queryClient = useQueryClient();
   const { orgId } = useOrganization();
   const { user } = useAuth();
   const { toast } = useToast();
