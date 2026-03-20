@@ -222,6 +222,7 @@ export function SessionReportDrawer({
       queryClient.invalidateQueries({ queryKey: ["student_progress"] });
       queryClient.invalidateQueries({ queryKey: ["previous_progress"] });
       toast({ title: "Rapport enregistré ✅", description: `${student?.prenom} ${student?.nom}` });
+      if (student) onReportSaved?.(student.id);
       onOpenChange(false);
     },
     onError: (e: Error) => {
