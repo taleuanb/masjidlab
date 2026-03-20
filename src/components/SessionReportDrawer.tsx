@@ -31,6 +31,7 @@ interface SessionReportDrawerProps {
   student: { id: string; prenom: string; nom: string } | null;
   classId: string;
   subjectId?: string | null;
+  onReportSaved?: (studentId: string) => void;
 }
 
 export function SessionReportDrawer({
@@ -39,6 +40,7 @@ export function SessionReportDrawer({
   student,
   classId,
   subjectId,
+  onReportSaved,
 }: SessionReportDrawerProps) {
   const { orgId } = useOrganization();
   const { toast } = useToast();
