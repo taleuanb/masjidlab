@@ -246,7 +246,15 @@ export function AttendanceHistory() {
                         idx % 2 === 0 && "bg-muted/10"
                       )}
                     >
-                      <td className="sticky left-0 z-10 bg-card px-3 py-1.5 font-medium text-foreground whitespace-nowrap">
+                      <td
+                        className="sticky left-0 z-10 bg-card px-3 py-1.5 font-medium text-foreground whitespace-nowrap cursor-pointer hover:text-brand-cyan transition-colors"
+                        onClick={() => {
+                          setDrawerStudent({ id: student.student_id, prenom: student.prenom, nom: student.nom });
+                          setDrawerClassId(effectiveClassId);
+                          setDrawerDate("");
+                          setDrawerOpen(true);
+                        }}
+                      >
                         {student.prenom} {student.nom}
                       </td>
                       {daysInMonth.map((day) => {
