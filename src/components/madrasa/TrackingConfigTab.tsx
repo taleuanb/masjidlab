@@ -215,8 +215,8 @@ function FormBuilderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 flex flex-col gap-0 overflow-hidden">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Settings2 className="h-5 w-5 text-[hsl(var(--brand-cyan))]" />
             Formulaire de suivi — {subject.name}
@@ -229,126 +229,99 @@ function FormBuilderDialog({
         {isLoading ? (
           <Loader2 className="h-6 w-6 animate-spin mx-auto my-12 text-muted-foreground" />
         ) : (
-          <div className="grid md:grid-cols-2 gap-6 mt-2 overflow-y-auto flex-1 min-h-0 pr-1">
-            {/* Left: Builder */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-sm">Champs du formulaire</h4>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={addField}
-                  className="border-[hsl(var(--brand-cyan))] text-[hsl(var(--brand-cyan))] hover:bg-[hsl(var(--brand-cyan))]/10"
-                >
-                  <Plus className="h-4 w-4" />
-                  Ajouter un champ
-                </Button>
-              </div>
+          <div className="flex-1 min-h-0 overflow-y-auto px-6">
+            <div className="grid md:grid-cols-2 gap-6 pb-4">
+              {/* Left: Builder */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-sm">Champs du formulaire</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={addField}
+                    className="border-[hsl(var(--brand-cyan))] text-[hsl(var(--brand-cyan))] hover:bg-[hsl(var(--brand-cyan))]/10"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Ajouter un champ
+                  </Button>
+                </div>
 
-              {fields.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Aucun champ configuré. Cliquez sur "Ajouter un champ" pour commencer.
-                </p>
-              )}
+                {fields.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Aucun champ configuré. Cliquez sur "Ajouter un champ" pour commencer.
+                  </p>
+                )}
 
-              <div className="space-y-2">
-                {fields.map((field, idx) => (
-                  <Card key={field.key} className="rounded-lg border bg-card">
-                    <CardContent className="p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <Input
-                          placeholder="Label du champ…"
-                          value={field.label}
-                          onChange={(e) => updateField(idx, { label: e.target.value })}
-                          className="flex-1 h-8 text-sm"
-                        />
-                        <div className="flex gap-0.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => moveField(idx, -1)}
-                            disabled={idx === 0}
-                          >
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => moveField(idx, 1)}
-                            disabled={idx === fields.length - 1}
-                          >
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => removeField(idx)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <Select
-                          value={field.type}
-                          onValueChange={(v) => updateField(idx, { type: v as FormField["type"] })}
-                        >
-                          <SelectTrigger className="h-8 text-xs w-40">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(FIELD_TYPE_LABELS).map(([k, v]) => (
-                              <SelectItem key={k} value={k} className="text-xs">
-                                {v}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
-                        <div className="flex items-center gap-1.5 ml-auto">
-                          <Switch
-                            checked={field.required}
-                            onCheckedChange={(v) => updateField(idx, { required: v })}
-                            className="scale-75"
+                <div className="space-y-2">
+                  {fields.map((field, idx) => (
+                    <Card key={field.key} className="rounded-lg border bg-card">
+                      <CardContent className="p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <Input
+                            placeholder="Label du champ…"
+                            value={field.label}
+                            onChange={(e) => updateField(idx, { label: e.target.value })}
+                            className="flex-1 h-8 text-sm"
                           />
-                          <span className="text-xs text-muted-foreground">Requis</span>
+                          <div className="flex gap-0.5">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(idx, -1)} disabled={idx === 0}>
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(idx, 1)} disabled={idx === fields.length - 1}>
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeField(idx)}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <div className="flex items-center gap-3">
+                          <Select value={field.type} onValueChange={(v) => updateField(idx, { type: v as FormField["type"] })}>
+                            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(FIELD_TYPE_LABELS).map(([k, v]) => (
+                                <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex items-center gap-1.5 ml-auto">
+                            <Switch checked={field.required} onCheckedChange={(v) => updateField(idx, { required: v })} className="scale-75" />
+                            <span className="text-xs text-muted-foreground">Requis</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Right: Preview */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Eye className="h-4 w-4 text-muted-foreground" />
-                <h4 className="font-semibold text-sm">Prévisualisation Oustaz</h4>
+              {/* Right: Preview */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <h4 className="font-semibold text-sm">Prévisualisation Oustaz</h4>
+                </div>
+                <Card className="rounded-lg border-dashed bg-muted/20">
+                  <CardContent className="p-4">
+                    <FormPreview fields={fields} />
+                  </CardContent>
+                </Card>
               </div>
-              <Card className="rounded-lg border-dashed bg-muted/20">
-                <CardContent className="p-4">
-                  <FormPreview fields={fields} />
-                </CardContent>
-              </Card>
             </div>
           </div>
         )}
 
-        <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 shrink-0">
-          <div className="flex justify-end gap-2">
+        {/* Fixed footer — always visible */}
+        <div className="shrink-0 border-t bg-background px-6 py-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Annuler
             </Button>
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending || fields.length === 0}
-              className="bg-brand-emerald hover:bg-brand-emerald/90 text-white gap-2"
+              className="bg-brand-emerald hover:bg-brand-emerald/90 text-white gap-2 w-full sm:w-auto"
             >
               {saveMutation.isPending ? (
                 <>
