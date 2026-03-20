@@ -13,6 +13,7 @@ import StudentKpiCards from "@/components/student/StudentKpiCards";
 import StudentOverviewTab from "@/components/student/StudentOverviewTab";
 import StudentTimelineTab from "@/components/student/StudentTimelineTab";
 import StudentResultsTab from "@/components/student/StudentResultsTab";
+import StudentGoalsTab from "@/components/student/StudentGoalsTab";
 
 const StudentProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -177,7 +178,9 @@ const StudentProfile = () => {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="goals">Objectifs</TabsTrigger>
           <TabsTrigger value="timeline">Suivi Pédagogique</TabsTrigger>
+          <TabsTrigger value="results">Résultats</TabsTrigger>
           <TabsTrigger value="results">Résultats</TabsTrigger>
         </TabsList>
 
@@ -188,6 +191,10 @@ const StudentProfile = () => {
             studentPrenom={student.prenom}
             parentInfo={parentInfo}
           />
+        </TabsContent>
+
+        <TabsContent value="goals">
+          <StudentGoalsTab studentId={student.id} studentPrenom={student.prenom} />
         </TabsContent>
 
         <TabsContent value="timeline">

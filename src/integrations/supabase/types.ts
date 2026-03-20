@@ -821,6 +821,67 @@ export type Database = {
           },
         ]
       }
+      madrasa_student_goals: {
+        Row: {
+          academic_year: string
+          created_at: string | null
+          current_position: number
+          id: string
+          org_id: string
+          student_id: string
+          subject_id: string
+          target_value: number
+          unit_label: string
+          updated_at: string | null
+        }
+        Insert: {
+          academic_year: string
+          created_at?: string | null
+          current_position?: number
+          id?: string
+          org_id: string
+          student_id: string
+          subject_id: string
+          target_value?: number
+          unit_label?: string
+          updated_at?: string | null
+        }
+        Update: {
+          academic_year?: string
+          created_at?: string | null
+          current_position?: number
+          id?: string
+          org_id?: string
+          student_id?: string
+          subject_id?: string
+          target_value?: number
+          unit_label?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_student_goals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_student_goals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_student_goals_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       madrasa_student_progress: {
         Row: {
           class_id: string
