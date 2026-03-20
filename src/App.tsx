@@ -31,6 +31,7 @@ import OnboardingPage from "./pages/Onboarding";
 import SettingsPage from "./pages/Settings";
 import FinancePage from "./pages/Finance";
 import ElevesPage from "./pages/Eleves";
+import StudentProfilePage from "./pages/StudentProfile";
 import ClassesPage from "./pages/Classes";
 import InscriptionsPage from "./pages/Inscriptions";
 import AttendancePage from "./pages/Attendance";
