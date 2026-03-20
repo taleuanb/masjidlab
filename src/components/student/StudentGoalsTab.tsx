@@ -96,6 +96,22 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
     enabled: !!studentId && !!orgId,
   });
 
+  // Fetch latest progress per subject to sync current_position
+  const { data: latestProgress = [] } = useQuery({
+    queryKey: ["student_latest_progress", studentId, orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_student_progress")
+        .select("data_json, madrasa_session_configs(subject_id)")
+        .eq("student_id", studentId)
+        .eq("org_id", orgId!)
+        .order("lesson_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!studentId && !!orgId,
+  });
+
   const [formState, setFormState] = useState<Record<string, { target: string; unit: string }>>({});
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [adjustValue, setAdjustValue] = useState("");
