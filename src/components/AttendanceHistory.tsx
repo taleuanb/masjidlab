@@ -32,6 +32,10 @@ export function AttendanceHistory() {
   const { orgId } = useOrganization();
   const [month, setMonth] = useState(new Date());
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerStudent, setDrawerStudent] = useState<{ id: string; prenom: string; nom: string } | null>(null);
+  const [drawerDate, setDrawerDate] = useState<string>("");
+  const [drawerClassId, setDrawerClassId] = useState<string>("");
 
   // Fetch classes
   const { data: classes = [] } = useQuery({
