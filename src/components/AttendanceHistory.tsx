@@ -345,6 +345,14 @@ export function AttendanceHistory() {
           </div>
         )}
       </div>
+
+      <SessionReportDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        student={drawerStudent}
+        classId={drawerClassId}
+        forDate={drawerDate || undefined}
+      />
     </TooltipProvider>
   );
 }
