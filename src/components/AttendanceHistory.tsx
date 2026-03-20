@@ -289,8 +289,14 @@ export function AttendanceHistory() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span
+                                  onClick={() => {
+                                    setDrawerStudent({ id: student.student_id, prenom: student.prenom, nom: student.nom });
+                                    setDrawerClassId(effectiveClassId);
+                                    setDrawerDate(dateStr);
+                                    setDrawerOpen(true);
+                                  }}
                                   className={cn(
-                                    "inline-block h-3.5 w-3.5 rounded-sm cursor-default transition-transform hover:scale-125",
+                                    "inline-block h-3.5 w-3.5 rounded-sm cursor-pointer transition-transform hover:scale-125",
                                     STATUS_COLORS[record.status]
                                   )}
                                 />
