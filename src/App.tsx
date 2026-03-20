@@ -31,6 +31,7 @@ import OnboardingPage from "./pages/Onboarding";
 import SettingsPage from "./pages/Settings";
 import FinancePage from "./pages/Finance";
 import ElevesPage from "./pages/Eleves";
+import StudentProfilePage from "./pages/StudentProfile";
 import ClassesPage from "./pages/Classes";
 import InscriptionsPage from "./pages/Inscriptions";
 import AttendancePage from "./pages/Attendance";
@@ -122,6 +123,7 @@ const AppLayout = () => {
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/saas-admin" element={<SaasAdminPage />} />
             <Route path="/eleves" element={<ElevesPage />} />
+            <Route path="/eleves/:id" element={<StudentProfilePage />} />
             <Route path="/classes" element={<ClassesPage />} />
             <Route path="/inscriptions" element={<InscriptionsPage />} />
             <Route path="/appel" element={<AttendancePage />} />
