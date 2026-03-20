@@ -1,0 +1,425 @@
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+
+interface SchemaField {
+  key: string;
+  label: string;
+  type: "text" | "number" | "textarea" | "select";
+  max?: number;
+  options?: string[];
+}
+
+interface SessionReportDrawerProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  student: { id: string; prenom: string; nom: string } | null;
+  classId: string;
+  subjectId?: string | null;
+}
+
+export function SessionReportDrawer({
+  open,
+  onOpenChange,
+  student,
+  classId,
+  subjectId,
+}: SessionReportDrawerProps) {
+  const { orgId } = useOrganization();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const today = format(new Date(), "yyyy-MM-dd");
+
+  // ── Fetch session config ──
+  const { data: config, isLoading: loadingConfig } = useQuery({
+    queryKey: ["session_config", orgId, subjectId],
+    enabled: open && !!orgId && !!subjectId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_session_configs")
+        .select("*")
+        .eq("org_id", orgId!)
+        .eq("subject_id", subjectId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // ── Fetch subjects for this class (fallback picker) ──
+  const { data: classSubjects = [] } = useQuery({
+    queryKey: ["class_subjects_for_report", classId],
+    enabled: open && !!classId && !subjectId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_class_subjects")
+        .select("subject_id, subject:madrasa_subjects(id, name)")
+        .eq("class_id", classId);
+      return (data ?? []).map((r: any) => r.subject).filter(Boolean) as { id: string; name: string }[];
+    },
+  });
+
+  const [pickedSubjectId, setPickedSubjectId] = useState<string>("");
+
+  const { data: pickedConfig, isLoading: loadingPickedConfig } = useQuery({
+    queryKey: ["session_config", orgId, pickedSubjectId],
+    enabled: open && !!orgId && !!pickedSubjectId && !subjectId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_session_configs")
+        .select("*")
+        .eq("org_id", orgId!)
+        .eq("subject_id", pickedSubjectId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // ── Fetch subject name for title ──
+  const { data: subjectInfo } = useQuery({
+    queryKey: ["subject_name", subjectId ?? pickedSubjectId],
+    enabled: open && !!(subjectId ?? pickedSubjectId),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_subjects")
+        .select("name")
+        .eq("id", (subjectId ?? pickedSubjectId)!)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const activeConfig = subjectId ? config : pickedConfig;
+  const isLoadingActiveConfig = subjectId ? loadingConfig : loadingPickedConfig;
+  const effectiveSubjectId = subjectId ?? pickedSubjectId;
+
+  const schema: SchemaField[] = activeConfig?.form_schema_json
+    ? (activeConfig.form_schema_json as unknown as SchemaField[])
+    : [];
+
+  // ── Previous session recall ──
+  const { data: previousProgress, isLoading: loadingPrevious } = useQuery({
+    queryKey: ["previous_progress", student?.id, classId, effectiveSubjectId],
+    enabled: open && !!student?.id && !!activeConfig?.id && !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_student_progress")
+        .select("data_json, lesson_date")
+        .eq("student_id", student!.id)
+        .eq("class_id", classId)
+        .eq("config_id", activeConfig!.id)
+        .eq("org_id", orgId!)
+        .lt("lesson_date", today)
+        .order("lesson_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const previousTodo = previousProgress?.data_json
+    ? (previousProgress.data_json as Record<string, string>)["_todo_next"]
+    : null;
+
+  // ── Existing progress for today ──
+  const { data: existingProgress } = useQuery({
+    queryKey: ["student_progress", student?.id, classId, today, activeConfig?.id],
+    enabled: open && !!student?.id && !!activeConfig?.id && !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_student_progress")
+        .select("*")
+        .eq("student_id", student!.id)
+        .eq("class_id", classId)
+        .eq("lesson_date", today)
+        .eq("config_id", activeConfig!.id)
+        .eq("org_id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  // ── Form state ──
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [todoNext, setTodoNext] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    if (existingProgress?.data_json) {
+      const saved = existingProgress.data_json as Record<string, string>;
+      setFormData(saved);
+      setTodoNext(saved["_todo_next"] ?? "");
+    } else {
+      setFormData({});
+      setTodoNext("");
+    }
+  }, [open, existingProgress]);
+
+  // Reset picked subject when drawer closes
+  useEffect(() => {
+    if (!open) setPickedSubjectId("");
+  }, [open]);
+
+  const updateField = (key: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // ── Save mutation ──
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!student || !activeConfig || !orgId) throw new Error("Données manquantes");
+
+      for (const field of schema) {
+        if (field.type === "number" && formData[field.key]) {
+          const num = Number(formData[field.key]);
+          if (isNaN(num) || num < 0 || (field.max && num > field.max)) {
+            throw new Error(`${field.label} : valeur invalide (max ${field.max ?? "∞"})`);
+          }
+        }
+      }
+
+      const dataToSave = { ...formData, _todo_next: todoNext };
+
+      if (existingProgress) {
+        const { error } = await supabase
+          .from("madrasa_student_progress")
+          .update({ data_json: dataToSave, updated_at: new Date().toISOString() })
+          .eq("id", existingProgress.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("madrasa_student_progress")
+          .insert({
+            student_id: student.id,
+            class_id: classId,
+            lesson_date: today,
+            config_id: activeConfig.id,
+            data_json: dataToSave,
+            org_id: orgId,
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["student_progress"] });
+      queryClient.invalidateQueries({ queryKey: ["previous_progress"] });
+      toast({ title: "Rapport enregistré ✅", description: `${student?.prenom} ${student?.nom}` });
+      onOpenChange(false);
+    },
+    onError: (e: Error) => {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    },
+  });
+
+  if (!student) return null;
+
+  const drawerTitle = subjectInfo?.name
+    ? `${student.prenom} — Suivi ${subjectInfo.name}`
+    : `${student.prenom} ${student.nom} — Suivi`;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="flex flex-col w-full sm:max-w-md p-0">
+        {/* Header */}
+        <SheetHeader className="shrink-0 px-5 pt-5 pb-3 border-b border-border">
+          <SheetTitle className="flex items-center gap-2 text-brand-navy text-base">
+            <Notebook className="h-4 w-4 text-brand-cyan" />
+            {drawerTitle}
+          </SheetTitle>
+          <SheetDescription className="text-xs">
+            {format(new Date(), "d MMMM yyyy", { locale: fr })}
+          </SheetDescription>
+        </SheetHeader>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {/* ── Previous session recall ── */}
+          {activeConfig && (
+            <div className="rounded-lg bg-brand-cyan/8 border border-brand-cyan/20 p-3">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <BookOpen className="h-3.5 w-3.5 text-brand-cyan" />
+                <span className="text-xs font-semibold text-brand-navy">
+                  Rappel séance précédente
+                </span>
+              </div>
+              {loadingPrevious ? (
+                <Skeleton className="h-4 w-3/4" />
+              ) : previousTodo ? (
+                <p className="text-sm text-foreground leading-snug">{previousTodo}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  Première séance pour ce sujet
+                </p>
+              )}
+              {previousProgress?.lesson_date && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Subject picker if no subjectId */}
+          {!subjectId && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-brand-navy">Matière du cours</Label>
+              {classSubjects.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucune matière liée à cette classe.</p>
+              ) : (
+                <Select value={pickedSubjectId} onValueChange={setPickedSubjectId}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Sélectionner la matière…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classSubjects.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
+          {/* Dynamic form */}
+          {isLoadingActiveConfig ? (
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : !activeConfig && effectiveSubjectId ? (
+            <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 text-center">
+              <Notebook className="h-7 w-7 mx-auto text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Aucune configuration pour cette matière.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Un administrateur doit configurer les champs.
+              </p>
+            </div>
+          ) : schema.length > 0 ? (
+            <div className="space-y-3">
+              {schema.map((field) => (
+                <div key={field.key} className="space-y-1">
+                  <Label className="text-xs font-medium">
+                    {field.label}
+                    {field.type === "number" && field.max && (
+                      <span className="text-muted-foreground font-normal"> (/{field.max})</span>
+                    )}
+                  </Label>
+                  {field.type === "text" && (
+                    <Input
+                      value={formData[field.key] ?? ""}
+                      onChange={(e) => updateField(field.key, e.target.value)}
+                      className="h-8 text-sm"
+                      placeholder={field.label}
+                    />
+                  )}
+                  {field.type === "number" && (
+                    <Input
+                      type="number"
+                      min={0}
+                      max={field.max}
+                      step={0.5}
+                      value={formData[field.key] ?? ""}
+                      onChange={(e) => updateField(field.key, e.target.value)}
+                      className={cn(
+                        "h-8 w-24 text-sm",
+                        formData[field.key] && field.max && Number(formData[field.key]) > field.max
+                          && "border-destructive"
+                      )}
+                      placeholder={`/${field.max ?? ""}`}
+                    />
+                  )}
+                  {field.type === "textarea" && (
+                    <Textarea
+                      value={formData[field.key] ?? ""}
+                      onChange={(e) => updateField(field.key, e.target.value)}
+                      rows={2}
+                      placeholder={field.label}
+                      className="resize-none text-sm"
+                    />
+                  )}
+                  {field.type === "select" && field.options && (
+                    <Select
+                      value={formData[field.key] ?? ""}
+                      onValueChange={(v) => updateField(field.key, v)}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Choisir…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {field.options.map((opt) => (
+                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {/* To Do section */}
+          {activeConfig && (
+            <div className="space-y-1.5 pt-2 border-t border-border">
+              <Label className="text-xs font-semibold flex items-center gap-1.5 text-brand-cyan">
+                <ListTodo className="h-3.5 w-3.5" />
+                À faire (prochaine séance)
+              </Label>
+              <Textarea
+                value={todoNext}
+                onChange={(e) => setTodoNext(e.target.value)}
+                rows={2}
+                placeholder="Ex: Réviser sourate Al-Baqara v.1-5…"
+                className="resize-none text-sm"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Sticky footer */}
+        <SheetFooter className="shrink-0 border-t border-border px-5 py-3 flex flex-row gap-2 justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="text-muted-foreground"
+          >
+            Annuler
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || !activeConfig}
+            className="bg-brand-emerald hover:bg-brand-emerald/90 text-white gap-1.5"
+          >
+            {saveMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            Valider & Suivant
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
