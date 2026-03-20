@@ -340,7 +340,7 @@ function FormBuilderDialog({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 pt-3 border-t shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
