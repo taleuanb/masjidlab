@@ -131,7 +131,7 @@ export function SessionReportDrawer({
         .eq("class_id", classId)
         .eq("config_id", activeConfig!.id)
         .eq("org_id", orgId!)
-        .lt("lesson_date", today)
+        .lt("lesson_date", targetDate)
         .order("lesson_date", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -153,7 +153,7 @@ export function SessionReportDrawer({
         .select("*")
         .eq("student_id", student!.id)
         .eq("class_id", classId)
-        .eq("lesson_date", today)
+        .eq("lesson_date", targetDate)
         .eq("config_id", activeConfig!.id)
         .eq("org_id", orgId!)
         .maybeSingle();
@@ -214,7 +214,7 @@ export function SessionReportDrawer({
           .insert({
             student_id: student.id,
             class_id: classId,
-            lesson_date: today,
+            lesson_date: targetDate,
             config_id: activeConfig.id,
             data_json: dataToSave,
             org_id: orgId,
