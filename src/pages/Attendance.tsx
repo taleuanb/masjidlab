@@ -567,6 +567,7 @@ const Attendance = () => {
         classId={selectedClass?.id ?? ""}
         onReportSaved={(studentId) => {
           setCompletedReports((prev) => new Set(prev).add(studentId));
+          queryClient.invalidateQueries({ queryKey: ["today_progress_ids"] });
         }}
       />
     </main>
