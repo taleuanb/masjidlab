@@ -43,6 +43,7 @@ const Classes = () => {
   const [form, setForm] = useState({ nom: "", niveau: "", prof_id: "", salle_id: "" });
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [filterNiveau, setFilterNiveau] = useState<string>("all");
+  const [progressClassId, setProgressClassId] = useState<string>("");
 
   const isEditing = !!editingClass;
 
