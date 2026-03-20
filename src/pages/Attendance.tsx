@@ -476,14 +476,14 @@ const Attendance = () => {
                     "rounded-xl border bg-card p-3 transition-all cursor-pointer hover:border-brand-cyan/40 hover:shadow-sm",
                     current === "absent" && "border-destructive/30 bg-destructive/5",
                     current === "late" && "border-amber-400/30 bg-amber-500/5",
-                    completedReports.has(s.student_id) && "border-brand-emerald/50 bg-brand-emerald/5",
+                    allCompletedReports.has(s.student_id) && "border-brand-emerald/50 bg-brand-emerald/5",
                   )}
                 >
                   <div className="flex items-center gap-2 mb-2.5">
                     <span className="font-medium text-sm text-foreground flex-1 truncate">
                       {s.prenom} {s.nom}
                     </span>
-                    {completedReports.has(s.student_id) && (
+                    {allCompletedReports.has(s.student_id) && (
                       <span className="flex items-center gap-1 text-brand-emerald text-[10px] font-medium shrink-0">
                         <Check className="h-3.5 w-3.5" />
                         Suivi
