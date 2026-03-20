@@ -13,6 +13,7 @@ import StudentKpiCards from "@/components/student/StudentKpiCards";
 import StudentOverviewTab from "@/components/student/StudentOverviewTab";
 import StudentTimelineTab from "@/components/student/StudentTimelineTab";
 import StudentResultsTab from "@/components/student/StudentResultsTab";
+import StudentGoalsTab from "@/components/student/StudentGoalsTab";
 
 const StudentProfile = () => {
   const { id } = useParams<{ id: string }>();
