@@ -215,7 +215,7 @@ function FormBuilderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Settings2 className="h-5 w-5 text-[hsl(var(--brand-cyan))]" />
@@ -229,7 +229,7 @@ function FormBuilderDialog({
         {isLoading ? (
           <Loader2 className="h-6 w-6 animate-spin mx-auto my-12 text-muted-foreground" />
         ) : (
-          <div className="grid md:grid-cols-2 gap-6 mt-2">
+          <div className="grid md:grid-cols-2 gap-6 mt-2 overflow-y-auto flex-1 min-h-0 pr-1">
             {/* Left: Builder */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -340,7 +340,7 @@ function FormBuilderDialog({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 pt-3 border-t shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
