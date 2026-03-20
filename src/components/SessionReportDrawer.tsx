@@ -32,6 +32,8 @@ interface SessionReportDrawerProps {
   classId: string;
   subjectId?: string | null;
   onReportSaved?: (studentId: string) => void;
+  /** Override date for editing historical reports (default: today) */
+  forDate?: string;
 }
 
 export function SessionReportDrawer({
@@ -41,11 +43,13 @@ export function SessionReportDrawer({
   classId,
   subjectId,
   onReportSaved,
+  forDate,
 }: SessionReportDrawerProps) {
   const { orgId } = useOrganization();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const targetDate = forDate ?? format(new Date(), "yyyy-MM-dd");
+  const isEditMode = !!forDate;
 
   // ── Fetch session config ──
   const { data: config, isLoading: loadingConfig } = useQuery({
