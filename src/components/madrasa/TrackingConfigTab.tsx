@@ -340,18 +340,26 @@ function FormBuilderDialog({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-3 border-t shrink-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Annuler
-          </Button>
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || fields.length === 0}
-            className="bg-[hsl(var(--brand-emerald))] hover:bg-[hsl(var(--brand-emerald))]/90 text-white"
-          >
-            {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Enregistrer la configuration
-          </Button>
+        <div className="sticky bottom-0 z-10 -mx-6 mt-4 border-t bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 shrink-0">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || fields.length === 0}
+              className="bg-brand-emerald hover:bg-brand-emerald/90 text-white"
+            >
+              {saveMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                "Enregistrer la configuration"
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
