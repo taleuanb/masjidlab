@@ -348,7 +348,7 @@ function FormBuilderDialog({
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending || fields.length === 0}
-              className="bg-brand-emerald hover:bg-brand-emerald/90 text-white"
+              className="bg-brand-emerald hover:bg-brand-emerald/90 text-white gap-2"
             >
               {saveMutation.isPending ? (
                 <>
