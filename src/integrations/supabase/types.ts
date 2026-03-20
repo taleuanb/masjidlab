@@ -338,6 +338,7 @@ export type Database = {
       }
       madrasa_attendance: {
         Row: {
+          class_id: string | null
           created_at: string | null
           date: string
           enrollment_id: string
@@ -345,8 +346,10 @@ export type Database = {
           notes: string | null
           org_id: string
           status: string
+          student_id: string | null
         }
         Insert: {
+          class_id?: string | null
           created_at?: string | null
           date?: string
           enrollment_id: string
@@ -354,8 +357,10 @@ export type Database = {
           notes?: string | null
           org_id: string
           status?: string
+          student_id?: string | null
         }
         Update: {
+          class_id?: string | null
           created_at?: string | null
           date?: string
           enrollment_id?: string
@@ -363,8 +368,16 @@ export type Database = {
           notes?: string | null
           org_id?: string
           status?: string
+          student_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "madrasa_attendance_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "madrasa_attendance_enrollment_id_fkey"
             columns: ["enrollment_id"]
@@ -377,6 +390,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_students"
             referencedColumns: ["id"]
           },
         ]
@@ -526,31 +546,37 @@ export type Database = {
           class_id: string
           created_at: string | null
           date: string
+          description: string | null
           id: string
           max_points: number | null
           org_id: string
           subject_id: string | null
           title: string
+          total_points: number | null
         }
         Insert: {
           class_id: string
           created_at?: string | null
           date: string
+          description?: string | null
           id?: string
           max_points?: number | null
           org_id: string
           subject_id?: string | null
           title: string
+          total_points?: number | null
         }
         Update: {
           class_id?: string
           created_at?: string | null
           date?: string
+          description?: string | null
           id?: string
           max_points?: number | null
           org_id?: string
           subject_id?: string | null
           title?: string
+          total_points?: number | null
         }
         Relationships: [
           {
