@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter, Pencil } from "lucide-react";
+import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter, Pencil, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ClassProgressBoard } from "@/components/ClassProgressBoard";
 import type { Tables } from "@/integrations/supabase/types";
 
 type ClassRow = {
@@ -41,6 +43,7 @@ const Classes = () => {
   const [form, setForm] = useState({ nom: "", niveau: "", prof_id: "", salle_id: "" });
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [filterNiveau, setFilterNiveau] = useState<string>("all");
+  const [progressClassId, setProgressClassId] = useState<string>("");
 
   const isEditing = !!editingClass;
 
@@ -191,83 +194,136 @@ const Classes = () => {
           </Button>
         </div>
 
-        {/* Filter */}
-        {classes.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={filterNiveau} onValueChange={setFilterNiveau}>
-              <SelectTrigger className="h-9 w-48"><SelectValue placeholder="Filtrer par niveau" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les niveaux</SelectItem>
-                {levels.map((l) => (<SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        <Tabs defaultValue="liste" className="w-full">
+          <TabsList>
+            <TabsTrigger value="liste" className="gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              Liste des classes
+            </TabsTrigger>
+            <TabsTrigger value="progression" className="gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Vue Progrès
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Grid */}
-        {isLoading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-        ) : classes.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
-            <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground">Aucune classe créée.</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Commencez par configurer les niveaux et matières dans Configuration &gt; Madrassa.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {classes.filter((c) => filterNiveau === "all" || c.niveau === filterNiveau).map((c) => (
-              <Card key={c.id} className="group relative cursor-pointer hover:border-primary/30 transition-colors" onClick={() => openEdit(c)}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-base">{c.nom}</CardTitle>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); openEdit(c); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={(e) => e.stopPropagation()}>
-                            <Trash2 className="h-3.5 w-3.5" />
+          <TabsContent value="liste" className="mt-4 space-y-4">
+            {/* Filter */}
+            {classes.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={filterNiveau} onValueChange={setFilterNiveau}>
+                  <SelectTrigger className="h-9 w-48"><SelectValue placeholder="Filtrer par niveau" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les niveaux</SelectItem>
+                    {levels.map((l) => (<SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Grid */}
+            {isLoading ? (
+              <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : classes.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
+                <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                <p className="text-muted-foreground">Aucune classe créée.</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Commencez par configurer les niveaux et matières dans Configuration &gt; Madrassa.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {classes.filter((c) => filterNiveau === "all" || c.niveau === filterNiveau).map((c) => (
+                  <Card key={c.id} className="group relative cursor-pointer hover:border-primary/30 transition-colors" onClick={() => openEdit(c)}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-base">{c.nom}</CardTitle>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); openEdit(c); }}>
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Supprimer « {c.nom} » ?</AlertDialogTitle>
-                            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="text-muted-foreground">Annuler</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteClass.mutate(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {c.niveau && <Badge variant="outline" className="text-xs">{c.niveau}</Badge>}
-                  {c.prof?.display_name && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{c.prof.display_name}</span>
-                    </div>
-                  )}
-                  {c.subjects.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {c.subjects.map((s) => (
-                        <Badge key={s.id} variant="secondary" className="text-[10px] font-normal">{s.name}</Badge>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={(e) => e.stopPropagation()}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Supprimer « {c.nom} » ?</AlertDialogTitle>
+                                <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="text-muted-foreground">Annuler</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteClass.mutate(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {c.niveau && <Badge variant="outline" className="text-xs">{c.niveau}</Badge>}
+                      {c.prof?.display_name && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Users className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{c.prof.display_name}</span>
+                        </div>
+                      )}
+                      {c.subjects.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {c.subjects.map((s) => (
+                            <Badge key={s.id} variant="secondary" className="text-[10px] font-normal">{s.name}</Badge>
+                          ))}
+                        </div>
+                      )}
+                      {!c.niveau && !c.prof?.display_name && c.subjects.length === 0 && (
+                        <p className="text-xs text-muted-foreground/50 italic">Aucun détail configuré</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="progression" className="mt-4 space-y-4">
+            {classes.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground text-sm">
+                Créez des classes pour visualiser la progression.
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                  <Select value={progressClassId || classes[0]?.id} onValueChange={setProgressClassId}>
+                    <SelectTrigger className="h-9 w-[250px]">
+                      <SelectValue placeholder="Sélectionner une classe…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nom} {c.niveau ? `(${c.niveau})` : ""}
+                        </SelectItem>
                       ))}
-                    </div>
-                  )}
-                  {!c.niveau && !c.prof?.display_name && c.subjects.length === 0 && (
-                    <p className="text-xs text-muted-foreground/50 italic">Aucun détail configuré</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(() => {
+                  const activeId = progressClassId || classes[0]?.id;
+                  const activeClass = classes.find((c) => c.id === activeId);
+                  if (!activeClass) return null;
+                  return (
+                    <ClassProgressBoard
+                      classId={activeClass.id}
+                      className={activeClass.nom}
+                      subjects={activeClass.subjects}
+                    />
+                  );
+                })()}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* ── Create / Edit Dialog ── */}
