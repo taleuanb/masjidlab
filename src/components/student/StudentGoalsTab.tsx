@@ -96,9 +96,36 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
     enabled: !!studentId && !!orgId,
   });
 
+  // Fetch latest progress per subject to sync current_position
+  const { data: latestProgress = [] } = useQuery({
+    queryKey: ["student_latest_progress", studentId, orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_student_progress")
+        .select("data_json, madrasa_session_configs(subject_id)")
+        .eq("student_id", studentId)
+        .eq("org_id", orgId!)
+        .order("lesson_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!studentId && !!orgId,
+  });
+
   const [formState, setFormState] = useState<Record<string, { target: string; unit: string }>>({});
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [adjustValue, setAdjustValue] = useState("");
+
+  const getLatestPositionForSubject = (subjectId: string): number | null => {
+    for (const entry of latestProgress) {
+      const config = entry.madrasa_session_configs as any;
+      if (config?.subject_id === subjectId) {
+        const json = entry.data_json as any;
+        if (json?._goal_position != null) return Number(json._goal_position);
+      }
+    }
+    return null;
+  };
 
   const getGoalForSubject = (subjectId: string) => goals.find((g) => g.subject_id === subjectId);
 
@@ -199,9 +226,15 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
           const vals = getFormValue(subject.id);
           const hasGoal = goal && Number(goal.target_value) > 0;
 
+          // Use latest progress position as fallback if current_position is 0
+          const progressPosition = getLatestPositionForSubject(subject.id);
+          const currentPos = hasGoal
+            ? (Number(goal.current_position) > 0 ? Number(goal.current_position) : (progressPosition ?? 0))
+            : 0;
+
           // Trajectory analysis
           const trajectory = hasGoal
-            ? computeTrajectory(Number(goal.target_value), Number(goal.current_position), academicYear)
+            ? computeTrajectory(Number(goal.target_value), currentPos, academicYear)
             : null;
 
           const statusInfo = trajectory ? statusConfig[trajectory.status] : null;
@@ -288,9 +321,9 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
 
                     {/* Stats row */}
                     <div className="flex justify-between text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
-                      <div>
+                      <div className="font-medium">
                         <Flag className="h-3 w-3 inline mr-1 text-brand-navy" />
-                        {Number(goal.current_position)} / {Number(goal.target_value)} {goal.unit_label}
+                        {currentPos} / {Number(goal.target_value)} {goal.unit_label} ({trajectory.realPct}%)
                       </div>
                       <div>
                         Attendu : ~{trajectory.theoreticalValue} {goal.unit_label}
