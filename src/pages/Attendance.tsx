@@ -17,7 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AttendanceHistory } from "@/components/AttendanceHistory";
-import { SessionReportModal } from "@/components/SessionReportModal";
+import { SessionReportDrawer } from "@/components/SessionReportDrawer";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -531,8 +531,8 @@ const Attendance = () => {
         </div>
       )}
 
-      {/* Session Report Modal */}
-      <SessionReportModal
+      {/* Session Report Drawer */}
+      <SessionReportDrawer
         open={reportOpen}
         onOpenChange={setReportOpen}
         student={reportStudent}
