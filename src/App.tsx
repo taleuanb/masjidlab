@@ -123,6 +123,7 @@ const AppLayout = () => {
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/saas-admin" element={<SaasAdminPage />} />
             <Route path="/eleves" element={<ElevesPage />} />
+            <Route path="/eleves/:id" element={<StudentProfilePage />} />
             <Route path="/classes" element={<ClassesPage />} />
             <Route path="/inscriptions" element={<InscriptionsPage />} />
             <Route path="/appel" element={<AttendancePage />} />
