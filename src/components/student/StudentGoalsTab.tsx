@@ -5,11 +5,12 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Target, Save, BookOpen } from "lucide-react";
+import { Target, Save, BookOpen, Flag, TrendingUp, TrendingDown, Minus, Pencil, X, Check } from "lucide-react";
 
 interface StudentGoalsTabProps {
   studentId: string;
@@ -18,11 +19,48 @@ interface StudentGoalsTabProps {
 
 const UNITS = ["Hizb", "Versets", "Pages", "Chapitres", "Sourates", "Leçons"];
 
+// Sept 1 → June 30 academic year
 function currentAcademicYear() {
   const now = new Date();
   const y = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
   return `${y}-${y + 1}`;
 }
+
+function getAcademicYearBounds(academicYear: string) {
+  const [startY] = academicYear.split("-").map(Number);
+  const start = new Date(startY, 8, 1); // Sept 1
+  const end = new Date(startY + 1, 5, 30); // June 30
+  return { start, end };
+}
+
+function computeTrajectory(target: number, current: number, academicYear: string) {
+  const { start, end } = getAcademicYearBounds(academicYear);
+  const now = new Date();
+  const totalDays = Math.max(1, (end.getTime() - start.getTime()) / 86400000);
+  const elapsedDays = Math.max(0, Math.min(totalDays, (now.getTime() - start.getTime()) / 86400000));
+  const theoreticalValue = (elapsedDays / totalDays) * target;
+  const theoreticalPct = Math.min(100, Math.round((theoreticalValue / target) * 100));
+  const realPct = Math.min(100, Math.round((current / target) * 100));
+  const diff = current - theoreticalValue;
+  const remainingDays = Math.max(0, (end.getTime() - now.getTime()) / 86400000);
+  const remaining = target - current;
+  const projectedPct = remainingDays > 0 && elapsedDays > 0
+    ? Math.min(100, Math.round(((current / elapsedDays) * totalDays / target) * 100))
+    : realPct;
+
+  let status: "ahead" | "on_track" | "behind";
+  if (diff > target * 0.05) status = "ahead";
+  else if (diff < -(target * 0.05)) status = "behind";
+  else status = "on_track";
+
+  return { theoreticalValue: Math.round(theoreticalValue * 10) / 10, theoreticalPct, realPct, status, projectedPct, remaining, elapsedDays, totalDays };
+}
+
+const statusConfig = {
+  ahead: { label: "En avance", color: "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30", icon: TrendingUp },
+  on_track: { label: "Sur les rails", color: "bg-brand-cyan/15 text-brand-cyan border-brand-cyan/30", icon: Minus },
+  behind: { label: "En retard", color: "bg-destructive/15 text-destructive border-destructive/30", icon: TrendingDown },
+};
 
 const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => {
   const { orgId } = useOrganization();
@@ -58,8 +96,9 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
     enabled: !!studentId && !!orgId,
   });
 
-  // Local form state per subject
   const [formState, setFormState] = useState<Record<string, { target: string; unit: string }>>({});
+  const [adjustingId, setAdjustingId] = useState<string | null>(null);
+  const [adjustValue, setAdjustValue] = useState("");
 
   const getGoalForSubject = (subjectId: string) => goals.find((g) => g.subject_id === subjectId);
 
@@ -105,6 +144,7 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
       const subName = subjects.find((s) => s.id === vars.subjectId)?.name || "Matière";
       toast.success(`Objectif enregistré pour ${subName}`);
       queryClient.invalidateQueries({ queryKey: ["student_goals", studentId] });
+      setAdjustingId(null);
     },
     onError: () => toast.error("Erreur lors de l'enregistrement"),
   });
@@ -117,6 +157,15 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
       return;
     }
     saveMutation.mutate({ subjectId, target, unit: vals.unit });
+  };
+
+  const handleAdjust = (goal: typeof goals[0]) => {
+    const newTarget = parseFloat(adjustValue);
+    if (!newTarget || newTarget <= 0) {
+      toast.error("Cible invalide");
+      return;
+    }
+    saveMutation.mutate({ subjectId: goal.subject_id, target: newTarget, unit: goal.unit_label });
   };
 
   if (loadingSubjects || loadingGoals) {
@@ -141,72 +190,167 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Définissez les objectifs annuels de <span className="font-medium text-brand-navy">{studentPrenom}</span> pour l'année <span className="font-semibold">{academicYear}</span>.
+        Objectifs annuels de <span className="font-medium text-brand-navy">{studentPrenom}</span> — <span className="font-semibold">{academicYear}</span>
       </p>
 
       <div className="grid gap-4 md:grid-cols-2">
         {subjects.map((subject) => {
           const goal = getGoalForSubject(subject.id);
           const vals = getFormValue(subject.id);
-          const progress = goal && goal.target_value > 0
-            ? Math.min(100, Math.round((Number(goal.current_position) / Number(goal.target_value)) * 100))
-            : 0;
+          const hasGoal = goal && Number(goal.target_value) > 0;
+
+          // Trajectory analysis
+          const trajectory = hasGoal
+            ? computeTrajectory(Number(goal.target_value), Number(goal.current_position), academicYear)
+            : null;
+
+          const statusInfo = trajectory ? statusConfig[trajectory.status] : null;
+          const StatusIcon = statusInfo?.icon;
+          const isAdjusting = adjustingId === goal?.id;
 
           return (
             <Card key={subject.id} className="border-brand-cyan/20 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2 text-brand-navy">
-                  <BookOpen className="h-4 w-4 text-brand-cyan" />
-                  {subject.name}
-                </CardTitle>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2 text-brand-navy">
+                    <BookOpen className="h-4 w-4 text-brand-cyan" />
+                    {subject.name}
+                  </CardTitle>
+                  {statusInfo && StatusIcon && (
+                    <Badge variant="outline" className={`text-[10px] px-2 py-0.5 gap-1 ${statusInfo.color}`}>
+                      <StatusIcon className="h-3 w-3" />
+                      {statusInfo.label}
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-end gap-2">
-                  <div className="flex-1 space-y-1">
-                    <label className="text-xs text-muted-foreground">Cible annuelle</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder="Ex: 60"
-                      value={vals.target}
-                      onChange={(e) => setField(subject.id, "target", e.target.value)}
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="w-28 space-y-1">
-                    <label className="text-xs text-muted-foreground">Unité</label>
-                    <Select value={vals.unit} onValueChange={(v) => setField(subject.id, "unit", v)}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {UNITS.map((u) => (
-                          <SelectItem key={u} value={u}>{u}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="h-9 bg-brand-emerald hover:bg-brand-emerald/90 text-white"
-                    onClick={() => handleSave(subject.id)}
-                    disabled={saveMutation.isPending}
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {goal && (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Progression : {Number(goal.current_position)} / {Number(goal.target_value)} {goal.unit_label}</span>
-                      <span className="font-medium">{progress}%</span>
+                {/* Goal definition form (when no goal exists) */}
+                {!hasGoal && (
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs text-muted-foreground">Cible annuelle</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Ex: 60"
+                        value={vals.target}
+                        onChange={(e) => setField(subject.id, "target", e.target.value)}
+                        className="h-9"
+                      />
                     </div>
-                    <Progress value={progress} className="h-2" />
+                    <div className="w-28 space-y-1">
+                      <label className="text-xs text-muted-foreground">Unité</label>
+                      <Select value={vals.unit} onValueChange={(v) => setField(subject.id, "unit", v)}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {UNITS.map((u) => (
+                            <SelectItem key={u} value={u}>{u}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="h-9 bg-brand-emerald hover:bg-brand-emerald/90 text-white"
+                      onClick={() => handleSave(subject.id)}
+                      disabled={saveMutation.isPending}
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
                   </div>
                 )}
 
-                {!goal && vals.target && parseFloat(vals.target) > 0 && (
+                {/* Progression analysis (when goal exists) */}
+                {hasGoal && trajectory && (
+                  <>
+                    {/* Dual progress bars */}
+                    <div className="space-y-1.5">
+                      {/* Theoretical line */}
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span className="w-16 text-muted-foreground">Théorique</span>
+                        <div className="flex-1 relative">
+                          <Progress value={trajectory.theoreticalPct} className="h-2 bg-muted [&>div]:bg-brand-navy/40" />
+                        </div>
+                        <span className="w-10 text-right text-muted-foreground font-medium">{trajectory.theoreticalPct}%</span>
+                      </div>
+                      {/* Real progress */}
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span className="w-16 text-brand-emerald font-medium">Réel</span>
+                        <div className="flex-1 relative">
+                          <Progress value={trajectory.realPct} className="h-2 bg-muted [&>div]:bg-brand-emerald" />
+                        </div>
+                        <span className="w-10 text-right text-brand-emerald font-semibold">{trajectory.realPct}%</span>
+                      </div>
+                    </div>
+
+                    {/* Stats row */}
+                    <div className="flex justify-between text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
+                      <div>
+                        <Flag className="h-3 w-3 inline mr-1 text-brand-navy" />
+                        {Number(goal.current_position)} / {Number(goal.target_value)} {goal.unit_label}
+                      </div>
+                      <div>
+                        Attendu : ~{trajectory.theoreticalValue} {goal.unit_label}
+                      </div>
+                    </div>
+
+                    {/* Projection text */}
+                    <p className="text-xs text-muted-foreground italic">
+                      À ce rythme, l'objectif sera atteint à <span className={`font-semibold ${trajectory.projectedPct >= 90 ? 'text-brand-emerald' : trajectory.projectedPct >= 60 ? 'text-brand-cyan' : 'text-destructive'}`}>{trajectory.projectedPct}%</span> en fin d'année.
+                    </p>
+
+                    {/* Adjust button */}
+                    {isAdjusting ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={adjustValue}
+                          onChange={(e) => setAdjustValue(e.target.value)}
+                          className="h-8 w-28 text-sm"
+                          placeholder="Nouvelle cible"
+                          autoFocus
+                        />
+                        <span className="text-xs text-muted-foreground">{goal.unit_label}</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-brand-emerald"
+                          onClick={() => handleAdjust(goal)}
+                          disabled={saveMutation.isPending}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-muted-foreground"
+                          onClick={() => setAdjustingId(null)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={() => {
+                          setAdjustingId(goal.id);
+                          setAdjustValue(String(goal.target_value));
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                        Réajuster l'objectif
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                {!hasGoal && vals.target && parseFloat(vals.target) > 0 && (
                   <p className="text-xs text-muted-foreground italic">
                     Cliquez sur enregistrer pour définir l'objectif.
                   </p>
