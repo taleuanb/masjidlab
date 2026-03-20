@@ -226,9 +226,15 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
           const vals = getFormValue(subject.id);
           const hasGoal = goal && Number(goal.target_value) > 0;
 
+          // Use latest progress position as fallback if current_position is 0
+          const progressPosition = getLatestPositionForSubject(subject.id);
+          const currentPos = hasGoal
+            ? (Number(goal.current_position) > 0 ? Number(goal.current_position) : (progressPosition ?? 0))
+            : 0;
+
           // Trajectory analysis
           const trajectory = hasGoal
-            ? computeTrajectory(Number(goal.target_value), Number(goal.current_position), academicYear)
+            ? computeTrajectory(Number(goal.target_value), currentPos, academicYear)
             : null;
 
           const statusInfo = trajectory ? statusConfig[trajectory.status] : null;
