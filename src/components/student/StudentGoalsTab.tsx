@@ -116,6 +116,17 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [adjustValue, setAdjustValue] = useState("");
 
+  const getLatestPositionForSubject = (subjectId: string): number | null => {
+    for (const entry of latestProgress) {
+      const config = entry.madrasa_session_configs as any;
+      if (config?.subject_id === subjectId) {
+        const json = entry.data_json as any;
+        if (json?._goal_position != null) return Number(json._goal_position);
+      }
+    }
+    return null;
+  };
+
   const getGoalForSubject = (subjectId: string) => goals.find((g) => g.subject_id === subjectId);
 
   const getFormValue = (subjectId: string) => {
