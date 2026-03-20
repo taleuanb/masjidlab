@@ -19,6 +19,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ClassProgressBoard } from "@/components/ClassProgressBoard";
 import type { Tables } from "@/integrations/supabase/types";
 
 type ClassRow = {
