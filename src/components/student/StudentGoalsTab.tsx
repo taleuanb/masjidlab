@@ -321,9 +321,9 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
 
                     {/* Stats row */}
                     <div className="flex justify-between text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
-                      <div>
+                      <div className="font-medium">
                         <Flag className="h-3 w-3 inline mr-1 text-brand-navy" />
-                        {Number(goal.current_position)} / {Number(goal.target_value)} {goal.unit_label}
+                        {currentPos} / {Number(goal.target_value)} {goal.unit_label} ({trajectory.realPct}%)
                       </div>
                       <div>
                         Attendu : ~{trajectory.theoreticalValue} {goal.unit_label}
