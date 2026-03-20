@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, CalendarDays, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { SessionReportDrawer } from "@/components/SessionReportDrawer";
 
 type StatusType = "present" | "absent" | "late" | "excused";
 
