@@ -229,7 +229,7 @@ function FormBuilderDialog({
         {isLoading ? (
           <Loader2 className="h-6 w-6 animate-spin mx-auto my-12 text-muted-foreground" />
         ) : (
-          <div className="grid md:grid-cols-2 gap-6 mt-2">
+          <div className="grid md:grid-cols-2 gap-6 mt-2 overflow-y-auto flex-1 min-h-0 pr-1">
             {/* Left: Builder */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
