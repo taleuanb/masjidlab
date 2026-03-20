@@ -539,6 +539,9 @@ const Attendance = () => {
         onOpenChange={setReportOpen}
         student={reportStudent}
         classId={selectedClass?.id ?? ""}
+        onReportSaved={(studentId) => {
+          setCompletedReports((prev) => new Set(prev).add(studentId));
+        }}
       />
     </main>
   );
