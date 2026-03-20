@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, CalendarDays, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { SessionReportDrawer } from "@/components/SessionReportDrawer";
 
 type StatusType = "present" | "absent" | "late" | "excused";
 
@@ -31,6 +32,10 @@ export function AttendanceHistory() {
   const { orgId } = useOrganization();
   const [month, setMonth] = useState(new Date());
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerStudent, setDrawerStudent] = useState<{ id: string; prenom: string; nom: string } | null>(null);
+  const [drawerDate, setDrawerDate] = useState<string>("");
+  const [drawerClassId, setDrawerClassId] = useState<string>("");
 
   // Fetch classes
   const { data: classes = [] } = useQuery({
@@ -88,6 +93,7 @@ export function AttendanceHistory() {
       const students = enrollments
         .map((e: any) => ({
           enrollment_id: e.id,
+          student_id: e.student?.id ?? "",
           prenom: e.student?.prenom ?? "",
           nom: e.student?.nom ?? "",
         }))
@@ -240,7 +246,15 @@ export function AttendanceHistory() {
                         idx % 2 === 0 && "bg-muted/10"
                       )}
                     >
-                      <td className="sticky left-0 z-10 bg-card px-3 py-1.5 font-medium text-foreground whitespace-nowrap">
+                      <td
+                        className="sticky left-0 z-10 bg-card px-3 py-1.5 font-medium text-foreground whitespace-nowrap cursor-pointer hover:text-brand-cyan transition-colors"
+                        onClick={() => {
+                          setDrawerStudent({ id: student.student_id, prenom: student.prenom, nom: student.nom });
+                          setDrawerClassId(effectiveClassId);
+                          setDrawerDate("");
+                          setDrawerOpen(true);
+                        }}
+                      >
                         {student.prenom} {student.nom}
                       </td>
                       {daysInMonth.map((day) => {
@@ -275,8 +289,14 @@ export function AttendanceHistory() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span
+                                  onClick={() => {
+                                    setDrawerStudent({ id: student.student_id, prenom: student.prenom, nom: student.nom });
+                                    setDrawerClassId(effectiveClassId);
+                                    setDrawerDate(dateStr);
+                                    setDrawerOpen(true);
+                                  }}
                                   className={cn(
-                                    "inline-block h-3.5 w-3.5 rounded-sm cursor-default transition-transform hover:scale-125",
+                                    "inline-block h-3.5 w-3.5 rounded-sm cursor-pointer transition-transform hover:scale-125",
                                     STATUS_COLORS[record.status]
                                   )}
                                 />
@@ -325,6 +345,14 @@ export function AttendanceHistory() {
           </div>
         )}
       </div>
+
+      <SessionReportDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        student={drawerStudent}
+        classId={drawerClassId}
+        forDate={drawerDate || undefined}
+      />
     </TooltipProvider>
   );
 }

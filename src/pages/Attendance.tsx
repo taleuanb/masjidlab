@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -50,6 +51,7 @@ const STATUS_CONFIG: Record<AttendanceStatus, { label: string; icon: React.Eleme
 };
 
 const Attendance = () => {
+  const queryClient = useQueryClient();
   const { orgId } = useOrganization();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -241,6 +243,30 @@ const Attendance = () => {
       setLoadingStudents(false);
     }
   }, [orgId, today, toast]);
+
+  // ── Fetch existing progress for today to show indicators ──
+  const studentIds = useMemo(() => students.map((s) => s.student_id), [students]);
+  const { data: todayProgressIds = [] } = useQuery({
+    queryKey: ["today_progress_ids", orgId, selectedClass?.id, today],
+    enabled: !!orgId && !!selectedClass && studentIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_student_progress")
+        .select("student_id")
+        .eq("org_id", orgId!)
+        .eq("class_id", selectedClass!.id)
+        .eq("lesson_date", today)
+        .in("student_id", studentIds);
+      return (data ?? []).map((r) => r.student_id);
+    },
+  });
+
+  // Merge DB progress with session-saved reports
+  const allCompletedReports = useMemo(() => {
+    const set = new Set(completedReports);
+    for (const id of todayProgressIds) set.add(id);
+    return set;
+  }, [completedReports, todayProgressIds]);
 
   // ── Toggle status ──
   const setStatus = (enrollmentId: string, status: AttendanceStatus) => {
@@ -451,14 +477,14 @@ const Attendance = () => {
                     "rounded-xl border bg-card p-3 transition-all cursor-pointer hover:border-brand-cyan/40 hover:shadow-sm",
                     current === "absent" && "border-destructive/30 bg-destructive/5",
                     current === "late" && "border-amber-400/30 bg-amber-500/5",
-                    completedReports.has(s.student_id) && "border-brand-emerald/50 bg-brand-emerald/5",
+                    allCompletedReports.has(s.student_id) && "border-brand-emerald/50 bg-brand-emerald/5",
                   )}
                 >
                   <div className="flex items-center gap-2 mb-2.5">
                     <span className="font-medium text-sm text-foreground flex-1 truncate">
                       {s.prenom} {s.nom}
                     </span>
-                    {completedReports.has(s.student_id) && (
+                    {allCompletedReports.has(s.student_id) && (
                       <span className="flex items-center gap-1 text-brand-emerald text-[10px] font-medium shrink-0">
                         <Check className="h-3.5 w-3.5" />
                         Suivi
@@ -470,7 +496,7 @@ const Attendance = () => {
                         {s.absenceCount} abs.
                       </span>
                     )}
-                    <span className="text-brand-cyan shrink-0">
+                    <span className={cn("shrink-0", allCompletedReports.has(s.student_id) ? "text-brand-emerald" : "text-muted-foreground/40")}>
                       <Notebook className="h-3.5 w-3.5" />
                     </span>
                   </div>
@@ -541,6 +567,7 @@ const Attendance = () => {
         classId={selectedClass?.id ?? ""}
         onReportSaved={(studentId) => {
           setCompletedReports((prev) => new Set(prev).add(studentId));
+          queryClient.invalidateQueries({ queryKey: ["today_progress_ids"] });
         }}
       />
     </main>
