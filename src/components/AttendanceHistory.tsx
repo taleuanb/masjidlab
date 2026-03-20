@@ -93,6 +93,7 @@ export function AttendanceHistory() {
       const students = enrollments
         .map((e: any) => ({
           enrollment_id: e.id,
+          student_id: e.student?.id ?? "",
           prenom: e.student?.prenom ?? "",
           nom: e.student?.nom ?? "",
         }))
