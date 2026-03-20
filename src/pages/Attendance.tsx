@@ -496,7 +496,7 @@ const Attendance = () => {
                         {s.absenceCount} abs.
                       </span>
                     )}
-                    <span className="text-brand-cyan shrink-0">
+                    <span className={cn("shrink-0", allCompletedReports.has(s.student_id) ? "text-brand-emerald" : "text-muted-foreground/40")}>
                       <Notebook className="h-3.5 w-3.5" />
                     </span>
                   </div>
