@@ -178,7 +178,9 @@ const StudentProfile = () => {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="goals">Objectifs</TabsTrigger>
           <TabsTrigger value="timeline">Suivi Pédagogique</TabsTrigger>
+          <TabsTrigger value="results">Résultats</TabsTrigger>
           <TabsTrigger value="results">Résultats</TabsTrigger>
         </TabsList>
 
