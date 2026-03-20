@@ -402,29 +402,36 @@ export function SessionReportDrawer({
         </div>
 
         {/* Sticky footer */}
-        <SheetFooter className="shrink-0 border-t border-border px-5 py-3 flex flex-row gap-2 justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="text-muted-foreground"
-          >
-            Annuler
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || !activeConfig}
-            className="bg-brand-emerald hover:bg-brand-emerald/90 text-white gap-1.5"
-          >
-            {saveMutation.isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Save className="h-3.5 w-3.5" />
-            )}
-            Valider & Suivant
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Button>
+        <SheetFooter className="shrink-0 border-t border-border px-5 py-3 flex flex-col gap-2">
+          {isEditMode && existingProgress?.updated_at && (
+            <p className="text-[10px] text-muted-foreground text-right">
+              Modifié le {format(new Date(existingProgress.updated_at), "dd/MM/yyyy à HH:mm")}
+            </p>
+          )}
+          <div className="flex flex-row gap-2 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="text-muted-foreground"
+            >
+              Annuler
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || !activeConfig}
+              className="bg-brand-emerald hover:bg-brand-emerald/90 text-white gap-1.5"
+            >
+              {saveMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              {isEditMode ? "Mettre à jour le suivi" : "Valider & Suivant"}
+              {!isEditMode && <ChevronRight className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
         </SheetFooter>
       </SheetContent>
     </Sheet>
