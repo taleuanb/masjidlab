@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight, Flag, Footprints } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,6 @@ interface SessionReportDrawerProps {
   classId: string;
   subjectId?: string | null;
   onReportSaved?: (studentId: string) => void;
-  /** Override date for editing historical reports (default: today) */
   forDate?: string;
 }
 
@@ -119,6 +119,24 @@ export function SessionReportDrawer({
     ? (activeConfig.form_schema_json as unknown as SchemaField[])
     : [];
 
+  // ── Student Goal for this subject ──
+  const currentYear = `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+  const { data: studentGoal, isLoading: loadingGoal } = useQuery({
+    queryKey: ["student_goal", student?.id, effectiveSubjectId, currentYear],
+    enabled: open && !!student?.id && !!effectiveSubjectId && !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_student_goals")
+        .select("*")
+        .eq("student_id", student!.id)
+        .eq("subject_id", effectiveSubjectId!)
+        .eq("org_id", orgId!)
+        .eq("academic_year", currentYear)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   // ── Previous session recall ──
   const { data: previousProgress, isLoading: loadingPrevious } = useQuery({
     queryKey: ["previous_progress", student?.id, classId, effectiveSubjectId],
@@ -164,6 +182,7 @@ export function SessionReportDrawer({
   // ── Form state ──
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [todoNext, setTodoNext] = useState("");
+  const [newPosition, setNewPosition] = useState<string>("");
 
   useEffect(() => {
     if (!open) return;
@@ -171,13 +190,20 @@ export function SessionReportDrawer({
       const saved = existingProgress.data_json as Record<string, string>;
       setFormData(saved);
       setTodoNext(saved["_todo_next"] ?? "");
+      setNewPosition(saved["_goal_position"] ?? "");
     } else {
       setFormData({});
       setTodoNext("");
+      setNewPosition("");
     }
   }, [open, existingProgress]);
 
-  // Reset picked subject when drawer closes
+  // Pre-fill newPosition from goal when no existing progress
+  useEffect(() => {
+    if (!open || existingProgress || !studentGoal) return;
+    setNewPosition(String(studentGoal.current_position));
+  }, [open, existingProgress, studentGoal]);
+
   useEffect(() => {
     if (!open) setPickedSubjectId("");
   }, [open]);
@@ -185,6 +211,17 @@ export function SessionReportDrawer({
   const updateField = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
+
+  // ── Goal progress calculations ──
+  const goalProgress = useMemo(() => {
+    if (!studentGoal || studentGoal.target_value <= 0) return null;
+    const current = Number(studentGoal.current_position);
+    const target = Number(studentGoal.target_value);
+    const newPos = newPosition ? Number(newPosition) : current;
+    const currentPct = Math.min(100, Math.round((current / target) * 100));
+    const newPct = Math.min(100, Math.round((newPos / target) * 100));
+    return { current, target, newPos, currentPct, newPct, unit: studentGoal.unit_label };
+  }, [studentGoal, newPosition]);
 
   // ── Save mutation ──
   const saveMutation = useMutation({
@@ -200,7 +237,7 @@ export function SessionReportDrawer({
         }
       }
 
-      const dataToSave = { ...formData, _todo_next: todoNext };
+      const dataToSave = { ...formData, _todo_next: todoNext, _goal_position: newPosition };
 
       if (existingProgress) {
         const { error } = await supabase
@@ -221,10 +258,21 @@ export function SessionReportDrawer({
           });
         if (error) throw error;
       }
+
+      // ── Atomic goal position update ──
+      if (studentGoal && newPosition && Number(newPosition) !== Number(studentGoal.current_position)) {
+        const { error: goalErr } = await supabase
+          .from("madrasa_student_goals")
+          .update({ current_position: Number(newPosition) })
+          .eq("id", studentGoal.id);
+        if (goalErr) throw goalErr;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["student_progress"] });
       queryClient.invalidateQueries({ queryKey: ["previous_progress"] });
+      queryClient.invalidateQueries({ queryKey: ["student_goal"] });
+      queryClient.invalidateQueries({ queryKey: ["student_goals"] });
       toast({ title: "Rapport enregistré ✅", description: `${student?.prenom} ${student?.nom}` });
       if (student) onReportSaved?.(student.id);
       onOpenChange(false);
@@ -256,6 +304,58 @@ export function SessionReportDrawer({
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {/* ── Goal & Progress Block ── */}
+          {activeConfig && (loadingGoal ? (
+            <Skeleton className="h-20 w-full rounded-lg" />
+          ) : goalProgress ? (
+            <div className="rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 font-semibold text-brand-navy">
+                  <Flag className="h-3.5 w-3.5 text-brand-emerald" />
+                  Objectif : {goalProgress.target} {goalProgress.unit}
+                </span>
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <Footprints className="h-3.5 w-3.5" />
+                  Actuel : {goalProgress.current} {goalProgress.unit}
+                </span>
+              </div>
+
+              {/* New position input */}
+              <div className="flex items-center gap-3">
+                <Label className="text-xs font-medium whitespace-nowrap text-brand-navy">
+                  Nouvelle position
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={goalProgress.target}
+                  step={1}
+                  value={newPosition}
+                  onChange={(e) => setNewPosition(e.target.value)}
+                  className="h-7 w-24 text-sm"
+                  placeholder={String(goalProgress.current)}
+                />
+                <span className="text-xs text-muted-foreground">{goalProgress.unit}</span>
+              </div>
+
+              {/* Live progress bar */}
+              <div className="space-y-1">
+                <Progress
+                  value={goalProgress.newPct}
+                  className="h-2 bg-muted [&>div]:bg-brand-emerald"
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>
+                    {goalProgress.currentPct !== goalProgress.newPct
+                      ? `${goalProgress.currentPct}% → ${goalProgress.newPct}%`
+                      : `${goalProgress.currentPct}%`}
+                  </span>
+                  <span>{goalProgress.newPos}/{goalProgress.target} {goalProgress.unit}</span>
+                </div>
+              </div>
+            </div>
+          ) : null)}
+
           {/* ── Previous session recall ── */}
           {activeConfig && (
             <div className="rounded-lg bg-brand-cyan/8 border border-brand-cyan/20 p-3">
