@@ -145,7 +145,7 @@ export function SessionReportDrawer({
 
   // ── Existing progress for today ──
   const { data: existingProgress } = useQuery({
-    queryKey: ["student_progress", student?.id, classId, today, activeConfig?.id],
+    queryKey: ["student_progress", student?.id, classId, targetDate, activeConfig?.id],
     enabled: open && !!student?.id && !!activeConfig?.id && !!orgId,
     queryFn: async () => {
       const { data } = await supabase
