@@ -193,6 +193,10 @@ const StudentProfile = () => {
           />
         </TabsContent>
 
+        <TabsContent value="goals">
+          <StudentGoalsTab studentId={student.id} studentPrenom={student.prenom} />
+        </TabsContent>
+
         <TabsContent value="timeline">
           <StudentTimelineTab progressEntries={progressEntries} studentPrenom={student.prenom} />
         </TabsContent>
