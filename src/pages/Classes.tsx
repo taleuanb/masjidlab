@@ -324,7 +324,6 @@ const Classes = () => {
             )}
           </TabsContent>
         </Tabs>
-        )}
       </div>
 
       {/* ── Create / Edit Dialog ── */}
