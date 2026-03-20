@@ -67,6 +67,7 @@ const Attendance = () => {
   const [threshold, setThreshold] = useState(3);
   const [reportStudent, setReportStudent] = useState<{ id: string; prenom: string; nom: string } | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [completedReports, setCompletedReports] = useState<Set<string>>(new Set());
 
   const today = format(new Date(), "yyyy-MM-dd");
   const todayLabel = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
@@ -442,38 +443,39 @@ const Attendance = () => {
               return (
                 <div
                   key={s.enrollment_id}
+                  onClick={() => {
+                    setReportStudent({ id: s.student_id, prenom: s.prenom, nom: s.nom });
+                    setReportOpen(true);
+                  }}
                   className={cn(
-                    "rounded-xl border bg-card p-3 transition-colors",
+                    "rounded-xl border bg-card p-3 transition-all cursor-pointer hover:border-brand-cyan/40 hover:shadow-sm",
                     current === "absent" && "border-destructive/30 bg-destructive/5",
                     current === "late" && "border-amber-400/30 bg-amber-500/5",
+                    completedReports.has(s.student_id) && "border-brand-emerald/50 bg-brand-emerald/5",
                   )}
                 >
                   <div className="flex items-center gap-2 mb-2.5">
                     <span className="font-medium text-sm text-foreground flex-1 truncate">
                       {s.prenom} {s.nom}
                     </span>
+                    {completedReports.has(s.student_id) && (
+                      <span className="flex items-center gap-1 text-brand-emerald text-[10px] font-medium shrink-0">
+                        <Check className="h-3.5 w-3.5" />
+                        Suivi
+                      </span>
+                    )}
                     {overThreshold && (
                       <span className="flex items-center gap-1 text-amber-600 text-[10px] font-medium shrink-0">
                         <AlertTriangle className="h-3.5 w-3.5" />
                         {s.absenceCount} abs.
                       </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setReportStudent({ id: s.student_id, prenom: s.prenom, nom: s.nom });
-                        setReportOpen(true);
-                      }}
-                      className="flex items-center gap-1 text-[10px] font-medium text-accent hover:text-accent/80 border border-accent/30 rounded-md px-2 py-1 hover:bg-accent/10 transition-colors shrink-0"
-                      title="Faire le suivi"
-                    >
+                    <span className="text-brand-cyan shrink-0">
                       <Notebook className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Suivi</span>
-                    </button>
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-1.5">
+                  <div className="grid grid-cols-4 gap-1.5" onClick={(e) => e.stopPropagation()}>
                     {(["present", "absent", "late", "excused"] as AttendanceStatus[]).map((status) => {
                       const config = STATUS_CONFIG[status];
                       const Icon = config.icon;
@@ -537,6 +539,9 @@ const Attendance = () => {
         onOpenChange={setReportOpen}
         student={reportStudent}
         classId={selectedClass?.id ?? ""}
+        onReportSaved={(studentId) => {
+          setCompletedReports((prev) => new Set(prev).add(studentId));
+        }}
       />
     </main>
   );
