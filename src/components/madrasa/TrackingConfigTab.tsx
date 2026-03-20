@@ -205,7 +205,8 @@ function FormBuilderDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["session_config", subject.id, orgId] });
-      toast({ title: "Configuration enregistrée ✓" });
+      queryClient.invalidateQueries({ queryKey: ["session_configs_all", orgId] });
+      toast({ title: `Configuration enregistrée avec succès pour ${subject.name} ✓` });
       onOpenChange(false);
     },
     onError: (e: Error) =>
