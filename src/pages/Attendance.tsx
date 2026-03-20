@@ -531,8 +531,8 @@ const Attendance = () => {
         </div>
       )}
 
-      {/* Session Report Modal */}
-      <SessionReportModal
+      {/* Session Report Drawer */}
+      <SessionReportDrawer
         open={reportOpen}
         onOpenChange={setReportOpen}
         student={reportStudent}
