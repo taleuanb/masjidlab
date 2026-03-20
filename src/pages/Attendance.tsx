@@ -243,6 +243,30 @@ const Attendance = () => {
     }
   }, [orgId, today, toast]);
 
+  // ── Fetch existing progress for today to show indicators ──
+  const studentIds = useMemo(() => students.map((s) => s.student_id), [students]);
+  const { data: todayProgressIds = [] } = useQuery({
+    queryKey: ["today_progress_ids", orgId, selectedClass?.id, today],
+    enabled: !!orgId && !!selectedClass && studentIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_student_progress")
+        .select("student_id")
+        .eq("org_id", orgId!)
+        .eq("class_id", selectedClass!.id)
+        .eq("lesson_date", today)
+        .in("student_id", studentIds);
+      return (data ?? []).map((r) => r.student_id);
+    },
+  });
+
+  // Merge DB progress with session-saved reports
+  const allCompletedReports = useMemo(() => {
+    const set = new Set(completedReports);
+    for (const id of todayProgressIds) set.add(id);
+    return set;
+  }, [completedReports, todayProgressIds]);
+
   // ── Toggle status ──
   const setStatus = (enrollmentId: string, status: AttendanceStatus) => {
     setEntries((prev) => {
