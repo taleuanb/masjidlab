@@ -347,7 +347,7 @@ function FormBuilderDialog({
           <Button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || fields.length === 0}
-            className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90"
+            className="bg-[hsl(var(--brand-emerald))] hover:bg-[hsl(var(--brand-emerald))]/90 text-white"
           >
             {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             Enregistrer la configuration
