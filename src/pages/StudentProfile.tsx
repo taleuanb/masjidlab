@@ -181,7 +181,6 @@ const StudentProfile = () => {
           <TabsTrigger value="goals">Objectifs</TabsTrigger>
           <TabsTrigger value="timeline">Suivi Pédagogique</TabsTrigger>
           <TabsTrigger value="results">Résultats</TabsTrigger>
-          <TabsTrigger value="results">Résultats</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
