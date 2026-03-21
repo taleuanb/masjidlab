@@ -217,6 +217,7 @@ export function SessionReportDrawer({
   const [newPosition, setNewPosition] = useState<string>("");
   const [masteryValidated, setMasteryValidated] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showPastDetails, setShowPastDetails] = useState(false);
 
   useEffect(() => {
     if (!open) return;
