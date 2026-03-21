@@ -502,14 +502,6 @@ export function SessionReportDrawer({
           )}
 
           {/* ── ZONE B: Saisie du Jour ── */}
-          {activeConfig && (
-            <div className="rounded-xl border border-border p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-brand-emerald" />
-                <span className="text-xs font-semibold text-brand-navy">
-                  Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
-                </span>
-              </div>
 
           {/* Subject picker if no subjectId */}
           {!subjectId && (
@@ -532,122 +524,127 @@ export function SessionReportDrawer({
             </div>
           )}
 
-          {/* Dynamic form */}
-          {isLoadingActiveConfig ? (
-            <div className="space-y-3">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
+          {activeConfig && (
+            <div className="rounded-xl border border-border p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-brand-emerald" />
+                <span className="text-xs font-semibold text-brand-navy">
+                  Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
+                </span>
+              </div>
+
+              {/* Dynamic form */}
+              {isLoadingActiveConfig ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : schema.length > 0 ? (
+                <div className="space-y-3">
+                  {schema.map((field) => (
+                    <div key={field.key} className="space-y-1">
+                      <Label className="text-xs font-medium">
+                        {field.label}
+                        {field.type === "number" && field.max && (
+                          <span className="text-muted-foreground font-normal"> (/{field.max})</span>
+                        )}
+                      </Label>
+                      {field.type === "text" && (
+                        <Input
+                          value={formData[field.key] ?? ""}
+                          onChange={(e) => updateField(field.key, e.target.value)}
+                          className="h-8 text-sm"
+                          placeholder={field.label}
+                        />
+                      )}
+                      {field.type === "number" && (
+                        <Input
+                          type="number"
+                          min={0}
+                          max={field.max}
+                          step={0.5}
+                          value={formData[field.key] ?? ""}
+                          onChange={(e) => updateField(field.key, e.target.value)}
+                          className={cn(
+                            "h-8 w-24 text-sm",
+                            formData[field.key] && field.max && Number(formData[field.key]) > field.max
+                              && "border-destructive"
+                          )}
+                          placeholder={`/${field.max ?? ""}`}
+                        />
+                      )}
+                      {field.type === "textarea" && (
+                        <Textarea
+                          value={formData[field.key] ?? ""}
+                          onChange={(e) => updateField(field.key, e.target.value)}
+                          rows={2}
+                          placeholder={field.label}
+                          className="resize-none text-sm"
+                        />
+                      )}
+                      {field.type === "select" && field.options && (
+                        <Select
+                          value={formData[field.key] ?? ""}
+                          onValueChange={(v) => updateField(field.key, v)}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue placeholder="Choisir…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {field.options.map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {/* ── Mastery Toggle ── */}
+              {goalProgress && (
+                <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
+                    <Label htmlFor="mastery-toggle" className="text-xs font-semibold text-brand-navy cursor-pointer">
+                      Objectif validé et acquis
+                    </Label>
+                  </div>
+                  <Switch
+                    id="mastery-toggle"
+                    checked={masteryValidated}
+                    onCheckedChange={setMasteryValidated}
+                  />
+                </div>
+              )}
+
+              {/* To Do section */}
+              <div className="space-y-1.5 pt-2 border-t border-border">
+                <Label className="text-xs font-semibold flex items-center gap-1.5 text-brand-cyan">
+                  <ListTodo className="h-3.5 w-3.5" />
+                  À faire (prochaine séance)
+                </Label>
+                <Textarea
+                  value={todoNext}
+                  onChange={(e) => setTodoNext(e.target.value)}
+                  rows={2}
+                  placeholder="Ex: Réviser sourate Al-Baqara v.1-5…"
+                  className="resize-none text-sm"
+                />
+              </div>
             </div>
-          ) : !activeConfig && effectiveSubjectId ? (
+          )}
+
+          {/* No config placeholder */}
+          {!activeConfig && effectiveSubjectId && !isLoadingActiveConfig && (
             <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 text-center">
               <Notebook className="h-7 w-7 mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Aucune configuration pour cette matière.
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Un administrateur doit configurer les champs.
-              </p>
-            </div>
-          ) : schema.length > 0 ? (
-            <div className="space-y-3">
-              {schema.map((field) => (
-                <div key={field.key} className="space-y-1">
-                  <Label className="text-xs font-medium">
-                    {field.label}
-                    {field.type === "number" && field.max && (
-                      <span className="text-muted-foreground font-normal"> (/{field.max})</span>
-                    )}
-                  </Label>
-                  {field.type === "text" && (
-                    <Input
-                      value={formData[field.key] ?? ""}
-                      onChange={(e) => updateField(field.key, e.target.value)}
-                      className="h-8 text-sm"
-                      placeholder={field.label}
-                    />
-                  )}
-                  {field.type === "number" && (
-                    <Input
-                      type="number"
-                      min={0}
-                      max={field.max}
-                      step={0.5}
-                      value={formData[field.key] ?? ""}
-                      onChange={(e) => updateField(field.key, e.target.value)}
-                      className={cn(
-                        "h-8 w-24 text-sm",
-                        formData[field.key] && field.max && Number(formData[field.key]) > field.max
-                          && "border-destructive"
-                      )}
-                      placeholder={`/${field.max ?? ""}`}
-                    />
-                  )}
-                  {field.type === "textarea" && (
-                    <Textarea
-                      value={formData[field.key] ?? ""}
-                      onChange={(e) => updateField(field.key, e.target.value)}
-                      rows={2}
-                      placeholder={field.label}
-                      className="resize-none text-sm"
-                    />
-                  )}
-                  {field.type === "select" && field.options && (
-                    <Select
-                      value={formData[field.key] ?? ""}
-                      onValueChange={(v) => updateField(field.key, v)}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Choisir…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {field.options.map((opt) => (
-                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          {/* ── Mastery Toggle ── */}
-          {activeConfig && goalProgress && (
-            <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
-                <Label htmlFor="mastery-toggle" className="text-xs font-semibold text-brand-navy cursor-pointer">
-                  Objectif validé et acquis
-                </Label>
-              </div>
-              <Switch
-                id="mastery-toggle"
-                checked={masteryValidated}
-                onCheckedChange={setMasteryValidated}
-              />
+              <p className="text-sm text-muted-foreground">Aucune configuration pour cette matière.</p>
+              <p className="text-xs text-muted-foreground mt-1">Un administrateur doit configurer les champs.</p>
             </div>
           )}
-
-          {/* To Do section */}
-          {activeConfig && (
-            <div className="space-y-1.5 pt-2 border-t border-border">
-              <Label className="text-xs font-semibold flex items-center gap-1.5 text-brand-cyan">
-                <ListTodo className="h-3.5 w-3.5" />
-                À faire (prochaine séance)
-              </Label>
-              <Textarea
-                value={todoNext}
-                onChange={(e) => setTodoNext(e.target.value)}
-                rows={2}
-                placeholder="Ex: Réviser sourate Al-Baqara v.1-5…"
-                className="resize-none text-sm"
-              />
-            </div>
-          )}
-
-          {/* Close Zone B card */}
-          {activeConfig && </div>}
 
           {/* ── Celebration overlay ── */}
           <AnimatePresence>
