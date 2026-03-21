@@ -220,7 +220,7 @@ export function StudentProgressWidget() {
                     </div>
                     <Progress
                       value={s.averageScore ?? 0}
-                      className="h-1.5 [&>div]:bg-gradient-to-r [&>div]:from-accent [&>div]:to-secondary"
+                      className="h-2 w-full [&>div]:bg-gradient-to-r [&>div]:from-accent [&>div]:to-secondary"
                     />
                   </div>
                   <div className="space-y-1">
