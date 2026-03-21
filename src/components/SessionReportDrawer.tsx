@@ -28,14 +28,20 @@ interface SchemaField {
   options?: string[];
 }
 
+type StudentEntry = { id: string; prenom: string; nom: string };
+
 interface SessionReportDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  student: { id: string; prenom: string; nom: string } | null;
+  student: StudentEntry | null;
   classId: string;
   subjectId?: string | null;
   onReportSaved?: (studentId: string) => void;
   forDate?: string;
+  /** Full ordered list of students for next-student navigation */
+  studentsList?: StudentEntry[];
+  /** Called to switch to a different student without closing */
+  onStudentChange?: (student: StudentEntry) => void;
 }
 
 export function SessionReportDrawer({
@@ -46,6 +52,8 @@ export function SessionReportDrawer({
   subjectId,
   onReportSaved,
   forDate,
+  studentsList,
+  onStudentChange,
 }: SessionReportDrawerProps) {
   const { orgId } = useOrganization();
   const { toast } = useToast();

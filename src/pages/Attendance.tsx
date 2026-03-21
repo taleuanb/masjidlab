@@ -565,6 +565,8 @@ const Attendance = () => {
         onOpenChange={setReportOpen}
         student={reportStudent}
         classId={selectedClass?.id ?? ""}
+        studentsList={students.map((s) => ({ id: s.student_id, prenom: s.prenom, nom: s.nom }))}
+        onStudentChange={(s) => setReportStudent(s)}
         onReportSaved={(studentId) => {
           setCompletedReports((prev) => new Set(prev).add(studentId));
           queryClient.invalidateQueries({ queryKey: ["today_progress_ids"] });
