@@ -221,7 +221,7 @@ export function SessionReportDrawer({
   // Pre-fill newPosition from previous session or goal
   useEffect(() => {
     if (!open || existingProgress) return;
-    if (previousData?.["_goal_position"]) {
+    if (previousData?.["position_actuelle"]) {
       setNewPosition(previousData["_goal_position"]);
     } else if (studentGoal) {
       setNewPosition(String(studentGoal.current_position));
