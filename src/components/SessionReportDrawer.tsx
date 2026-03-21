@@ -670,6 +670,18 @@ export function SessionReportDrawer({
                   placeholder="Ex: Réviser sourate Al-Baqara v.1-5…"
                   className="resize-none text-sm"
                 />
+                {/* Quick-Tags */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {["Réviser la leçon", "Mémorisation parfaite", "Manque de fluidité", "Revoir les règles de Tajwid", "Préparer la suite"].map((tag) => (
+                    <span
+                      key={tag}
+                      onClick={() => setTodoNext((prev) => prev ? `${prev}, ${tag}` : tag)}
+                      className="inline-flex items-center rounded-full border border-brand-cyan/30 bg-brand-cyan/5 px-2.5 py-0.5 text-[11px] font-medium text-brand-navy cursor-pointer hover:bg-brand-cyan/20 transition-colors"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           )}
