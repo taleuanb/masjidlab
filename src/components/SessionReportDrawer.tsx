@@ -294,38 +294,66 @@ export function SessionReportDrawer({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex flex-col w-full sm:max-w-md p-0">
-        {/* Header */}
-        <SheetHeader className="shrink-0 px-5 pt-5 pb-3 border-b border-border">
-          <SheetTitle className="flex items-center gap-2 text-brand-navy text-base">
-            <Notebook className="h-4 w-4 text-brand-cyan" />
-            {drawerTitle}
-          </SheetTitle>
-          <SheetDescription className="text-xs">
-            {format(new Date(), "d MMMM yyyy", { locale: fr })}
-          </SheetDescription>
-        </SheetHeader>
+        {/* Header + Ghost Progress */}
+        <div className="shrink-0 border-b border-border">
+          <SheetHeader className="px-5 pt-5 pb-2">
+            <SheetTitle className="flex items-center gap-2 text-brand-navy text-base">
+              <Notebook className="h-4 w-4 text-brand-cyan" />
+              {drawerTitle}
+            </SheetTitle>
+            <SheetDescription className="text-xs">
+              {format(new Date(), "d MMMM yyyy", { locale: fr })}
+            </SheetDescription>
+          </SheetHeader>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* ── Goal & Progress Block ── */}
-          {activeConfig && (loadingGoal ? (
-            <Skeleton className="h-20 w-full rounded-lg" />
-          ) : goalProgress ? (
-            <div className="rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 font-semibold text-brand-navy">
-                  <Flag className="h-3.5 w-3.5 text-brand-emerald" />
-                  Objectif : {goalProgress.target} {goalProgress.unit}
+          {/* ── Ghost Progress Bar (pinned in header) ── */}
+          {activeConfig && !loadingGoal && goalProgress && (
+            <div className="px-5 pb-3 space-y-1.5">
+              {/* Stats row */}
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="flex items-center gap-1 font-semibold text-brand-navy">
+                  <Flag className="h-3 w-3 text-brand-emerald" />
+                  {goalProgress.target} {goalProgress.unit}
                 </span>
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Footprints className="h-3.5 w-3.5" />
-                  Actuel : {goalProgress.current} {goalProgress.unit}
+                <span className="text-muted-foreground">
+                  {goalProgress.current} → {goalProgress.newPos} {goalProgress.unit}
                 </span>
               </div>
 
-              {/* New position input */}
-              <div className="flex items-center gap-3">
-                <Label className="text-xs font-medium whitespace-nowrap text-brand-navy">
+              {/* Dual-color bar */}
+              <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
+                {/* Solid: acquired progress */}
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-brand-emerald transition-all duration-300"
+                  style={{ width: `${goalProgress.currentPct}%` }}
+                />
+                {/* Ghost: new progress being typed */}
+                {goalProgress.newPct > goalProgress.currentPct && (
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-brand-cyan/40 transition-all duration-300"
+                    style={{ width: `${goalProgress.newPct}%` }}
+                  />
+                )}
+                {/* Solid on top (re-layer so it's visible over ghost) */}
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-brand-emerald transition-all duration-300"
+                  style={{ width: `${goalProgress.currentPct}%` }}
+                />
+              </div>
+
+              {/* Percentage label */}
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>
+                  {goalProgress.currentPct !== goalProgress.newPct
+                    ? `${goalProgress.currentPct}% → ${goalProgress.newPct}%`
+                    : `${goalProgress.currentPct}%`}
+                </span>
+                <span>{goalProgress.newPos} / {goalProgress.target} {goalProgress.unit}</span>
+              </div>
+
+              {/* Inline position input */}
+              <div className="flex items-center gap-2 pt-0.5">
+                <Label className="text-[11px] font-medium whitespace-nowrap text-brand-navy">
                   Nouvelle position
                 </Label>
                 <Input
@@ -335,29 +363,22 @@ export function SessionReportDrawer({
                   step={1}
                   value={newPosition}
                   onChange={(e) => setNewPosition(e.target.value)}
-                  className="h-7 w-24 text-sm"
+                  className="h-7 w-20 text-sm"
                   placeholder={String(goalProgress.current)}
                 />
-                <span className="text-xs text-muted-foreground">{goalProgress.unit}</span>
-              </div>
-
-              {/* Live progress bar */}
-              <div className="space-y-1">
-                <Progress
-                  value={goalProgress.newPct}
-                  className="h-2 bg-muted [&>div]:bg-brand-emerald"
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>
-                    {goalProgress.currentPct !== goalProgress.newPct
-                      ? `${goalProgress.currentPct}% → ${goalProgress.newPct}%`
-                      : `${goalProgress.currentPct}%`}
-                  </span>
-                  <span>{goalProgress.newPos}/{goalProgress.target} {goalProgress.unit}</span>
-                </div>
+                <span className="text-[11px] text-muted-foreground">{goalProgress.unit}</span>
               </div>
             </div>
-          ) : null)}
+          )}
+          {activeConfig && loadingGoal && (
+            <div className="px-5 pb-3">
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
           {/* ── FLASHBACK: Previous session (read-only) ── */}
           {activeConfig && (
