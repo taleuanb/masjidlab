@@ -711,6 +711,11 @@ export function SessionReportDrawer({
 
         {/* Sticky footer */}
         <SheetFooter className="shrink-0 border-t border-border px-5 py-3 flex flex-col gap-2">
+          {studentsList && student && !isEditMode && (
+            <p className="text-[10px] text-muted-foreground text-center">
+              Élève {studentsList.findIndex((s) => s.id === student.id) + 1} / {studentsList.length}
+            </p>
+          )}
           {isEditMode && existingProgress?.updated_at && (
             <p className="text-[10px] text-muted-foreground text-right">
               Modifié le {format(new Date(existingProgress.updated_at), "dd/MM/yyyy à HH:mm")}
