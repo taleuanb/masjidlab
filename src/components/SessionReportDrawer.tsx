@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight, Flag, Footprints, History, Trophy, CheckCircle2, Copy } from "lucide-react";
+import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight, Flag, Footprints, History, Trophy, CheckCircle2, Copy, Target, TrendingUp } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
@@ -336,7 +336,7 @@ export function SessionReportDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex flex-col w-full sm:max-w-[550px] p-0">
+      <SheetContent side="right" className="flex flex-col w-full sm:max-w-xl p-0">
         {/* Header + Ghost Progress */}
         <div className="shrink-0 border-b border-border">
           <SheetHeader className="px-5 pt-5 pb-2">
@@ -355,10 +355,11 @@ export function SessionReportDrawer({
               {/* Stats row */}
               <div className="flex items-center justify-between text-[11px]">
                 <span className="flex items-center gap-1 font-semibold text-brand-navy">
-                  <Flag className="h-3 w-3 text-brand-emerald" />
-                  {goalProgress.target} {goalProgress.unit}
+                  <Target className="h-3 w-3 text-brand-emerald" />
+                  Objectif : {goalProgress.target} {goalProgress.unit}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <TrendingUp className="h-3 w-3" />
                   {goalProgress.current} → {goalProgress.newPos} {goalProgress.unit}
                 </span>
               </div>
@@ -477,7 +478,7 @@ export function SessionReportDrawer({
                       <span className="text-foreground">{previousData["_goal_position"]} {goalProgress.unit}</span>
                     </div>
                   )}
-                  {previousTodo && (
+                  {previousTodo ? (
                     <div className="mt-1.5 rounded-md bg-brand-cyan/10 border border-brand-cyan/20 px-2.5 py-1.5">
                       <span className="text-xs font-semibold text-brand-navy flex items-center gap-1">
                         <ListTodo className="h-3 w-3 text-brand-cyan" />
@@ -485,6 +486,10 @@ export function SessionReportDrawer({
                       </span>
                       <p className="text-sm text-foreground leading-snug mt-0.5">{previousTodo}</p>
                     </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground italic mt-1">
+                      Aucun objectif spécifique n'avait été fixé
+                    </p>
                   )}
                 </div>
               ) : (
