@@ -203,7 +203,7 @@ export function StudentProgressWidget() {
             }
 
             return (
-              <div key={s.id} className="rounded-xl border bg-card p-4 space-y-3">
+              <div key={s.id} className="rounded-xl border bg-card p-4 flex flex-col gap-3">
                 {/* Name */}
                 <p className="text-sm font-bold text-brand-navy">{s.prenom} {s.nom}</p>
 
