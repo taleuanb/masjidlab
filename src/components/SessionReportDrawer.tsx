@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Save, Notebook, MessageSquare, BookOpen, ChevronRight, History, Trophy, CheckCircle2, Copy, Target, TrendingUp, ChevronDown } from "lucide-react";
+import { Loader2, Save, Notebook, MessageSquare, BookOpen, ChevronRight, History, Trophy, CheckCircle2, Copy, Target, TrendingUp, ChevronDown, Minus, Plus, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -431,21 +431,34 @@ export function SessionReportDrawer({
                 <span>{goalProgress.newPos} / {goalProgress.target} {goalProgress.unit}</span>
               </div>
 
-              {/* Inline position input */}
+              {/* Stepper position input */}
               <div className="flex items-center gap-2 pt-0.5">
                 <Label className="text-[11px] font-medium whitespace-nowrap text-brand-navy">
                   Nouvelle position
                 </Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={goalProgress.target}
-                  step={1}
-                  value={newPosition}
-                  onChange={(e) => setNewPosition(e.target.value)}
-                  className="h-7 w-20 text-sm"
-                  placeholder={String(goalProgress.current)}
-                />
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full shrink-0"
+                    onClick={() => setNewPosition((prev) => Math.max(0, Number(prev) - 1).toString())}
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="font-bold text-lg w-8 text-center text-brand-navy">
+                    {newPosition || "0"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full shrink-0"
+                    onClick={() => setNewPosition((prev) => Math.min(goalProgress.target, Number(prev) + 1).toString())}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
                 {goalProgress.defined && (
                   <span className="text-[11px] text-muted-foreground">{goalProgress.unit}</span>
                 )}
@@ -615,12 +628,14 @@ export function SessionReportDrawer({
                       const isTextarea = field.type === "textarea";
                       const isSelect = field.type === "select" && field.options;
                       const isNumber = !isText && !isTextarea && !isSelect;
+                      const isStarRating = isNumber && field.max === 5;
+                      const currentVal = Number(formData[field.key] ?? 0);
 
                       return (
                         <div key={field.key} className="space-y-1">
                           <Label className="text-xs font-medium">
                             {field.label}
-                            {isNumber && field.max && (
+                            {isNumber && !isStarRating && field.max && (
                               <span className="text-muted-foreground font-normal"> (/{field.max})</span>
                             )}
                           </Label>
@@ -632,7 +647,26 @@ export function SessionReportDrawer({
                               placeholder={field.label}
                             />
                           )}
-                          {isNumber && (
+                          {isStarRating && (
+                            <div className="flex gap-1 py-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={cn(
+                                    "h-7 w-7 cursor-pointer transition-colors",
+                                    currentVal >= star
+                                      ? "text-amber-400 fill-amber-400"
+                                      : "text-muted-foreground/30"
+                                  )}
+                                  onClick={() => updateField(field.key, String(star))}
+                                />
+                              ))}
+                              {currentVal > 0 && (
+                                <span className="text-xs text-muted-foreground self-center ml-1">{currentVal}/5</span>
+                              )}
+                            </div>
+                          )}
+                          {isNumber && !isStarRating && (
                             <Input
                               type="number"
                               min={0}
@@ -641,7 +675,7 @@ export function SessionReportDrawer({
                               value={formData[field.key] ?? ""}
                               onChange={(e) => updateField(field.key, e.target.value)}
                               className={cn(
-                                "h-8 w-24 text-sm",
+                                "h-8 w-24 text-sm text-center font-semibold text-brand-navy",
                                 formData[field.key] && field.max && Number(formData[field.key]) > field.max
                                   && "border-destructive"
                               )}
