@@ -683,7 +683,7 @@ export function SessionReportDrawer({
                 />
                 {/* Quick-Tags */}
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {["Réviser la leçon", "Mémorisation parfaite", "Manque de fluidité", "Revoir les règles de Tajwid", "Préparer la suite"].map((tag) => (
+                  {["Réviser la leçon", "Mémorisation parfaite", "Manque de fluidité", "Avancer au prochain Hizb"].map((tag) => (
                     <span
                       key={tag}
                       onClick={() => setTodoNext((prev) => prev ? `${prev}, ${tag}` : tag)}
