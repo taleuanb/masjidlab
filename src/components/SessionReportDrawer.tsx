@@ -279,6 +279,32 @@ export function SessionReportDrawer({
     return { current, target, newPos, currentPct, newPct, unit, defined: !!hasGoal };
   }, [studentGoal, newPosition]);
 
+  // ── WhatsApp message generator ──
+  const handleWhatsAppShare = useCallback(() => {
+    if (!student) return;
+    const matiere = subjectInfo?.name ?? "la matière";
+    const lines: string[] = [
+      `🕌 *Point d'étape Madrasa*`,
+      `As-salamu alaykum, voici le résumé de la séance de *${student.prenom}* aujourd'hui en *${matiere}*.`,
+      ``,
+    ];
+    if (newPosition) {
+      const unit = goalProgress?.unit ?? "";
+      lines.push(`📈 *Avancée :* ${newPosition} ${unit}`);
+    }
+    for (const field of schema) {
+      if (field.type === "number" && field.max === 5 && formData[field.key]) {
+        lines.push(`⭐ ${field.label} : ${formData[field.key]}/5`);
+      }
+    }
+    if (todoNext) {
+      lines.push(``, `🗣️ *Mot du professeur :*`, `>  ${todoNext}`);
+    }
+    lines.push(``, `BarakAllahu fikum pour votre suivi à la maison ! 🤲`);
+    const encoded = encodeURIComponent(lines.join("\n"));
+    window.open(`https://wa.me/?text=${encoded}`, "_blank");
+  }, [student, subjectInfo, newPosition, goalProgress, schema, formData, todoNext]);
+
   // ── Save mutation ──
   const saveMutation = useMutation({
     mutationFn: async () => {
