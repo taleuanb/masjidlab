@@ -264,7 +264,7 @@ export function SessionReportDrawer({
         }
       }
 
-      const dataToSave = { ...formData, _todo_next: todoNext, _goal_position: newPosition, _mastery: String(masteryValidated) };
+      const dataToSave = { ...formData, todo_next: todoNext, position_actuelle: newPosition, mastery_validated: String(masteryValidated) };
 
       if (existingProgress) {
         const { error } = await supabase
