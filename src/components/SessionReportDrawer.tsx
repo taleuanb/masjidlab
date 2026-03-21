@@ -359,29 +359,70 @@ export function SessionReportDrawer({
             </div>
           ) : null)}
 
-          {/* ── Previous session recall ── */}
+          {/* ── FLASHBACK: Previous session (read-only) ── */}
           {activeConfig && (
-            <div className="rounded-lg bg-brand-cyan/8 border border-brand-cyan/20 p-3">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <BookOpen className="h-3.5 w-3.5 text-brand-cyan" />
+            <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <History className="h-3.5 w-3.5 text-brand-cyan" />
                 <span className="text-xs font-semibold text-brand-navy">
-                  Rappel séance précédente
+                  {loadingPrevious
+                    ? "Chargement…"
+                    : previousProgress?.lesson_date
+                      ? `Dernière séance (${format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })})`
+                      : "Première séance pour ce sujet"}
                 </span>
               </div>
               {loadingPrevious ? (
-                <Skeleton className="h-4 w-3/4" />
-              ) : previousTodo ? (
-                <p className="text-sm text-foreground leading-snug">{previousTodo}</p>
+                <Skeleton className="h-10 w-full" />
+              ) : previousData ? (
+                <div className="space-y-1.5">
+                  {/* Render each schema field from previous data */}
+                  {schema.map((field) => {
+                    const val = previousData[field.key];
+                    if (!val) return null;
+                    return (
+                      <div key={field.key} className="flex items-baseline gap-2 text-xs">
+                        <span className="font-medium text-muted-foreground whitespace-nowrap">{field.label} :</span>
+                        <span className="text-foreground">{val}{field.type === "number" && field.max ? ` / ${field.max}` : ""}</span>
+                      </div>
+                    );
+                  })}
+                  {/* Previous goal position */}
+                  {previousData["_goal_position"] && goalProgress && (
+                    <div className="flex items-baseline gap-2 text-xs">
+                      <span className="font-medium text-muted-foreground whitespace-nowrap">Position :</span>
+                      <span className="text-foreground">{previousData["_goal_position"]} {goalProgress.unit}</span>
+                    </div>
+                  )}
+                  {/* Previous todo */}
+                  {previousTodo && (
+                    <div className="mt-1.5 rounded-md bg-brand-cyan/10 border border-brand-cyan/20 px-2.5 py-1.5">
+                      <span className="text-xs font-semibold text-brand-navy flex items-center gap-1">
+                        <ListTodo className="h-3 w-3 text-brand-cyan" />
+                        À faire aujourd'hui
+                      </span>
+                      <p className="text-sm text-foreground leading-snug mt-0.5">{previousTodo}</p>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p className="text-xs text-muted-foreground italic">
-                  Première séance pour ce sujet
+                  Aucun historique — première séance
                 </p>
               )}
-              {previousProgress?.lesson_date && (
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })}
-                </p>
-              )}
+            </div>
+          )}
+
+          {/* ── Separator between Flashback and Today's form ── */}
+          {activeConfig && <Separator className="my-1" />}
+
+          {/* ── SAISIE DU JOUR ── */}
+          {activeConfig && (
+            <div className="flex items-center gap-1.5 -mb-1">
+              <BookOpen className="h-3.5 w-3.5 text-brand-emerald" />
+              <span className="text-xs font-semibold text-brand-navy">
+                Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
+              </span>
             </div>
           )}
 
