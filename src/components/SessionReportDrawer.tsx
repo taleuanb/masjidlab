@@ -736,8 +736,12 @@ export function SessionReportDrawer({
               ) : (
                 <Save className="h-3.5 w-3.5" />
               )}
-              {isEditMode ? "Mettre à jour le suivi" : "Valider & Suivant"}
-              {!isEditMode && <ChevronRight className="h-3.5 w-3.5" />}
+              {isEditMode
+                ? "Mettre à jour le suivi"
+                : isLastStudent
+                  ? "Valider & Terminer"
+                  : "Valider & Élève Suivant"}
+              {!isEditMode && !isLastStudent && <ChevronRight className="h-3.5 w-3.5" />}
             </Button>
           </div>
         </SheetFooter>
