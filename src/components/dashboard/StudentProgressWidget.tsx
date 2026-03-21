@@ -164,7 +164,7 @@ export function StudentProgressWidget() {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bento-card col-span-1 lg:col-span-2"
+      className="bento-card"
     >
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -203,7 +203,7 @@ export function StudentProgressWidget() {
             }
 
             return (
-              <div key={s.id} className="rounded-xl border bg-card p-4 space-y-3">
+              <div key={s.id} className="rounded-xl border bg-card p-4 flex flex-col gap-3">
                 {/* Name */}
                 <p className="text-sm font-bold text-brand-navy">{s.prenom} {s.nom}</p>
 
@@ -220,7 +220,7 @@ export function StudentProgressWidget() {
                     </div>
                     <Progress
                       value={s.averageScore ?? 0}
-                      className="h-1.5 [&>div]:bg-gradient-to-r [&>div]:from-accent [&>div]:to-secondary"
+                      className="h-2 w-full [&>div]:bg-gradient-to-r [&>div]:from-accent [&>div]:to-secondary"
                     />
                   </div>
                   <div className="space-y-1">
@@ -232,7 +232,7 @@ export function StudentProgressWidget() {
                     </div>
                     <Progress
                       value={s.attendanceRate}
-                      className="h-1.5 [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-secondary"
+                      className="h-2 w-full [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-secondary"
                     />
                   </div>
                 </div>
@@ -248,7 +248,7 @@ export function StudentProgressWidget() {
                       </div>
                       <Progress
                         value={goalPct ?? 0}
-                        className="h-2 [&>div]:bg-brand-emerald"
+                        className="h-2 w-full [&>div]:bg-brand-emerald"
                       />
                       <p className="text-xs font-semibold text-brand-navy">
                         {s.goal.currentPosition} / {s.goal.targetValue} {s.goal.unitLabel}{" "}
@@ -285,7 +285,7 @@ export function StudentProgressWidget() {
 
                       {/* Todo next */}
                       {todoNext && (
-                        <div className="rounded-lg bg-brand-cyan/10 px-3 py-2 flex items-start gap-2">
+                        <div className="rounded-md bg-brand-cyan/10 px-3 py-2.5 mt-1 flex items-start gap-2">
                           <Lightbulb className="h-3.5 w-3.5 text-brand-cyan mt-0.5 shrink-0" />
                           <p className="text-xs text-brand-navy">
                             <span className="font-semibold">À préparer :</span> {todoNext}
