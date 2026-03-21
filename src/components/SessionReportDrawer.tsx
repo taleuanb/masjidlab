@@ -28,14 +28,20 @@ interface SchemaField {
   options?: string[];
 }
 
+type StudentEntry = { id: string; prenom: string; nom: string };
+
 interface SessionReportDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  student: { id: string; prenom: string; nom: string } | null;
+  student: StudentEntry | null;
   classId: string;
   subjectId?: string | null;
   onReportSaved?: (studentId: string) => void;
   forDate?: string;
+  /** Full ordered list of students for next-student navigation */
+  studentsList?: StudentEntry[];
+  /** Called to switch to a different student without closing */
+  onStudentChange?: (student: StudentEntry) => void;
 }
 
 export function SessionReportDrawer({
@@ -46,12 +52,34 @@ export function SessionReportDrawer({
   subjectId,
   onReportSaved,
   forDate,
+  studentsList,
+  onStudentChange,
 }: SessionReportDrawerProps) {
   const { orgId } = useOrganization();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const targetDate = forDate ?? format(new Date(), "yyyy-MM-dd");
   const isEditMode = !!forDate;
+
+  // ── Next student navigation ──
+  const nextStudent = useMemo(() => {
+    if (!studentsList || !student) return null;
+    const idx = studentsList.findIndex((s) => s.id === student.id);
+    if (idx === -1 || idx >= studentsList.length - 1) return null;
+    return studentsList[idx + 1];
+  }, [studentsList, student]);
+
+  const isLastStudent = !!studentsList && !!student && !nextStudent;
+
+  const goToNextStudent = useCallback((next: StudentEntry) => {
+    // Reset form state before switching
+    setFormData({});
+    setTodoNext("");
+    setNewPosition("");
+    setMasteryValidated(false);
+    setShowCelebration(false);
+    onStudentChange?.(next);
+  }, [onStudentChange]);
 
   // ── Fetch session config ──
   const { data: config, isLoading: loadingConfig } = useQuery({
@@ -309,17 +337,25 @@ export function SessionReportDrawer({
       queryClient.invalidateQueries({ queryKey: ["student_goal"] });
       queryClient.invalidateQueries({ queryKey: ["student_goals"] });
 
+      if (student) onReportSaved?.(student.id);
+
       if (result?.reachedGoal) {
         setShowCelebration(true);
         toast({ title: "🎉 Objectif annuel atteint !", description: `${student?.prenom} a terminé son objectif. MashaAllah !` });
         setTimeout(() => {
-          if (student) onReportSaved?.(student.id);
-          onOpenChange(false);
+          if (nextStudent && !isEditMode) {
+            goToNextStudent(nextStudent);
+          } else {
+            onOpenChange(false);
+          }
         }, 2200);
       } else {
         toast({ title: "Rapport enregistré ✅", description: `${student?.prenom} ${student?.nom}` });
-        if (student) onReportSaved?.(student.id);
-        onOpenChange(false);
+        if (nextStudent && !isEditMode) {
+          goToNextStudent(nextStudent);
+        } else {
+          onOpenChange(false);
+        }
       }
     },
     onError: (e: Error) => {
@@ -675,6 +711,11 @@ export function SessionReportDrawer({
 
         {/* Sticky footer */}
         <SheetFooter className="shrink-0 border-t border-border px-5 py-3 flex flex-col gap-2">
+          {studentsList && student && !isEditMode && (
+            <p className="text-[10px] text-muted-foreground text-center">
+              Élève {studentsList.findIndex((s) => s.id === student.id) + 1} / {studentsList.length}
+            </p>
+          )}
           {isEditMode && existingProgress?.updated_at && (
             <p className="text-[10px] text-muted-foreground text-right">
               Modifié le {format(new Date(existingProgress.updated_at), "dd/MM/yyyy à HH:mm")}
@@ -700,8 +741,12 @@ export function SessionReportDrawer({
               ) : (
                 <Save className="h-3.5 w-3.5" />
               )}
-              {isEditMode ? "Mettre à jour le suivi" : "Valider & Suivant"}
-              {!isEditMode && <ChevronRight className="h-3.5 w-3.5" />}
+              {isEditMode
+                ? "Mettre à jour le suivi"
+                : isLastStudent
+                  ? "Valider & Terminer"
+                  : "Valider & Élève Suivant"}
+              {!isEditMode && !isLastStudent && <ChevronRight className="h-3.5 w-3.5" />}
             </Button>
           </div>
         </SheetFooter>
