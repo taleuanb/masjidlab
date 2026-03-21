@@ -641,7 +641,7 @@ export function SessionReportDrawer({
               ) : null}
 
               {/* ── Mastery Toggle ── */}
-              {goalProgress && (
+              {goalProgress.defined && (
                 <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
