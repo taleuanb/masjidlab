@@ -188,6 +188,8 @@ export function SessionReportDrawer({
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [todoNext, setTodoNext] = useState("");
   const [newPosition, setNewPosition] = useState<string>("");
+  const [masteryValidated, setMasteryValidated] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -196,21 +198,41 @@ export function SessionReportDrawer({
       setFormData(saved);
       setTodoNext(saved["_todo_next"] ?? "");
       setNewPosition(saved["_goal_position"] ?? "");
+      setMasteryValidated(saved["_mastery"] === "true");
     } else {
-      setFormData({});
+      // ── Smart-Fill from previous session ──
+      const smartFilled: Record<string, string> = {};
+      if (previousData) {
+        // Pre-fill "content" type fields with previous todo
+        const prevTodo = previousData["_todo_next"];
+        if (prevTodo) {
+          const contentField = schema.find(
+            (f) => f.type === "text" || f.type === "textarea"
+          );
+          if (contentField) smartFilled[contentField.key] = prevTodo;
+        }
+      }
+      setFormData(smartFilled);
       setTodoNext("");
-      setNewPosition("");
+      setMasteryValidated(false);
     }
-  }, [open, existingProgress]);
+  }, [open, existingProgress, previousData, schema]);
 
-  // Pre-fill newPosition from goal when no existing progress
+  // Pre-fill newPosition from previous session or goal
   useEffect(() => {
-    if (!open || existingProgress || !studentGoal) return;
-    setNewPosition(String(studentGoal.current_position));
-  }, [open, existingProgress, studentGoal]);
+    if (!open || existingProgress) return;
+    if (previousData?.["_goal_position"]) {
+      setNewPosition(previousData["_goal_position"]);
+    } else if (studentGoal) {
+      setNewPosition(String(studentGoal.current_position));
+    }
+  }, [open, existingProgress, previousData, studentGoal]);
 
   useEffect(() => {
-    if (!open) setPickedSubjectId("");
+    if (!open) {
+      setPickedSubjectId("");
+      setShowCelebration(false);
+    }
   }, [open]);
 
   const updateField = (key: string, value: string) => {
