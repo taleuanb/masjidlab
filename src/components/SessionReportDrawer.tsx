@@ -591,6 +591,23 @@ export function SessionReportDrawer({
             </div>
           ) : null}
 
+          {/* ── Mastery Toggle ── */}
+          {activeConfig && goalProgress && (
+            <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
+                <Label htmlFor="mastery-toggle" className="text-xs font-semibold text-brand-navy cursor-pointer">
+                  Objectif validé et acquis
+                </Label>
+              </div>
+              <Switch
+                id="mastery-toggle"
+                checked={masteryValidated}
+                onCheckedChange={setMasteryValidated}
+              />
+            </div>
+          )}
+
           {/* To Do section */}
           {activeConfig && (
             <div className="space-y-1.5 pt-2 border-t border-border">
@@ -607,6 +624,33 @@ export function SessionReportDrawer({
               />
             </div>
           )}
+
+          {/* ── Celebration overlay ── */}
+          <AnimatePresence>
+            {showCelebration && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+              >
+                <motion.div
+                  initial={{ y: 20 }}
+                  animate={{ y: 0 }}
+                  className="flex flex-col items-center gap-3 text-center"
+                >
+                  <motion.div
+                    animate={{ rotate: [0, -10, 10, -10, 0], scale: [1, 1.2, 1] }}
+                    transition={{ duration: 0.6, repeat: 2 }}
+                  >
+                    <Trophy className="h-16 w-16 text-brand-emerald" />
+                  </motion.div>
+                  <h3 className="text-xl font-bold text-brand-navy">Objectif atteint ! 🎉</h3>
+                  <p className="text-sm text-muted-foreground">MashaAllah, {student?.prenom} a terminé son objectif annuel.</p>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Sticky footer */}
