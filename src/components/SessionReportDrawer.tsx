@@ -423,24 +423,44 @@ export function SessionReportDrawer({
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
-          {/* ── FLASHBACK: Previous session (read-only) ── */}
+          {/* ── ZONE A: Le Miroir du Passé ── */}
           {activeConfig && (
-            <div className="rounded-lg bg-muted/40 border border-border p-3 space-y-2">
-              <div className="flex items-center gap-1.5">
-                <History className="h-3.5 w-3.5 text-brand-cyan" />
-                <span className="text-xs font-semibold text-brand-navy">
-                  {loadingPrevious
-                    ? "Chargement…"
-                    : previousProgress?.lesson_date
-                      ? `Dernière séance (${format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })})`
-                      : "Première séance pour ce sujet"}
-                </span>
+            <div className="rounded-lg bg-slate-50 dark:bg-muted/40 border border-border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <History className="h-3.5 w-3.5 text-brand-cyan" />
+                  <span className="text-xs font-semibold text-brand-navy">
+                    {loadingPrevious
+                      ? "Chargement…"
+                      : previousProgress?.lesson_date
+                        ? `⏪ Rappel : Séance du ${format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })}`
+                        : "Première séance pour ce sujet"}
+                  </span>
+                </div>
+                {/* Copy previous notes button */}
+                {previousData && !loadingPrevious && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px] text-brand-cyan hover:text-brand-cyan/80 gap-1"
+                    onClick={() => {
+                      const copied: Record<string, string> = {};
+                      schema.forEach((f) => {
+                        if (previousData[f.key]) copied[f.key] = previousData[f.key];
+                      });
+                      setFormData((prev) => ({ ...prev, ...copied }));
+                      toast({ title: "Notes copiées", description: "Les valeurs précédentes ont été reportées." });
+                    }}
+                  >
+                    <Copy className="h-3 w-3" />
+                    Copier
+                  </Button>
+                )}
               </div>
               {loadingPrevious ? (
                 <Skeleton className="h-10 w-full" />
               ) : previousData ? (
                 <div className="space-y-1.5">
-                  {/* Render each schema field from previous data */}
                   {schema.map((field) => {
                     const val = previousData[field.key];
                     if (!val) return null;
@@ -451,14 +471,12 @@ export function SessionReportDrawer({
                       </div>
                     );
                   })}
-                  {/* Previous goal position */}
                   {previousData["_goal_position"] && goalProgress && (
                     <div className="flex items-baseline gap-2 text-xs">
                       <span className="font-medium text-muted-foreground whitespace-nowrap">Position :</span>
                       <span className="text-foreground">{previousData["_goal_position"]} {goalProgress.unit}</span>
                     </div>
                   )}
-                  {/* Previous todo */}
                   {previousTodo && (
                     <div className="mt-1.5 rounded-md bg-brand-cyan/10 border border-brand-cyan/20 px-2.5 py-1.5">
                       <span className="text-xs font-semibold text-brand-navy flex items-center gap-1">
