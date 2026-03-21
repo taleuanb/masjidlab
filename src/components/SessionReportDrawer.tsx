@@ -478,7 +478,7 @@ export function SessionReportDrawer({
                       <span className="text-foreground">{previousData["_goal_position"]} {goalProgress.unit}</span>
                     </div>
                   )}
-                  {previousTodo && (
+                  {previousTodo ? (
                     <div className="mt-1.5 rounded-md bg-brand-cyan/10 border border-brand-cyan/20 px-2.5 py-1.5">
                       <span className="text-xs font-semibold text-brand-navy flex items-center gap-1">
                         <ListTodo className="h-3 w-3 text-brand-cyan" />
@@ -486,6 +486,10 @@ export function SessionReportDrawer({
                       </span>
                       <p className="text-sm text-foreground leading-snug mt-0.5">{previousTodo}</p>
                     </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground italic mt-1">
+                      Aucun objectif spécifique n'avait été fixé
+                    </p>
                   )}
                 </div>
               ) : (
