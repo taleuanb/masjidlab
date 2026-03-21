@@ -111,7 +111,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: PARENT_ROLES,
     defaultWeight: 950,
-    colSpan: 1,
+    colSpan: 2,
     component: StudentProgressWidget,
   },
   {

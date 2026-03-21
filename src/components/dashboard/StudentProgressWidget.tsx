@@ -164,7 +164,7 @@ export function StudentProgressWidget() {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bento-card col-span-1 lg:col-span-2"
+      className="bento-card"
     >
       <div className="flex items-center justify-between mb-4">
         <div>
