@@ -431,21 +431,34 @@ export function SessionReportDrawer({
                 <span>{goalProgress.newPos} / {goalProgress.target} {goalProgress.unit}</span>
               </div>
 
-              {/* Inline position input */}
+              {/* Stepper position input */}
               <div className="flex items-center gap-2 pt-0.5">
                 <Label className="text-[11px] font-medium whitespace-nowrap text-brand-navy">
                   Nouvelle position
                 </Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={goalProgress.target}
-                  step={1}
-                  value={newPosition}
-                  onChange={(e) => setNewPosition(e.target.value)}
-                  className="h-7 w-20 text-sm"
-                  placeholder={String(goalProgress.current)}
-                />
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full shrink-0"
+                    onClick={() => setNewPosition((prev) => Math.max(0, Number(prev) - 1).toString())}
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="font-bold text-lg w-8 text-center text-brand-navy">
+                    {newPosition || "0"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full shrink-0"
+                    onClick={() => setNewPosition((prev) => Math.min(goalProgress.target, Number(prev) + 1).toString())}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
                 {goalProgress.defined && (
                   <span className="text-[11px] text-muted-foreground">{goalProgress.unit}</span>
                 )}
