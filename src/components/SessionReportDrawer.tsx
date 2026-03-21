@@ -61,6 +61,26 @@ export function SessionReportDrawer({
   const targetDate = forDate ?? format(new Date(), "yyyy-MM-dd");
   const isEditMode = !!forDate;
 
+  // ── Next student navigation ──
+  const nextStudent = useMemo(() => {
+    if (!studentsList || !student) return null;
+    const idx = studentsList.findIndex((s) => s.id === student.id);
+    if (idx === -1 || idx >= studentsList.length - 1) return null;
+    return studentsList[idx + 1];
+  }, [studentsList, student]);
+
+  const isLastStudent = !!studentsList && !!student && !nextStudent;
+
+  const goToNextStudent = useCallback((next: StudentEntry) => {
+    // Reset form state before switching
+    setFormData({});
+    setTodoNext("");
+    setNewPosition("");
+    setMasteryValidated(false);
+    setShowCelebration(false);
+    onStudentChange?.(next);
+  }, [onStudentChange]);
+
   // ── Fetch session config ──
   const { data: config, isLoading: loadingConfig } = useQuery({
     queryKey: ["session_config", orgId, subjectId],
