@@ -58,7 +58,6 @@ export function StudentProgressWidget() {
   const { data: students } = useParentData();
   const studentIds = (students ?? []).map((s) => s.id);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
-  const selectedChild = stats?.find((s) => s.id === selectedChildId);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["student-progress-enriched", orgId, studentIds],
