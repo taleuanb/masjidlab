@@ -355,8 +355,8 @@ export function SessionReportDrawer({
               {/* Stats row */}
               <div className="flex items-center justify-between text-[11px]">
                 <span className="flex items-center gap-1 font-semibold text-brand-navy">
-                  <Flag className="h-3 w-3 text-brand-emerald" />
-                  {goalProgress.target} {goalProgress.unit}
+                  <Target className="h-3 w-3 text-brand-emerald" />
+                  Objectif : {goalProgress.target} {goalProgress.unit}
                 </span>
                 <span className="text-muted-foreground">
                   {goalProgress.current} → {goalProgress.newPos} {goalProgress.unit}
