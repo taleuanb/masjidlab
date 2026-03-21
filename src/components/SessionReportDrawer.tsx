@@ -14,8 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight, Flag, Footprints, History, Trophy, CheckCircle2, Copy, Target, TrendingUp } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight, History, Trophy, CheckCircle2, Copy, Target, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -336,7 +335,7 @@ export function SessionReportDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex flex-col w-full sm:max-w-xl p-0">
+      <SheetContent side="right" className="flex flex-col w-full sm:max-w-[600px] p-0">
         {/* Header + Ghost Progress */}
         <div className="shrink-0 border-b border-border">
           <SheetHeader className="px-5 pt-5 pb-2">
@@ -426,24 +425,23 @@ export function SessionReportDrawer({
 
           {/* ── ZONE A: Le Miroir du Passé ── */}
           {activeConfig && (
-            <div className="rounded-lg bg-muted/50 border border-border p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <History className="h-3.5 w-3.5 text-brand-cyan" />
+            <div className="rounded-xl bg-slate-50 border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-slate-100/60">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-brand-navy" />
                   <span className="text-xs font-semibold text-brand-navy">
                     {loadingPrevious
                       ? "Chargement…"
                       : previousProgress?.lesson_date
-                        ? `⏪ Rappel : Séance du ${format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })}`
+                        ? `Séance précédente — ${format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })}`
                         : "Première séance pour ce sujet"}
                   </span>
                 </div>
-                {/* Copy previous notes button */}
                 {previousData && !loadingPrevious && (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="h-6 px-2 text-[10px] text-brand-cyan hover:text-brand-cyan/80 gap-1"
+                    className="h-6 px-2 text-[10px] border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/10 gap-1"
                     onClick={() => {
                       const copied: Record<string, string> = {};
                       schema.forEach((f) => {
@@ -458,58 +456,51 @@ export function SessionReportDrawer({
                   </Button>
                 )}
               </div>
-              {loadingPrevious ? (
-                <Skeleton className="h-10 w-full" />
-              ) : previousData ? (
-                <div className="space-y-1.5">
-                  {schema.map((field) => {
-                    const val = previousData[field.key];
-                    if (!val) return null;
-                    return (
-                      <div key={field.key} className="flex items-baseline gap-2 text-xs">
-                        <span className="font-medium text-muted-foreground whitespace-nowrap">{field.label} :</span>
-                        <span className="text-foreground">{val}{field.type === "number" && field.max ? ` / ${field.max}` : ""}</span>
+              <div className="px-4 py-3">
+                {loadingPrevious ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : previousData ? (
+                  <div className="space-y-1.5">
+                    {schema.map((field) => {
+                      const val = previousData[field.key];
+                      if (!val) return null;
+                      return (
+                        <div key={field.key} className="flex items-baseline gap-2 text-xs">
+                          <span className="font-medium text-slate-500 whitespace-nowrap">{field.label} :</span>
+                          <span className="text-slate-800">{val}{field.type === "number" && field.max ? ` / ${field.max}` : ""}</span>
+                        </div>
+                      );
+                    })}
+                    {previousData["position_actuelle"] && goalProgress && (
+                      <div className="flex items-baseline gap-2 text-xs">
+                        <span className="font-medium text-slate-500 whitespace-nowrap">Position :</span>
+                        <span className="text-slate-800 font-semibold">{previousData["position_actuelle"]} {goalProgress.unit}</span>
                       </div>
-                    );
-                  })}
-                  {previousData["position_actuelle"] && goalProgress && (
-                    <div className="flex items-baseline gap-2 text-xs">
-                      <span className="font-medium text-muted-foreground whitespace-nowrap">Position :</span>
-                      <span className="text-foreground">{previousData["position_actuelle"]} {goalProgress.unit}</span>
-                    </div>
-                  )}
-                  {previousTodo ? (
-                    <div className="mt-1.5 rounded-md bg-brand-cyan/10 border border-brand-cyan/20 px-2.5 py-1.5">
-                      <span className="text-xs font-semibold text-brand-navy flex items-center gap-1">
-                        <ListTodo className="h-3 w-3 text-brand-cyan" />
-                        À faire aujourd'hui
-                      </span>
-                      <p className="text-sm text-foreground leading-snug mt-0.5">{previousTodo}</p>
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground italic mt-1">
-                      Aucun objectif spécifique n'avait été fixé
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">
-                  En attente de synchronisation…
-                </p>
-              )}
+                    )}
+                    {previousTodo ? (
+                      <div className="mt-2 rounded-lg bg-brand-cyan/10 border border-brand-cyan/20 px-3 py-2">
+                        <span className="text-xs font-semibold text-brand-navy flex items-center gap-1.5">
+                          <ListTodo className="h-3 w-3 text-brand-cyan" />
+                          À faire aujourd'hui
+                        </span>
+                        <p className="text-sm text-foreground leading-snug mt-0.5">{previousTodo}</p>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 italic mt-1">
+                        Aucun objectif spécifique n'avait été fixé
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">
+                    En attente de synchronisation…
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
           {/* ── ZONE B: Saisie du Jour ── */}
-          {activeConfig && <Separator className="my-1" />}
-          {activeConfig && (
-            <div className="flex items-center gap-1.5 -mb-1">
-              <BookOpen className="h-3.5 w-3.5 text-brand-emerald" />
-              <span className="text-xs font-semibold text-brand-navy">
-                📑 Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
-              </span>
-            </div>
-          )}
 
           {/* Subject picker if no subjectId */}
           {!subjectId && (
@@ -532,117 +523,125 @@ export function SessionReportDrawer({
             </div>
           )}
 
-          {/* Dynamic form */}
-          {isLoadingActiveConfig ? (
-            <div className="space-y-3">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
-          ) : !activeConfig && effectiveSubjectId ? (
-            <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 text-center">
-              <Notebook className="h-7 w-7 mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Aucune configuration pour cette matière.
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Un administrateur doit configurer les champs.
-              </p>
-            </div>
-          ) : schema.length > 0 ? (
-            <div className="space-y-3">
-              {schema.map((field) => (
-                <div key={field.key} className="space-y-1">
-                  <Label className="text-xs font-medium">
-                    {field.label}
-                    {field.type === "number" && field.max && (
-                      <span className="text-muted-foreground font-normal"> (/{field.max})</span>
-                    )}
-                  </Label>
-                  {field.type === "text" && (
-                    <Input
-                      value={formData[field.key] ?? ""}
-                      onChange={(e) => updateField(field.key, e.target.value)}
-                      className="h-8 text-sm"
-                      placeholder={field.label}
-                    />
-                  )}
-                  {field.type === "number" && (
-                    <Input
-                      type="number"
-                      min={0}
-                      max={field.max}
-                      step={0.5}
-                      value={formData[field.key] ?? ""}
-                      onChange={(e) => updateField(field.key, e.target.value)}
-                      className={cn(
-                        "h-8 w-24 text-sm",
-                        formData[field.key] && field.max && Number(formData[field.key]) > field.max
-                          && "border-destructive"
-                      )}
-                      placeholder={`/${field.max ?? ""}`}
-                    />
-                  )}
-                  {field.type === "textarea" && (
-                    <Textarea
-                      value={formData[field.key] ?? ""}
-                      onChange={(e) => updateField(field.key, e.target.value)}
-                      rows={2}
-                      placeholder={field.label}
-                      className="resize-none text-sm"
-                    />
-                  )}
-                  {field.type === "select" && field.options && (
-                    <Select
-                      value={formData[field.key] ?? ""}
-                      onValueChange={(v) => updateField(field.key, v)}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Choisir…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {field.options.map((opt) => (
-                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          {/* ── Mastery Toggle ── */}
-          {activeConfig && goalProgress && (
-            <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3">
+          {activeConfig && (
+            <div className="rounded-xl border border-border p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
-                <Label htmlFor="mastery-toggle" className="text-xs font-semibold text-brand-navy cursor-pointer">
-                  Objectif validé et acquis
-                </Label>
+                <BookOpen className="h-4 w-4 text-brand-emerald" />
+                <span className="text-xs font-semibold text-brand-navy">
+                  Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
+                </span>
               </div>
-              <Switch
-                id="mastery-toggle"
-                checked={masteryValidated}
-                onCheckedChange={setMasteryValidated}
-              />
+
+              {/* Dynamic form */}
+              {isLoadingActiveConfig ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : schema.length > 0 ? (
+                <div className="space-y-3">
+                  {schema.map((field) => (
+                    <div key={field.key} className="space-y-1">
+                      <Label className="text-xs font-medium">
+                        {field.label}
+                        {field.type === "number" && field.max && (
+                          <span className="text-muted-foreground font-normal"> (/{field.max})</span>
+                        )}
+                      </Label>
+                      {field.type === "text" && (
+                        <Input
+                          value={formData[field.key] ?? ""}
+                          onChange={(e) => updateField(field.key, e.target.value)}
+                          className="h-8 text-sm"
+                          placeholder={field.label}
+                        />
+                      )}
+                      {field.type === "number" && (
+                        <Input
+                          type="number"
+                          min={0}
+                          max={field.max}
+                          step={0.5}
+                          value={formData[field.key] ?? ""}
+                          onChange={(e) => updateField(field.key, e.target.value)}
+                          className={cn(
+                            "h-8 w-24 text-sm",
+                            formData[field.key] && field.max && Number(formData[field.key]) > field.max
+                              && "border-destructive"
+                          )}
+                          placeholder={`/${field.max ?? ""}`}
+                        />
+                      )}
+                      {field.type === "textarea" && (
+                        <Textarea
+                          value={formData[field.key] ?? ""}
+                          onChange={(e) => updateField(field.key, e.target.value)}
+                          rows={2}
+                          placeholder={field.label}
+                          className="resize-none text-sm"
+                        />
+                      )}
+                      {field.type === "select" && field.options && (
+                        <Select
+                          value={formData[field.key] ?? ""}
+                          onValueChange={(v) => updateField(field.key, v)}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue placeholder="Choisir…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {field.options.map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {/* ── Mastery Toggle ── */}
+              {goalProgress && (
+                <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
+                    <Label htmlFor="mastery-toggle" className="text-xs font-semibold text-brand-navy cursor-pointer">
+                      Objectif validé et acquis
+                    </Label>
+                  </div>
+                  <Switch
+                    id="mastery-toggle"
+                    checked={masteryValidated}
+                    onCheckedChange={setMasteryValidated}
+                  />
+                </div>
+              )}
+
+              {/* To Do section */}
+              <div className="space-y-1.5 pt-2 border-t border-border">
+                <Label className="text-xs font-semibold flex items-center gap-1.5 text-brand-cyan">
+                  <ListTodo className="h-3.5 w-3.5" />
+                  À faire (prochaine séance)
+                </Label>
+                <Textarea
+                  value={todoNext}
+                  onChange={(e) => setTodoNext(e.target.value)}
+                  rows={2}
+                  placeholder="Ex: Réviser sourate Al-Baqara v.1-5…"
+                  className="resize-none text-sm"
+                />
+              </div>
             </div>
           )}
 
-          {/* To Do section */}
-          {activeConfig && (
-            <div className="space-y-1.5 pt-2 border-t border-border">
-              <Label className="text-xs font-semibold flex items-center gap-1.5 text-brand-cyan">
-                <ListTodo className="h-3.5 w-3.5" />
-                À faire (prochaine séance)
-              </Label>
-              <Textarea
-                value={todoNext}
-                onChange={(e) => setTodoNext(e.target.value)}
-                rows={2}
-                placeholder="Ex: Réviser sourate Al-Baqara v.1-5…"
-                className="resize-none text-sm"
-              />
+          {/* No config placeholder */}
+          {!activeConfig && effectiveSubjectId && !isLoadingActiveConfig && (
+            <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-4 text-center">
+              <Notebook className="h-7 w-7 mx-auto text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">Aucune configuration pour cette matière.</p>
+              <p className="text-xs text-muted-foreground mt-1">Un administrateur doit configurer les champs.</p>
             </div>
           )}
 
