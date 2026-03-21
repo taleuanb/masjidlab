@@ -285,7 +285,7 @@ export function StudentProgressWidget() {
 
                       {/* Todo next */}
                       {todoNext && (
-                        <div className="rounded-lg bg-brand-cyan/10 px-3 py-2 flex items-start gap-2">
+                        <div className="rounded-md bg-brand-cyan/10 px-3 py-2.5 mt-1 flex items-start gap-2">
                           <Lightbulb className="h-3.5 w-3.5 text-brand-cyan mt-0.5 shrink-0" />
                           <p className="text-xs text-brand-navy">
                             <span className="font-semibold">À préparer :</span> {todoNext}
