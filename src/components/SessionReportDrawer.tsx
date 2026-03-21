@@ -266,15 +266,16 @@ export function SessionReportDrawer({
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
-  // ── Goal progress calculations ──
+  // ── Goal progress calculations (fallback to 100 if no goal) ──
   const goalProgress = useMemo(() => {
-    if (!studentGoal || studentGoal.target_value <= 0) return null;
-    const current = Number(studentGoal.current_position);
-    const target = Number(studentGoal.target_value);
+    const hasGoal = studentGoal && studentGoal.target_value > 0;
+    const current = hasGoal ? Number(studentGoal.current_position) : 0;
+    const target = hasGoal ? Number(studentGoal.target_value) : 100;
+    const unit = hasGoal ? studentGoal.unit_label : "—";
     const newPos = newPosition ? Number(newPosition) : current;
     const currentPct = Math.min(100, Math.round((current / target) * 100));
     const newPct = Math.min(100, Math.round((newPos / target) * 100));
-    return { current, target, newPos, currentPct, newPct, unit: studentGoal.unit_label };
+    return { current, target, newPos, currentPct, newPct, unit, defined: !!hasGoal };
   }, [studentGoal, newPosition]);
 
   // ── Save mutation ──
