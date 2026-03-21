@@ -426,24 +426,23 @@ export function SessionReportDrawer({
 
           {/* ── ZONE A: Le Miroir du Passé ── */}
           {activeConfig && (
-            <div className="rounded-lg bg-muted/50 border border-border p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <History className="h-3.5 w-3.5 text-brand-cyan" />
+            <div className="rounded-xl bg-slate-50 border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-slate-100/60">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-brand-navy" />
                   <span className="text-xs font-semibold text-brand-navy">
                     {loadingPrevious
                       ? "Chargement…"
                       : previousProgress?.lesson_date
-                        ? `⏪ Rappel : Séance du ${format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })}`
+                        ? `Séance précédente — ${format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })}`
                         : "Première séance pour ce sujet"}
                   </span>
                 </div>
-                {/* Copy previous notes button */}
                 {previousData && !loadingPrevious && (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="h-6 px-2 text-[10px] text-brand-cyan hover:text-brand-cyan/80 gap-1"
+                    className="h-6 px-2 text-[10px] border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/10 gap-1"
                     onClick={() => {
                       const copied: Record<string, string> = {};
                       schema.forEach((f) => {
@@ -458,45 +457,47 @@ export function SessionReportDrawer({
                   </Button>
                 )}
               </div>
-              {loadingPrevious ? (
-                <Skeleton className="h-10 w-full" />
-              ) : previousData ? (
-                <div className="space-y-1.5">
-                  {schema.map((field) => {
-                    const val = previousData[field.key];
-                    if (!val) return null;
-                    return (
-                      <div key={field.key} className="flex items-baseline gap-2 text-xs">
-                        <span className="font-medium text-muted-foreground whitespace-nowrap">{field.label} :</span>
-                        <span className="text-foreground">{val}{field.type === "number" && field.max ? ` / ${field.max}` : ""}</span>
+              <div className="px-4 py-3">
+                {loadingPrevious ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : previousData ? (
+                  <div className="space-y-1.5">
+                    {schema.map((field) => {
+                      const val = previousData[field.key];
+                      if (!val) return null;
+                      return (
+                        <div key={field.key} className="flex items-baseline gap-2 text-xs">
+                          <span className="font-medium text-slate-500 whitespace-nowrap">{field.label} :</span>
+                          <span className="text-slate-800">{val}{field.type === "number" && field.max ? ` / ${field.max}` : ""}</span>
+                        </div>
+                      );
+                    })}
+                    {previousData["position_actuelle"] && goalProgress && (
+                      <div className="flex items-baseline gap-2 text-xs">
+                        <span className="font-medium text-slate-500 whitespace-nowrap">Position :</span>
+                        <span className="text-slate-800 font-semibold">{previousData["position_actuelle"]} {goalProgress.unit}</span>
                       </div>
-                    );
-                  })}
-                  {previousData["position_actuelle"] && goalProgress && (
-                    <div className="flex items-baseline gap-2 text-xs">
-                      <span className="font-medium text-muted-foreground whitespace-nowrap">Position :</span>
-                      <span className="text-foreground">{previousData["position_actuelle"]} {goalProgress.unit}</span>
-                    </div>
-                  )}
-                  {previousTodo ? (
-                    <div className="mt-1.5 rounded-md bg-brand-cyan/10 border border-brand-cyan/20 px-2.5 py-1.5">
-                      <span className="text-xs font-semibold text-brand-navy flex items-center gap-1">
-                        <ListTodo className="h-3 w-3 text-brand-cyan" />
-                        À faire aujourd'hui
-                      </span>
-                      <p className="text-sm text-foreground leading-snug mt-0.5">{previousTodo}</p>
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground italic mt-1">
-                      Aucun objectif spécifique n'avait été fixé
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">
-                  En attente de synchronisation…
-                </p>
-              )}
+                    )}
+                    {previousTodo ? (
+                      <div className="mt-2 rounded-lg bg-brand-cyan/10 border border-brand-cyan/20 px-3 py-2">
+                        <span className="text-xs font-semibold text-brand-navy flex items-center gap-1.5">
+                          <ListTodo className="h-3 w-3 text-brand-cyan" />
+                          À faire aujourd'hui
+                        </span>
+                        <p className="text-sm text-foreground leading-snug mt-0.5">{previousTodo}</p>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 italic mt-1">
+                        Aucun objectif spécifique n'avait été fixé
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">
+                    En attente de synchronisation…
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
