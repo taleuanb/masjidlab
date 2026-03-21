@@ -628,12 +628,14 @@ export function SessionReportDrawer({
                       const isTextarea = field.type === "textarea";
                       const isSelect = field.type === "select" && field.options;
                       const isNumber = !isText && !isTextarea && !isSelect;
+                      const isStarRating = isNumber && field.max === 5;
+                      const currentVal = Number(formData[field.key] ?? 0);
 
                       return (
                         <div key={field.key} className="space-y-1">
                           <Label className="text-xs font-medium">
                             {field.label}
-                            {isNumber && field.max && (
+                            {isNumber && !isStarRating && field.max && (
                               <span className="text-muted-foreground font-normal"> (/{field.max})</span>
                             )}
                           </Label>
@@ -645,7 +647,26 @@ export function SessionReportDrawer({
                               placeholder={field.label}
                             />
                           )}
-                          {isNumber && (
+                          {isStarRating && (
+                            <div className="flex gap-1 py-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={cn(
+                                    "h-7 w-7 cursor-pointer transition-colors",
+                                    currentVal >= star
+                                      ? "text-amber-400 fill-amber-400"
+                                      : "text-muted-foreground/30"
+                                  )}
+                                  onClick={() => updateField(field.key, String(star))}
+                                />
+                              ))}
+                              {currentVal > 0 && (
+                                <span className="text-xs text-muted-foreground self-center ml-1">{currentVal}/5</span>
+                              )}
+                            </div>
+                          )}
+                          {isNumber && !isStarRating && (
                             <Input
                               type="number"
                               min={0}
@@ -654,7 +675,7 @@ export function SessionReportDrawer({
                               value={formData[field.key] ?? ""}
                               onChange={(e) => updateField(field.key, e.target.value)}
                               className={cn(
-                                "h-8 w-24 text-sm",
+                                "h-8 w-24 text-sm text-center font-semibold text-brand-navy",
                                 formData[field.key] && field.max && Number(formData[field.key]) > field.max
                                   && "border-destructive"
                               )}
