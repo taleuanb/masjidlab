@@ -583,64 +583,71 @@ export function SessionReportDrawer({
                 </div>
               ) : schema.length > 0 ? (
                 <div className="space-y-3">
-                  {schema.map((field) => (
-                    <div key={field.key} className="space-y-1">
-                      <Label className="text-xs font-medium">
-                        {field.label}
-                        {field.type === "number" && field.max && (
-                          <span className="text-muted-foreground font-normal"> (/{field.max})</span>
-                        )}
-                      </Label>
-                      {field.type === "text" && (
-                        <Input
-                          value={formData[field.key] ?? ""}
-                          onChange={(e) => updateField(field.key, e.target.value)}
-                          className="h-8 text-sm"
-                          placeholder={field.label}
-                        />
-                      )}
-                      {field.type === "number" && (
-                        <Input
-                          type="number"
-                          min={0}
-                          max={field.max}
-                          step={0.5}
-                          value={formData[field.key] ?? ""}
-                          onChange={(e) => updateField(field.key, e.target.value)}
-                          className={cn(
-                            "h-8 w-24 text-sm",
-                            formData[field.key] && field.max && Number(formData[field.key]) > field.max
-                              && "border-destructive"
+                  {schema.map((field) => {
+                    const isText = field.type === "text";
+                    const isTextarea = field.type === "textarea";
+                    const isSelect = field.type === "select" && field.options;
+                    const isNumber = !isText && !isTextarea && !isSelect; // default fallback = number
+
+                    return (
+                      <div key={field.key} className="space-y-1">
+                        <Label className="text-xs font-medium">
+                          {field.label}
+                          {isNumber && field.max && (
+                            <span className="text-muted-foreground font-normal"> (/{field.max})</span>
                           )}
-                          placeholder={`/${field.max ?? ""}`}
-                        />
-                      )}
-                      {field.type === "textarea" && (
-                        <Textarea
-                          value={formData[field.key] ?? ""}
-                          onChange={(e) => updateField(field.key, e.target.value)}
-                          rows={2}
-                          placeholder={field.label}
-                          className="resize-none text-sm"
-                        />
-                      )}
-                      {field.type === "select" && field.options && (
-                        <Select
-                          value={formData[field.key] ?? ""}
-                          onValueChange={(v) => updateField(field.key, v)}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="Choisir…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {field.options.map((opt) => (
-                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  ))}
+                        </Label>
+                        {isText && (
+                          <Input
+                            value={formData[field.key] ?? ""}
+                            onChange={(e) => updateField(field.key, e.target.value)}
+                            className="h-8 text-sm"
+                            placeholder={field.label}
+                          />
+                        )}
+                        {isNumber && (
+                          <Input
+                            type="number"
+                            min={0}
+                            max={field.max}
+                            step={0.5}
+                            value={formData[field.key] ?? ""}
+                            onChange={(e) => updateField(field.key, e.target.value)}
+                            className={cn(
+                              "h-8 w-24 text-sm",
+                              formData[field.key] && field.max && Number(formData[field.key]) > field.max
+                                && "border-destructive"
+                            )}
+                            placeholder={`/${field.max ?? ""}`}
+                          />
+                        )}
+                        {isTextarea && (
+                          <Textarea
+                            value={formData[field.key] ?? ""}
+                            onChange={(e) => updateField(field.key, e.target.value)}
+                            rows={2}
+                            placeholder={field.label}
+                            className="resize-none text-sm"
+                          />
+                        )}
+                        {isSelect && (
+                          <Select
+                            value={formData[field.key] ?? ""}
+                            onValueChange={(v) => updateField(field.key, v)}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Choisir…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {field.options!.map((opt) => (
+                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
 
