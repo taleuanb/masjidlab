@@ -425,7 +425,7 @@ export function SessionReportDrawer({
 
           {/* ── ZONE A: Le Miroir du Passé ── */}
           {activeConfig && (
-            <div className="rounded-lg bg-slate-50 dark:bg-muted/40 border border-border p-3 space-y-2">
+            <div className="rounded-lg bg-muted/50 border border-border p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <History className="h-3.5 w-3.5 text-brand-cyan" />
