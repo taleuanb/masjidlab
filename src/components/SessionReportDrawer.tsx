@@ -358,7 +358,8 @@ export function SessionReportDrawer({
                   <Target className="h-3 w-3 text-brand-emerald" />
                   Objectif : {goalProgress.target} {goalProgress.unit}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <TrendingUp className="h-3 w-3" />
                   {goalProgress.current} → {goalProgress.newPos} {goalProgress.unit}
                 </span>
               </div>
