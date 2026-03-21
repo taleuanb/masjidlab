@@ -8,6 +8,7 @@ import { ChildHistorySheet } from "./ChildHistorySheet";
 import { useParentData } from "@/hooks/useParentData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
