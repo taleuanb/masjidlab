@@ -698,8 +698,8 @@ export function SessionReportDrawer({
                 {/* To Do section */}
                 <div className="space-y-1.5 pt-3 mt-3 border-t border-border">
                   <Label className="text-xs font-semibold flex items-center gap-1.5 text-brand-cyan">
-                    <ListTodo className="h-3.5 w-3.5" />
-                    À faire (prochaine séance)
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Commentaires / Remarques libres
                   </Label>
                   <Textarea
                     value={todoNext}
