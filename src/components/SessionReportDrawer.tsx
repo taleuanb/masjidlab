@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Save, Notebook, MessageSquare, BookOpen, ChevronRight, History, Trophy, CheckCircle2, Copy, Target, TrendingUp, ChevronDown, Minus, Plus, Star } from "lucide-react";
+import { Loader2, Save, Notebook, MessageSquare, MessageCircle, BookOpen, ChevronRight, History, Trophy, CheckCircle2, Copy, Target, TrendingUp, ChevronDown, Minus, Plus, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -278,6 +278,32 @@ export function SessionReportDrawer({
     const newPct = Math.min(100, Math.round((newPos / target) * 100));
     return { current, target, newPos, currentPct, newPct, unit, defined: !!hasGoal };
   }, [studentGoal, newPosition]);
+
+  // ── WhatsApp message generator ──
+  const handleWhatsAppShare = useCallback(() => {
+    if (!student) return;
+    const matiere = subjectInfo?.name ?? "la matière";
+    const lines: string[] = [
+      `🕌 *Point d'étape Madrasa*`,
+      `As-salamu alaykum, voici le résumé de la séance de *${student.prenom}* aujourd'hui en *${matiere}*.`,
+      ``,
+    ];
+    if (newPosition) {
+      const unit = goalProgress?.unit ?? "";
+      lines.push(`📈 *Avancée :* ${newPosition} ${unit}`);
+    }
+    for (const field of schema) {
+      if (field.type === "number" && field.max === 5 && formData[field.key]) {
+        lines.push(`⭐ ${field.label} : ${formData[field.key]}/5`);
+      }
+    }
+    if (todoNext) {
+      lines.push(``, `🗣️ *Mot du professeur :*`, `>  ${todoNext}`);
+    }
+    lines.push(``, `BarakAllahu fikum pour votre suivi à la maison ! 🤲`);
+    const encoded = encodeURIComponent(lines.join("\n"));
+    window.open(`https://wa.me/?text=${encoded}`, "_blank");
+  }, [student, subjectInfo, newPosition, goalProgress, schema, formData, todoNext]);
 
   // ── Save mutation ──
   const saveMutation = useMutation({
@@ -809,6 +835,15 @@ export function SessionReportDrawer({
             </p>
           )}
           <div className="flex flex-row gap-2 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleWhatsAppShare}
+              className="text-green-600 border-green-200 hover:bg-green-50 gap-1.5"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              WhatsApp
+            </Button>
             <Button
               variant="ghost"
               size="sm"
