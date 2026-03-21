@@ -836,6 +836,15 @@ export function SessionReportDrawer({
           )}
           <div className="flex flex-row gap-2 justify-end">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={handleWhatsAppShare}
+              className="text-green-600 border-green-200 hover:bg-green-50 gap-1.5"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              WhatsApp
+            </Button>
+            <Button
               variant="ghost"
               size="sm"
               onClick={() => onOpenChange(false)}
