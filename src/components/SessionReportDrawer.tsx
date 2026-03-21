@@ -502,15 +502,14 @@ export function SessionReportDrawer({
           )}
 
           {/* ── ZONE B: Saisie du Jour ── */}
-          {activeConfig && <Separator className="my-1" />}
           {activeConfig && (
-            <div className="flex items-center gap-1.5 -mb-1">
-              <BookOpen className="h-3.5 w-3.5 text-brand-emerald" />
-              <span className="text-xs font-semibold text-brand-navy">
-                📑 Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
-              </span>
-            </div>
-          )}
+            <div className="rounded-xl border border-border p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-brand-emerald" />
+                <span className="text-xs font-semibold text-brand-navy">
+                  Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
+                </span>
+              </div>
 
           {/* Subject picker if no subjectId */}
           {!subjectId && (
