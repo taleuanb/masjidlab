@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -12,9 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight, Flag, Footprints, History } from "lucide-react";
+import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight, Flag, Footprints, History, Trophy, CheckCircle2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -186,6 +188,8 @@ export function SessionReportDrawer({
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [todoNext, setTodoNext] = useState("");
   const [newPosition, setNewPosition] = useState<string>("");
+  const [masteryValidated, setMasteryValidated] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -194,21 +198,41 @@ export function SessionReportDrawer({
       setFormData(saved);
       setTodoNext(saved["_todo_next"] ?? "");
       setNewPosition(saved["_goal_position"] ?? "");
+      setMasteryValidated(saved["_mastery"] === "true");
     } else {
-      setFormData({});
+      // ── Smart-Fill from previous session ──
+      const smartFilled: Record<string, string> = {};
+      if (previousData) {
+        // Pre-fill "content" type fields with previous todo
+        const prevTodo = previousData["_todo_next"];
+        if (prevTodo) {
+          const contentField = schema.find(
+            (f) => f.type === "text" || f.type === "textarea"
+          );
+          if (contentField) smartFilled[contentField.key] = prevTodo;
+        }
+      }
+      setFormData(smartFilled);
       setTodoNext("");
-      setNewPosition("");
+      setMasteryValidated(false);
     }
-  }, [open, existingProgress]);
+  }, [open, existingProgress, previousData, schema]);
 
-  // Pre-fill newPosition from goal when no existing progress
+  // Pre-fill newPosition from previous session or goal
   useEffect(() => {
-    if (!open || existingProgress || !studentGoal) return;
-    setNewPosition(String(studentGoal.current_position));
-  }, [open, existingProgress, studentGoal]);
+    if (!open || existingProgress) return;
+    if (previousData?.["_goal_position"]) {
+      setNewPosition(previousData["_goal_position"]);
+    } else if (studentGoal) {
+      setNewPosition(String(studentGoal.current_position));
+    }
+  }, [open, existingProgress, previousData, studentGoal]);
 
   useEffect(() => {
-    if (!open) setPickedSubjectId("");
+    if (!open) {
+      setPickedSubjectId("");
+      setShowCelebration(false);
+    }
   }, [open]);
 
   const updateField = (key: string, value: string) => {
@@ -240,7 +264,7 @@ export function SessionReportDrawer({
         }
       }
 
-      const dataToSave = { ...formData, _todo_next: todoNext, _goal_position: newPosition };
+      const dataToSave = { ...formData, _todo_next: todoNext, _goal_position: newPosition, _mastery: String(masteryValidated) };
 
       if (existingProgress) {
         const { error } = await supabase
@@ -262,23 +286,42 @@ export function SessionReportDrawer({
         if (error) throw error;
       }
 
-      // ── Atomic goal position update ──
-      if (studentGoal && newPosition && Number(newPosition) !== Number(studentGoal.current_position)) {
+      // ── Conditional goal update: mastery toggle OR score >= 4/5 ──
+      const hasHighScore = schema.some(
+        (f) => f.type === "number" && f.max === 5 && Number(formData[f.key] ?? 0) >= 4
+      );
+      const shouldUpdateGoal = masteryValidated || hasHighScore;
+
+      if (studentGoal && newPosition && shouldUpdateGoal && Number(newPosition) !== Number(studentGoal.current_position)) {
         const { error: goalErr } = await supabase
           .from("madrasa_student_goals")
           .update({ current_position: Number(newPosition) })
           .eq("id", studentGoal.id);
         if (goalErr) throw goalErr;
       }
+
+      // Check if goal reached for celebration
+      const reachedGoal = studentGoal && shouldUpdateGoal && Number(newPosition) >= Number(studentGoal.target_value);
+      return { reachedGoal };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["student_progress"] });
       queryClient.invalidateQueries({ queryKey: ["previous_progress"] });
       queryClient.invalidateQueries({ queryKey: ["student_goal"] });
       queryClient.invalidateQueries({ queryKey: ["student_goals"] });
-      toast({ title: "Rapport enregistré ✅", description: `${student?.prenom} ${student?.nom}` });
-      if (student) onReportSaved?.(student.id);
-      onOpenChange(false);
+
+      if (result?.reachedGoal) {
+        setShowCelebration(true);
+        toast({ title: "🎉 Objectif annuel atteint !", description: `${student?.prenom} a terminé son objectif. MashaAllah !` });
+        setTimeout(() => {
+          if (student) onReportSaved?.(student.id);
+          onOpenChange(false);
+        }, 2200);
+      } else {
+        toast({ title: "Rapport enregistré ✅", description: `${student?.prenom} ${student?.nom}` });
+        if (student) onReportSaved?.(student.id);
+        onOpenChange(false);
+      }
     },
     onError: (e: Error) => {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -548,6 +591,23 @@ export function SessionReportDrawer({
             </div>
           ) : null}
 
+          {/* ── Mastery Toggle ── */}
+          {activeConfig && goalProgress && (
+            <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
+                <Label htmlFor="mastery-toggle" className="text-xs font-semibold text-brand-navy cursor-pointer">
+                  Objectif validé et acquis
+                </Label>
+              </div>
+              <Switch
+                id="mastery-toggle"
+                checked={masteryValidated}
+                onCheckedChange={setMasteryValidated}
+              />
+            </div>
+          )}
+
           {/* To Do section */}
           {activeConfig && (
             <div className="space-y-1.5 pt-2 border-t border-border">
@@ -564,6 +624,33 @@ export function SessionReportDrawer({
               />
             </div>
           )}
+
+          {/* ── Celebration overlay ── */}
+          <AnimatePresence>
+            {showCelebration && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+              >
+                <motion.div
+                  initial={{ y: 20 }}
+                  animate={{ y: 0 }}
+                  className="flex flex-col items-center gap-3 text-center"
+                >
+                  <motion.div
+                    animate={{ rotate: [0, -10, 10, -10, 0], scale: [1, 1.2, 1] }}
+                    transition={{ duration: 0.6, repeat: 2 }}
+                  >
+                    <Trophy className="h-16 w-16 text-brand-emerald" />
+                  </motion.div>
+                  <h3 className="text-xl font-bold text-brand-navy">Objectif atteint ! 🎉</h3>
+                  <p className="text-sm text-muted-foreground">MashaAllah, {student?.prenom} a terminé son objectif annuel.</p>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Sticky footer */}
