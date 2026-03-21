@@ -489,7 +489,7 @@ export function SessionReportDrawer({
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground italic">
-                  Aucun historique — première séance
+                  En attente de synchronisation…
                 </p>
               )}
             </div>
