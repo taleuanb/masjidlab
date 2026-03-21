@@ -385,36 +385,35 @@ export function SessionReportDrawer({
             </SheetDescription>
           </SheetHeader>
 
-          {/* ── Ghost Progress Bar (pinned in header) ── */}
-          {activeConfig && !loadingGoal && goalProgress && (
+          {/* ── Ghost Progress Bar (always visible when config loaded) ── */}
+          {activeConfig && !loadingGoal && (
             <div className="px-5 pb-3 space-y-1.5">
               {/* Stats row */}
               <div className="flex items-center justify-between text-[11px]">
                 <span className="flex items-center gap-1 font-semibold text-brand-navy">
                   <Target className="h-3 w-3 text-brand-emerald" />
-                  Objectif : {goalProgress.target} {goalProgress.unit}
+                  {goalProgress.defined
+                    ? `Objectif : ${goalProgress.target} ${goalProgress.unit}`
+                    : "Objectif non défini"}
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <TrendingUp className="h-3 w-3" />
-                  {goalProgress.current} → {goalProgress.newPos} {goalProgress.unit}
+                  {goalProgress.current} → {goalProgress.newPos} {goalProgress.defined ? goalProgress.unit : ""}
                 </span>
               </div>
 
               {/* Dual-color bar */}
               <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
-                {/* Solid: acquired progress */}
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-brand-emerald transition-all duration-300"
                   style={{ width: `${goalProgress.currentPct}%` }}
                 />
-                {/* Ghost: new progress being typed */}
                 {goalProgress.newPct > goalProgress.currentPct && (
                   <div
                     className="absolute inset-y-0 left-0 rounded-full bg-brand-cyan/40 transition-all duration-300"
                     style={{ width: `${goalProgress.newPct}%` }}
                   />
                 )}
-                {/* Solid on top (re-layer so it's visible over ghost) */}
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-brand-emerald transition-all duration-300"
                   style={{ width: `${goalProgress.currentPct}%` }}
@@ -446,7 +445,9 @@ export function SessionReportDrawer({
                   className="h-7 w-20 text-sm"
                   placeholder={String(goalProgress.current)}
                 />
-                <span className="text-[11px] text-muted-foreground">{goalProgress.unit}</span>
+                {goalProgress.defined && (
+                  <span className="text-[11px] text-muted-foreground">{goalProgress.unit}</span>
+                )}
               </div>
             </div>
           )}
