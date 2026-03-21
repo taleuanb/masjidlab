@@ -336,7 +336,7 @@ export function SessionReportDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex flex-col w-full sm:max-w-[550px] p-0">
+      <SheetContent side="right" className="flex flex-col w-full sm:max-w-xl p-0">
         {/* Header + Ghost Progress */}
         <div className="shrink-0 border-b border-border">
           <SheetHeader className="px-5 pt-5 pb-2">
