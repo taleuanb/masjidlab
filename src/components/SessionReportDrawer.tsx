@@ -266,15 +266,16 @@ export function SessionReportDrawer({
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
-  // ── Goal progress calculations ──
+  // ── Goal progress calculations (fallback to 100 if no goal) ──
   const goalProgress = useMemo(() => {
-    if (!studentGoal || studentGoal.target_value <= 0) return null;
-    const current = Number(studentGoal.current_position);
-    const target = Number(studentGoal.target_value);
+    const hasGoal = studentGoal && studentGoal.target_value > 0;
+    const current = hasGoal ? Number(studentGoal.current_position) : 0;
+    const target = hasGoal ? Number(studentGoal.target_value) : 100;
+    const unit = hasGoal ? studentGoal.unit_label : "—";
     const newPos = newPosition ? Number(newPosition) : current;
     const currentPct = Math.min(100, Math.round((current / target) * 100));
     const newPct = Math.min(100, Math.round((newPos / target) * 100));
-    return { current, target, newPos, currentPct, newPct, unit: studentGoal.unit_label };
+    return { current, target, newPos, currentPct, newPct, unit, defined: !!hasGoal };
   }, [studentGoal, newPosition]);
 
   // ── Save mutation ──
@@ -384,36 +385,35 @@ export function SessionReportDrawer({
             </SheetDescription>
           </SheetHeader>
 
-          {/* ── Ghost Progress Bar (pinned in header) ── */}
-          {activeConfig && !loadingGoal && goalProgress && (
+          {/* ── Ghost Progress Bar (always visible when config loaded) ── */}
+          {activeConfig && !loadingGoal && (
             <div className="px-5 pb-3 space-y-1.5">
               {/* Stats row */}
               <div className="flex items-center justify-between text-[11px]">
                 <span className="flex items-center gap-1 font-semibold text-brand-navy">
                   <Target className="h-3 w-3 text-brand-emerald" />
-                  Objectif : {goalProgress.target} {goalProgress.unit}
+                  {goalProgress.defined
+                    ? `Objectif : ${goalProgress.target} ${goalProgress.unit}`
+                    : "Objectif non défini"}
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <TrendingUp className="h-3 w-3" />
-                  {goalProgress.current} → {goalProgress.newPos} {goalProgress.unit}
+                  {goalProgress.current} → {goalProgress.newPos} {goalProgress.defined ? goalProgress.unit : ""}
                 </span>
               </div>
 
               {/* Dual-color bar */}
               <div className="relative h-3 w-full rounded-full bg-muted overflow-hidden">
-                {/* Solid: acquired progress */}
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-brand-emerald transition-all duration-300"
                   style={{ width: `${goalProgress.currentPct}%` }}
                 />
-                {/* Ghost: new progress being typed */}
                 {goalProgress.newPct > goalProgress.currentPct && (
                   <div
                     className="absolute inset-y-0 left-0 rounded-full bg-brand-cyan/40 transition-all duration-300"
                     style={{ width: `${goalProgress.newPct}%` }}
                   />
                 )}
-                {/* Solid on top (re-layer so it's visible over ghost) */}
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-brand-emerald transition-all duration-300"
                   style={{ width: `${goalProgress.currentPct}%` }}
@@ -445,7 +445,9 @@ export function SessionReportDrawer({
                   className="h-7 w-20 text-sm"
                   placeholder={String(goalProgress.current)}
                 />
-                <span className="text-[11px] text-muted-foreground">{goalProgress.unit}</span>
+                {goalProgress.defined && (
+                  <span className="text-[11px] text-muted-foreground">{goalProgress.unit}</span>
+                )}
               </div>
             </div>
           )}
@@ -639,7 +641,7 @@ export function SessionReportDrawer({
               ) : null}
 
               {/* ── Mastery Toggle ── */}
-              {goalProgress && (
+              {goalProgress.defined && (
                 <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
@@ -668,6 +670,18 @@ export function SessionReportDrawer({
                   placeholder="Ex: Réviser sourate Al-Baqara v.1-5…"
                   className="resize-none text-sm"
                 />
+                {/* Quick-Tags */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {["Réviser la leçon", "Mémorisation parfaite", "Manque de fluidité", "Revoir les règles de Tajwid", "Préparer la suite"].map((tag) => (
+                    <span
+                      key={tag}
+                      onClick={() => setTodoNext((prev) => prev ? `${prev}, ${tag}` : tag)}
+                      className="inline-flex items-center rounded-full border border-brand-cyan/30 bg-brand-cyan/5 px-2.5 py-0.5 text-[11px] font-medium text-brand-navy cursor-pointer hover:bg-brand-cyan/20 transition-colors"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           )}
