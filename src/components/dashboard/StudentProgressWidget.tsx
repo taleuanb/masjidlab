@@ -232,7 +232,7 @@ export function StudentProgressWidget() {
                     </div>
                     <Progress
                       value={s.attendanceRate}
-                      className="h-1.5 [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-secondary"
+                      className="h-2 w-full [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-secondary"
                     />
                   </div>
                 </div>
