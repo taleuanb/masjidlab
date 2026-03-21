@@ -499,20 +499,24 @@ export function SessionReportDrawer({
                   <Skeleton className="h-10 w-full" />
                 ) : previousData ? (
                   <div className="space-y-1.5">
-                    {schema.map((field) => {
-                      const val = previousData[field.key];
-                      if (!val) return null;
-                      return (
-                        <div key={field.key} className="flex items-baseline gap-2 text-xs">
-                          <span className="font-medium text-slate-500 whitespace-nowrap">{field.label} :</span>
-                          <span className="text-slate-800">{val}{field.type === "number" && field.max ? ` / ${field.max}` : ""}</span>
-                        </div>
-                      );
-                    })}
-                    {previousData["position_actuelle"] && goalProgress && (
+                    {Object.entries(previousData)
+                      .filter(([key]) => !["todo_next", "position_actuelle", "mastery_validated"].includes(key))
+                      .filter(([, val]) => !!val)
+                      .map(([key, val]) => {
+                        const fieldDef = schema.find((f) => f.key === key);
+                        const label = fieldDef?.label ?? key;
+                        const suffix = fieldDef?.type === "number" && fieldDef?.max ? ` / ${fieldDef.max}` : "";
+                        return (
+                          <div key={key} className="flex items-baseline gap-2 text-xs">
+                            <span className="font-medium text-slate-500 whitespace-nowrap">{label} :</span>
+                            <span className="text-slate-800">{val}{suffix}</span>
+                          </div>
+                        );
+                      })}
+                    {previousData["position_actuelle"] && (
                       <div className="flex items-baseline gap-2 text-xs">
                         <span className="font-medium text-slate-500 whitespace-nowrap">Position :</span>
-                        <span className="text-slate-800 font-semibold">{previousData["position_actuelle"]} {goalProgress.unit}</span>
+                        <span className="text-slate-800 font-semibold">{previousData["position_actuelle"]} {goalProgress.defined ? goalProgress.unit : ""}</span>
                       </div>
                     )}
                     {previousTodo ? (
@@ -579,64 +583,71 @@ export function SessionReportDrawer({
                 </div>
               ) : schema.length > 0 ? (
                 <div className="space-y-3">
-                  {schema.map((field) => (
-                    <div key={field.key} className="space-y-1">
-                      <Label className="text-xs font-medium">
-                        {field.label}
-                        {field.type === "number" && field.max && (
-                          <span className="text-muted-foreground font-normal"> (/{field.max})</span>
-                        )}
-                      </Label>
-                      {field.type === "text" && (
-                        <Input
-                          value={formData[field.key] ?? ""}
-                          onChange={(e) => updateField(field.key, e.target.value)}
-                          className="h-8 text-sm"
-                          placeholder={field.label}
-                        />
-                      )}
-                      {field.type === "number" && (
-                        <Input
-                          type="number"
-                          min={0}
-                          max={field.max}
-                          step={0.5}
-                          value={formData[field.key] ?? ""}
-                          onChange={(e) => updateField(field.key, e.target.value)}
-                          className={cn(
-                            "h-8 w-24 text-sm",
-                            formData[field.key] && field.max && Number(formData[field.key]) > field.max
-                              && "border-destructive"
+                  {schema.map((field) => {
+                    const isText = field.type === "text";
+                    const isTextarea = field.type === "textarea";
+                    const isSelect = field.type === "select" && field.options;
+                    const isNumber = !isText && !isTextarea && !isSelect; // default fallback = number
+
+                    return (
+                      <div key={field.key} className="space-y-1">
+                        <Label className="text-xs font-medium">
+                          {field.label}
+                          {isNumber && field.max && (
+                            <span className="text-muted-foreground font-normal"> (/{field.max})</span>
                           )}
-                          placeholder={`/${field.max ?? ""}`}
-                        />
-                      )}
-                      {field.type === "textarea" && (
-                        <Textarea
-                          value={formData[field.key] ?? ""}
-                          onChange={(e) => updateField(field.key, e.target.value)}
-                          rows={2}
-                          placeholder={field.label}
-                          className="resize-none text-sm"
-                        />
-                      )}
-                      {field.type === "select" && field.options && (
-                        <Select
-                          value={formData[field.key] ?? ""}
-                          onValueChange={(v) => updateField(field.key, v)}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="Choisir…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {field.options.map((opt) => (
-                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  ))}
+                        </Label>
+                        {isText && (
+                          <Input
+                            value={formData[field.key] ?? ""}
+                            onChange={(e) => updateField(field.key, e.target.value)}
+                            className="h-8 text-sm"
+                            placeholder={field.label}
+                          />
+                        )}
+                        {isNumber && (
+                          <Input
+                            type="number"
+                            min={0}
+                            max={field.max}
+                            step={0.5}
+                            value={formData[field.key] ?? ""}
+                            onChange={(e) => updateField(field.key, e.target.value)}
+                            className={cn(
+                              "h-8 w-24 text-sm",
+                              formData[field.key] && field.max && Number(formData[field.key]) > field.max
+                                && "border-destructive"
+                            )}
+                            placeholder={`/${field.max ?? ""}`}
+                          />
+                        )}
+                        {isTextarea && (
+                          <Textarea
+                            value={formData[field.key] ?? ""}
+                            onChange={(e) => updateField(field.key, e.target.value)}
+                            rows={2}
+                            placeholder={field.label}
+                            className="resize-none text-sm"
+                          />
+                        )}
+                        {isSelect && (
+                          <Select
+                            value={formData[field.key] ?? ""}
+                            onValueChange={(v) => updateField(field.key, v)}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Choisir…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {field.options!.map((opt) => (
+                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
 
@@ -672,7 +683,7 @@ export function SessionReportDrawer({
                 />
                 {/* Quick-Tags */}
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {["Réviser la leçon", "Mémorisation parfaite", "Manque de fluidité", "Revoir les règles de Tajwid", "Préparer la suite"].map((tag) => (
+                  {["Réviser la leçon", "Mémorisation parfaite", "Manque de fluidité", "Avancer au prochain Hizb"].map((tag) => (
                     <span
                       key={tag}
                       onClick={() => setTodoNext((prev) => prev ? `${prev}, ${tag}` : tag)}
