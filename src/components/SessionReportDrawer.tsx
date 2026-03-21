@@ -337,17 +337,25 @@ export function SessionReportDrawer({
       queryClient.invalidateQueries({ queryKey: ["student_goal"] });
       queryClient.invalidateQueries({ queryKey: ["student_goals"] });
 
+      if (student) onReportSaved?.(student.id);
+
       if (result?.reachedGoal) {
         setShowCelebration(true);
         toast({ title: "🎉 Objectif annuel atteint !", description: `${student?.prenom} a terminé son objectif. MashaAllah !` });
         setTimeout(() => {
-          if (student) onReportSaved?.(student.id);
-          onOpenChange(false);
+          if (nextStudent && !isEditMode) {
+            goToNextStudent(nextStudent);
+          } else {
+            onOpenChange(false);
+          }
         }, 2200);
       } else {
         toast({ title: "Rapport enregistré ✅", description: `${student?.prenom} ${student?.nom}` });
-        if (student) onReportSaved?.(student.id);
-        onOpenChange(false);
+        if (nextStudent && !isEditMode) {
+          goToNextStudent(nextStudent);
+        } else {
+          onOpenChange(false);
+        }
       }
     },
     onError: (e: Error) => {
