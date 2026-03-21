@@ -196,9 +196,9 @@ export function SessionReportDrawer({
     if (existingProgress?.data_json) {
       const saved = existingProgress.data_json as Record<string, string>;
       setFormData(saved);
-      setTodoNext(saved["_todo_next"] ?? "");
-      setNewPosition(saved["_goal_position"] ?? "");
-      setMasteryValidated(saved["_mastery"] === "true");
+      setTodoNext(saved["todo_next"] ?? "");
+      setNewPosition(saved["position_actuelle"] ?? "");
+      setMasteryValidated(saved["mastery_validated"] === "true");
     } else {
       // ── Smart-Fill from previous session ──
       const smartFilled: Record<string, string> = {};
