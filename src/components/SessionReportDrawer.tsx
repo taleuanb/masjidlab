@@ -14,8 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight, Flag, Footprints, History, Trophy, CheckCircle2, Copy, Target, TrendingUp } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Loader2, Save, Notebook, ListTodo, BookOpen, ChevronRight, History, Trophy, CheckCircle2, Copy, Target, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
