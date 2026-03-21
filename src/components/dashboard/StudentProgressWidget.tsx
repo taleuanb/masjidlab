@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { GraduationCap, UserCheck, Target, Star, Lightbulb, Calendar } from "lucide-react";
+import { GraduationCap, UserCheck, Target, Star, Lightbulb, Calendar, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { ChildHistorySheet } from "./ChildHistorySheet";
 import { useParentData } from "@/hooks/useParentData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
