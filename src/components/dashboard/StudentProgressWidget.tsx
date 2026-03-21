@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { GraduationCap, UserCheck, Target, Star, Lightbulb, Calendar } from "lucide-react";
+import { GraduationCap, UserCheck, Target, Star, Lightbulb, Calendar, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { ChildHistorySheet } from "./ChildHistorySheet";
 import { useParentData } from "@/hooks/useParentData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -54,6 +57,7 @@ export function StudentProgressWidget() {
   const { orgId } = useOrganization();
   const { data: students } = useParentData();
   const studentIds = (students ?? []).map((s) => s.id);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["student-progress-enriched", orgId, studentIds],
@@ -295,11 +299,30 @@ export function StudentProgressWidget() {
                     </div>
                   </>
                 )}
+                {/* History button */}
+                <Button
+                  variant="outline"
+                  className="w-full mt-1 text-brand-navy"
+                  onClick={() => setSelectedChildId(s.id)}
+                >
+                  <History className="h-3.5 w-3.5 mr-1.5" />
+                  Voir l'historique détaillé
+                </Button>
               </div>
             );
           })}
         </div>
       )}
+
+      <ChildHistorySheet
+        childId={selectedChildId}
+        childName={
+          stats?.find((s) => s.id === selectedChildId)
+            ? `${stats.find((s) => s.id === selectedChildId)!.prenom} ${stats.find((s) => s.id === selectedChildId)!.nom}`
+            : ""
+        }
+        onClose={() => setSelectedChildId(null)}
+      />
     </motion.div>
   );
 }
