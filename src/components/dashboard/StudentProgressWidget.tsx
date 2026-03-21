@@ -248,7 +248,7 @@ export function StudentProgressWidget() {
                       </div>
                       <Progress
                         value={goalPct ?? 0}
-                        className="h-2 [&>div]:bg-brand-emerald"
+                        className="h-2 w-full [&>div]:bg-brand-emerald"
                       />
                       <p className="text-xs font-semibold text-brand-navy">
                         {s.goal.currentPosition} / {s.goal.targetValue} {s.goal.unitLabel}{" "}
