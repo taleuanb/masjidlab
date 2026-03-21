@@ -264,7 +264,7 @@ export function SessionReportDrawer({
         }
       }
 
-      const dataToSave = { ...formData, _todo_next: todoNext, _goal_position: newPosition };
+      const dataToSave = { ...formData, _todo_next: todoNext, _goal_position: newPosition, _mastery: String(masteryValidated) };
 
       if (existingProgress) {
         const { error } = await supabase
@@ -286,23 +286,42 @@ export function SessionReportDrawer({
         if (error) throw error;
       }
 
-      // ── Atomic goal position update ──
-      if (studentGoal && newPosition && Number(newPosition) !== Number(studentGoal.current_position)) {
+      // ── Conditional goal update: mastery toggle OR score >= 4/5 ──
+      const hasHighScore = schema.some(
+        (f) => f.type === "number" && f.max === 5 && Number(formData[f.key] ?? 0) >= 4
+      );
+      const shouldUpdateGoal = masteryValidated || hasHighScore;
+
+      if (studentGoal && newPosition && shouldUpdateGoal && Number(newPosition) !== Number(studentGoal.current_position)) {
         const { error: goalErr } = await supabase
           .from("madrasa_student_goals")
           .update({ current_position: Number(newPosition) })
           .eq("id", studentGoal.id);
         if (goalErr) throw goalErr;
       }
+
+      // Check if goal reached for celebration
+      const reachedGoal = studentGoal && shouldUpdateGoal && Number(newPosition) >= Number(studentGoal.target_value);
+      return { reachedGoal };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["student_progress"] });
       queryClient.invalidateQueries({ queryKey: ["previous_progress"] });
       queryClient.invalidateQueries({ queryKey: ["student_goal"] });
       queryClient.invalidateQueries({ queryKey: ["student_goals"] });
-      toast({ title: "Rapport enregistré ✅", description: `${student?.prenom} ${student?.nom}` });
-      if (student) onReportSaved?.(student.id);
-      onOpenChange(false);
+
+      if (result?.reachedGoal) {
+        setShowCelebration(true);
+        toast({ title: "🎉 Objectif annuel atteint !", description: `${student?.prenom} a terminé son objectif. MashaAllah !` });
+        setTimeout(() => {
+          if (student) onReportSaved?.(student.id);
+          onOpenChange(false);
+        }, 2200);
+      } else {
+        toast({ title: "Rapport enregistré ✅", description: `${student?.prenom} ${student?.nom}` });
+        if (student) onReportSaved?.(student.id);
+        onOpenChange(false);
+      }
     },
     onError: (e: Error) => {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
