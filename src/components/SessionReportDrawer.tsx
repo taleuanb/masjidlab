@@ -458,95 +458,12 @@ export function SessionReportDrawer({
           )}
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-
-          {/* ── ZONE A: Le Miroir du Passé ── */}
-          {activeConfig && (
-            <div className="rounded-xl bg-slate-50 border border-slate-200 shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-slate-100/60">
-                <div className="flex items-center gap-2">
-                  <History className="h-4 w-4 text-brand-navy" />
-                  <span className="text-xs font-semibold text-brand-navy">
-                    {loadingPrevious
-                      ? "Chargement…"
-                      : previousProgress?.lesson_date
-                        ? `Séance précédente — ${format(new Date(previousProgress.lesson_date), "d MMM yyyy", { locale: fr })}`
-                        : "Première séance pour ce sujet"}
-                  </span>
-                </div>
-                {previousData && !loadingPrevious && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 px-2 text-[10px] border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/10 gap-1"
-                    onClick={() => {
-                      const copied: Record<string, string> = {};
-                      schema.forEach((f) => {
-                        if (previousData[f.key]) copied[f.key] = previousData[f.key];
-                      });
-                      setFormData((prev) => ({ ...prev, ...copied }));
-                      toast({ title: "Notes copiées", description: "Les valeurs précédentes ont été reportées." });
-                    }}
-                  >
-                    <Copy className="h-3 w-3" />
-                    Copier
-                  </Button>
-                )}
-              </div>
-              <div className="px-4 py-3">
-                {loadingPrevious ? (
-                  <Skeleton className="h-10 w-full" />
-                ) : previousData ? (
-                  <div className="space-y-1.5">
-                    {Object.entries(previousData)
-                      .filter(([key]) => !["todo_next", "position_actuelle", "mastery_validated"].includes(key))
-                      .filter(([, val]) => !!val)
-                      .map(([key, val]) => {
-                        const fieldDef = schema.find((f) => f.key === key);
-                        const label = fieldDef?.label ?? key;
-                        const suffix = fieldDef?.type === "number" && fieldDef?.max ? ` / ${fieldDef.max}` : "";
-                        return (
-                          <div key={key} className="flex items-baseline gap-2 text-xs">
-                            <span className="font-medium text-slate-500 whitespace-nowrap">{label} :</span>
-                            <span className="text-slate-800">{val}{suffix}</span>
-                          </div>
-                        );
-                      })}
-                    {previousData["position_actuelle"] && (
-                      <div className="flex items-baseline gap-2 text-xs">
-                        <span className="font-medium text-slate-500 whitespace-nowrap">Position :</span>
-                        <span className="text-slate-800 font-semibold">{previousData["position_actuelle"]} {goalProgress.defined ? goalProgress.unit : ""}</span>
-                      </div>
-                    )}
-                    {previousTodo ? (
-                      <div className="mt-2 rounded-lg bg-brand-cyan/10 border border-brand-cyan/20 px-3 py-2">
-                        <span className="text-xs font-semibold text-brand-navy flex items-center gap-1.5">
-                          <ListTodo className="h-3 w-3 text-brand-cyan" />
-                          À faire aujourd'hui
-                        </span>
-                        <p className="text-sm text-foreground leading-snug mt-0.5">{previousTodo}</p>
-                      </div>
-                    ) : (
-                      <p className="text-[11px] text-slate-400 italic mt-1">
-                        Aucun objectif spécifique n'avait été fixé
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400 italic">
-                    En attente de synchronisation…
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── ZONE B: Saisie du Jour ── */}
+        {/* Scrollable content — Timeline layout */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
 
           {/* Subject picker if no subjectId */}
           {!subjectId && (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 mb-4">
               <Label className="text-xs font-semibold text-brand-navy">Matière du cours</Label>
               {classSubjects.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Aucune matière liée à cette classe.</p>
@@ -566,132 +483,219 @@ export function SessionReportDrawer({
           )}
 
           {activeConfig && (
-            <div className="rounded-xl border border-border p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-brand-emerald" />
-                <span className="text-xs font-semibold text-brand-navy">
-                  Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
-                </span>
+            <div className="relative ml-4">
+              {/* Vertical timeline line */}
+              <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-200" />
+
+              {/* ── ZONE A: Le Miroir du Passé ── */}
+              <div className="relative pl-6 pb-6">
+                {/* Timeline dot — Past (filled cyan) */}
+                <div className="absolute left-0 top-0.5 -translate-x-1/2 w-3 h-3 rounded-full bg-brand-cyan border-2 border-white shadow-sm z-10" />
+
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-brand-navy flex items-center gap-1.5">
+                    <History className="h-3.5 w-3.5 text-brand-cyan" />
+                    {loadingPrevious
+                      ? "Chargement…"
+                      : previousProgress?.lesson_date
+                        ? format(new Date(previousProgress.lesson_date), "d MMMM yyyy", { locale: fr })
+                        : "Première séance"}
+                  </span>
+                  {previousData && !loadingPrevious && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 px-1.5 text-[10px] text-brand-cyan hover:bg-brand-cyan/10 gap-1"
+                      onClick={() => {
+                        const copied: Record<string, string> = {};
+                        schema.forEach((f) => {
+                          if (previousData[f.key]) copied[f.key] = previousData[f.key];
+                        });
+                        setFormData((prev) => ({ ...prev, ...copied }));
+                        toast({ title: "Notes copiées", description: "Les valeurs précédentes ont été reportées." });
+                      }}
+                    >
+                      <Copy className="h-2.5 w-2.5" />
+                      Copier
+                    </Button>
+                  )}
+                </div>
+
+                {loadingPrevious ? (
+                  <Skeleton className="h-8 w-full rounded" />
+                ) : previousData ? (
+                  <div className="space-y-1">
+                    {Object.entries(previousData)
+                      .filter(([key]) => !["todo_next", "position_actuelle", "mastery_validated"].includes(key))
+                      .filter(([, val]) => !!val)
+                      .map(([key, val]) => {
+                        const fieldDef = schema.find((f) => f.key === key);
+                        const label = fieldDef?.label ?? key;
+                        const suffix = fieldDef?.type === "number" && fieldDef?.max ? ` / ${fieldDef.max}` : "";
+                        return (
+                          <div key={key} className="flex items-baseline gap-1.5 text-xs text-muted-foreground">
+                            <span className="font-medium">{label} :</span>
+                            <span className="text-foreground">{val}{suffix}</span>
+                          </div>
+                        );
+                      })}
+                    {previousData["position_actuelle"] && (
+                      <div className="flex items-baseline gap-1.5 text-xs text-muted-foreground">
+                        <span className="font-medium">Position :</span>
+                        <span className="text-foreground font-semibold">{previousData["position_actuelle"]} {goalProgress.defined ? goalProgress.unit : ""}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">En attente de synchronisation…</p>
+                )}
+
+                {/* Todo bridge — transition block */}
+                {previousTodo && (
+                  <div className="mt-3 rounded-lg bg-brand-cyan/10 border border-brand-cyan/20 px-3 py-2">
+                    <span className="text-xs font-semibold text-brand-navy flex items-center gap-1.5">
+                      <ListTodo className="h-3 w-3 text-brand-cyan" />
+                      À faire aujourd'hui
+                    </span>
+                    <p className="text-sm text-foreground leading-snug mt-0.5">{previousTodo}</p>
+                  </div>
+                )}
+                {!previousTodo && previousData && (
+                  <p className="text-[11px] text-muted-foreground italic mt-2">Aucun objectif spécifique n'avait été fixé</p>
+                )}
               </div>
 
-              {/* Dynamic form */}
-              {isLoadingActiveConfig ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-              ) : schema.length > 0 ? (
-                <div className="space-y-3">
-                  {schema.map((field) => {
-                    const isText = field.type === "text";
-                    const isTextarea = field.type === "textarea";
-                    const isSelect = field.type === "select" && field.options;
-                    const isNumber = !isText && !isTextarea && !isSelect; // default fallback = number
+              {/* ── ZONE B: Saisie du Jour ── */}
+              <div className="relative pl-6 pb-2">
+                {/* Timeline dot — Present (outlined emerald) */}
+                <div className="absolute left-0 top-0.5 -translate-x-1/2 w-3 h-3 rounded-full bg-white border-2 border-brand-emerald shadow-sm z-10" />
 
-                    return (
-                      <div key={field.key} className="space-y-1">
-                        <Label className="text-xs font-medium">
-                          {field.label}
-                          {isNumber && field.max && (
-                            <span className="text-muted-foreground font-normal"> (/{field.max})</span>
-                          )}
-                        </Label>
-                        {isText && (
-                          <Input
-                            value={formData[field.key] ?? ""}
-                            onChange={(e) => updateField(field.key, e.target.value)}
-                            className="h-8 text-sm"
-                            placeholder={field.label}
-                          />
-                        )}
-                        {isNumber && (
-                          <Input
-                            type="number"
-                            min={0}
-                            max={field.max}
-                            step={0.5}
-                            value={formData[field.key] ?? ""}
-                            onChange={(e) => updateField(field.key, e.target.value)}
-                            className={cn(
-                              "h-8 w-24 text-sm",
-                              formData[field.key] && field.max && Number(formData[field.key]) > field.max
-                                && "border-destructive"
-                            )}
-                            placeholder={`/${field.max ?? ""}`}
-                          />
-                        )}
-                        {isTextarea && (
-                          <Textarea
-                            value={formData[field.key] ?? ""}
-                            onChange={(e) => updateField(field.key, e.target.value)}
-                            rows={2}
-                            placeholder={field.label}
-                            className="resize-none text-sm"
-                          />
-                        )}
-                        {isSelect && (
-                          <Select
-                            value={formData[field.key] ?? ""}
-                            onValueChange={(v) => updateField(field.key, v)}
-                          >
-                            <SelectTrigger className="h-8 text-sm">
-                              <SelectValue placeholder="Choisir…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {field.options!.map((opt) => (
-                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="h-3.5 w-3.5 text-brand-emerald" />
+                  <span className="text-xs font-semibold text-brand-navy">
+                    {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
+                  </span>
                 </div>
-              ) : null}
 
-              {/* ── Mastery Toggle ── */}
-              {goalProgress.defined && (
-                <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
-                    <Label htmlFor="mastery-toggle" className="text-xs font-semibold text-brand-navy cursor-pointer">
-                      Objectif validé et acquis
-                    </Label>
+                {/* Dynamic form */}
+                {isLoadingActiveConfig ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
                   </div>
-                  <Switch
-                    id="mastery-toggle"
-                    checked={masteryValidated}
-                    onCheckedChange={setMasteryValidated}
-                  />
-                </div>
-              )}
+                ) : schema.length > 0 ? (
+                  <div className="space-y-3">
+                    {schema.map((field) => {
+                      const isText = field.type === "text";
+                      const isTextarea = field.type === "textarea";
+                      const isSelect = field.type === "select" && field.options;
+                      const isNumber = !isText && !isTextarea && !isSelect;
 
-              {/* To Do section */}
-              <div className="space-y-1.5 pt-2 border-t border-border">
-                <Label className="text-xs font-semibold flex items-center gap-1.5 text-brand-cyan">
-                  <ListTodo className="h-3.5 w-3.5" />
-                  À faire (prochaine séance)
-                </Label>
-                <Textarea
-                  value={todoNext}
-                  onChange={(e) => setTodoNext(e.target.value)}
-                  rows={2}
-                  placeholder="Ex: Réviser sourate Al-Baqara v.1-5…"
-                  className="resize-none text-sm"
-                />
-                {/* Quick-Tags */}
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {["Réviser la leçon", "Mémorisation parfaite", "Manque de fluidité", "Avancer au prochain Hizb"].map((tag) => (
-                    <span
-                      key={tag}
-                      onClick={() => setTodoNext((prev) => prev ? `${prev}, ${tag}` : tag)}
-                      className="inline-flex items-center rounded-full border border-brand-cyan/30 bg-brand-cyan/5 px-2.5 py-0.5 text-[11px] font-medium text-brand-navy cursor-pointer hover:bg-brand-cyan/20 transition-colors"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                      return (
+                        <div key={field.key} className="space-y-1">
+                          <Label className="text-xs font-medium">
+                            {field.label}
+                            {isNumber && field.max && (
+                              <span className="text-muted-foreground font-normal"> (/{field.max})</span>
+                            )}
+                          </Label>
+                          {isText && (
+                            <Input
+                              value={formData[field.key] ?? ""}
+                              onChange={(e) => updateField(field.key, e.target.value)}
+                              className="h-8 text-sm"
+                              placeholder={field.label}
+                            />
+                          )}
+                          {isNumber && (
+                            <Input
+                              type="number"
+                              min={0}
+                              max={field.max}
+                              step={0.5}
+                              value={formData[field.key] ?? ""}
+                              onChange={(e) => updateField(field.key, e.target.value)}
+                              className={cn(
+                                "h-8 w-24 text-sm",
+                                formData[field.key] && field.max && Number(formData[field.key]) > field.max
+                                  && "border-destructive"
+                              )}
+                              placeholder={`/${field.max ?? ""}`}
+                            />
+                          )}
+                          {isTextarea && (
+                            <Textarea
+                              value={formData[field.key] ?? ""}
+                              onChange={(e) => updateField(field.key, e.target.value)}
+                              rows={2}
+                              placeholder={field.label}
+                              className="resize-none text-sm"
+                            />
+                          )}
+                          {isSelect && (
+                            <Select
+                              value={formData[field.key] ?? ""}
+                              onValueChange={(v) => updateField(field.key, v)}
+                            >
+                              <SelectTrigger className="h-8 text-sm">
+                                <SelectValue placeholder="Choisir…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {field.options!.map((opt) => (
+                                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {/* ── Mastery Toggle ── */}
+                {goalProgress.defined && (
+                  <div className="flex items-center justify-between rounded-lg border border-brand-emerald/25 bg-brand-emerald/5 p-3 mt-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-brand-emerald" />
+                      <Label htmlFor="mastery-toggle" className="text-xs font-semibold text-brand-navy cursor-pointer">
+                        Objectif validé et acquis
+                      </Label>
+                    </div>
+                    <Switch
+                      id="mastery-toggle"
+                      checked={masteryValidated}
+                      onCheckedChange={setMasteryValidated}
+                    />
+                  </div>
+                )}
+
+                {/* To Do section */}
+                <div className="space-y-1.5 pt-3 mt-3 border-t border-border">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5 text-brand-cyan">
+                    <ListTodo className="h-3.5 w-3.5" />
+                    À faire (prochaine séance)
+                  </Label>
+                  <Textarea
+                    value={todoNext}
+                    onChange={(e) => setTodoNext(e.target.value)}
+                    rows={2}
+                    placeholder="Ex: Réviser sourate Al-Baqara v.1-5…"
+                    className="resize-none text-sm"
+                  />
+                  {/* Quick-Tags */}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {["Réviser la leçon", "Mémorisation parfaite", "Manque de fluidité", "Avancer au prochain Hizb"].map((tag) => (
+                      <span
+                        key={tag}
+                        onClick={() => setTodoNext((prev) => prev ? `${prev}, ${tag}` : tag)}
+                        className="inline-flex items-center rounded-full border border-brand-cyan/30 bg-brand-cyan/5 px-2.5 py-0.5 text-[11px] font-medium text-brand-navy cursor-pointer hover:bg-brand-cyan/20 transition-colors"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
