@@ -164,7 +164,7 @@ export function SessionReportDrawer({
     ? (previousProgress.data_json as Record<string, string>)
     : null;
 
-  const previousTodo = previousData?.["_todo_next"] ?? null;
+  const previousTodo = previousData?.["todo_next"] ?? null;
 
   // ── Existing progress for today ──
   const { data: existingProgress } = useQuery({
@@ -196,15 +196,15 @@ export function SessionReportDrawer({
     if (existingProgress?.data_json) {
       const saved = existingProgress.data_json as Record<string, string>;
       setFormData(saved);
-      setTodoNext(saved["_todo_next"] ?? "");
-      setNewPosition(saved["_goal_position"] ?? "");
-      setMasteryValidated(saved["_mastery"] === "true");
+      setTodoNext(saved["todo_next"] ?? "");
+      setNewPosition(saved["position_actuelle"] ?? "");
+      setMasteryValidated(saved["mastery_validated"] === "true");
     } else {
       // ── Smart-Fill from previous session ──
       const smartFilled: Record<string, string> = {};
       if (previousData) {
         // Pre-fill "content" type fields with previous todo
-        const prevTodo = previousData["_todo_next"];
+        const prevTodo = previousData["todo_next"];
         if (prevTodo) {
           const contentField = schema.find(
             (f) => f.type === "text" || f.type === "textarea"
@@ -221,8 +221,8 @@ export function SessionReportDrawer({
   // Pre-fill newPosition from previous session or goal
   useEffect(() => {
     if (!open || existingProgress) return;
-    if (previousData?.["_goal_position"]) {
-      setNewPosition(previousData["_goal_position"]);
+    if (previousData?.["position_actuelle"]) {
+      setNewPosition(previousData["position_actuelle"]);
     } else if (studentGoal) {
       setNewPosition(String(studentGoal.current_position));
     }
@@ -264,7 +264,7 @@ export function SessionReportDrawer({
         }
       }
 
-      const dataToSave = { ...formData, _todo_next: todoNext, _goal_position: newPosition, _mastery: String(masteryValidated) };
+      const dataToSave = { ...formData, todo_next: todoNext, position_actuelle: newPosition, mastery_validated: String(masteryValidated) };
 
       if (existingProgress) {
         const { error } = await supabase
@@ -472,10 +472,10 @@ export function SessionReportDrawer({
                       </div>
                     );
                   })}
-                  {previousData["_goal_position"] && goalProgress && (
+                  {previousData["position_actuelle"] && goalProgress && (
                     <div className="flex items-baseline gap-2 text-xs">
                       <span className="font-medium text-muted-foreground whitespace-nowrap">Position :</span>
-                      <span className="text-foreground">{previousData["_goal_position"]} {goalProgress.unit}</span>
+                      <span className="text-foreground">{previousData["position_actuelle"]} {goalProgress.unit}</span>
                     </div>
                   )}
                   {previousTodo ? (

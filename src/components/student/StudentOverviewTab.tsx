@@ -71,7 +71,7 @@ const StudentOverviewTab = ({ grades, progressEntries, studentPrenom, parentInfo
     {progressEntries.length > 0 && (() => {
       const latest = progressEntries[0];
       const data = latest.data_json as Record<string, any>;
-      const todo = data?.todo_prochaine_seance || data?.todo || null;
+      const todo = data?.todo_next || data?.todo_prochaine_seance || data?.todo || null;
       const subjectName = (latest.madrasa_session_configs as any)?.madrasa_subjects?.name || "—";
       return (
         <Card className="border-brand-cyan/20 bg-brand-cyan/5">

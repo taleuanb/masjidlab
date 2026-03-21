@@ -130,7 +130,7 @@ export function SessionReportModal({
     if (existingProgress?.data_json) {
       const saved = existingProgress.data_json as Record<string, string>;
       setFormData(saved);
-      setTodoNext(saved["_todo_next"] ?? "");
+      setTodoNext(saved["todo_next"] ?? "");
     } else {
       setFormData({});
       setTodoNext("");
@@ -156,7 +156,7 @@ export function SessionReportModal({
         }
       }
 
-      const dataToSave = { ...formData, _todo_next: todoNext };
+      const dataToSave = { ...formData, todo_next: todoNext };
 
       if (existingProgress) {
         // Update

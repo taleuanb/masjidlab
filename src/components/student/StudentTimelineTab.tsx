@@ -43,9 +43,9 @@ const StudentTimelineTab = ({ progressEntries, studentPrenom }: Props) => {
         const data = entry.data_json as Record<string, any>;
         const subjectName = (entry.madrasa_session_configs as any)?.madrasa_subjects?.name || "Matière";
         const style = getSubjectStyle(subjectName);
-        const todo = data?.todo_prochaine_seance || data?.todo;
+        const todo = data?.todo_next || data?.todo_prochaine_seance || data?.todo;
         const otherFields = Object.entries(data).filter(
-          ([k]) => !["todo_prochaine_seance", "todo"].includes(k)
+          ([k]) => !["todo_next", "todo_prochaine_seance", "todo", "position_actuelle", "mastery_validated"].includes(k)
         );
 
         return (

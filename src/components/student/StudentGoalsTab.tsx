@@ -121,7 +121,7 @@ const StudentGoalsTab = ({ studentId, studentPrenom }: StudentGoalsTabProps) => 
       const config = entry.madrasa_session_configs as any;
       if (config?.subject_id === subjectId) {
         const json = entry.data_json as any;
-        if (json?._goal_position != null) return Number(json._goal_position);
+        if (json?.position_actuelle != null) return Number(json.position_actuelle);
       }
     }
     return null;
