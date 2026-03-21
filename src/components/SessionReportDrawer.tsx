@@ -495,15 +495,13 @@ export function SessionReportDrawer({
             </div>
           )}
 
-          {/* ── Separator between Flashback and Today's form ── */}
+          {/* ── ZONE B: Saisie du Jour ── */}
           {activeConfig && <Separator className="my-1" />}
-
-          {/* ── SAISIE DU JOUR ── */}
           {activeConfig && (
             <div className="flex items-center gap-1.5 -mb-1">
               <BookOpen className="h-3.5 w-3.5 text-brand-emerald" />
               <span className="text-xs font-semibold text-brand-navy">
-                Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
+                📑 Saisie du jour — {format(new Date(targetDate), "d MMMM yyyy", { locale: fr })}
               </span>
             </div>
           )}
