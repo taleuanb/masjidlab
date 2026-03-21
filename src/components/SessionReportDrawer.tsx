@@ -646,6 +646,9 @@ export function SessionReportDrawer({
             </div>
           )}
 
+          {/* Close Zone B card */}
+          {activeConfig && </div>}
+
           {/* ── Celebration overlay ── */}
           <AnimatePresence>
             {showCelebration && (
