@@ -222,7 +222,7 @@ export function SessionReportDrawer({
   useEffect(() => {
     if (!open || existingProgress) return;
     if (previousData?.["position_actuelle"]) {
-      setNewPosition(previousData["_goal_position"]);
+      setNewPosition(previousData["position_actuelle"]);
     } else if (studentGoal) {
       setNewPosition(String(studentGoal.current_position));
     }
