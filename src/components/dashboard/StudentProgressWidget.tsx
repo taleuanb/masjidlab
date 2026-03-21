@@ -299,11 +299,30 @@ export function StudentProgressWidget() {
                     </div>
                   </>
                 )}
+                {/* History button */}
+                <Button
+                  variant="outline"
+                  className="w-full mt-1 text-brand-navy"
+                  onClick={() => setSelectedChildId(s.id)}
+                >
+                  <History className="h-3.5 w-3.5 mr-1.5" />
+                  Voir l'historique détaillé
+                </Button>
               </div>
             );
           })}
         </div>
       )}
+
+      <ChildHistorySheet
+        childId={selectedChildId}
+        childName={
+          stats?.find((s) => s.id === selectedChildId)
+            ? `${stats.find((s) => s.id === selectedChildId)!.prenom} ${stats.find((s) => s.id === selectedChildId)!.nom}`
+            : ""
+        }
+        onClose={() => setSelectedChildId(null)}
+      />
     </motion.div>
   );
 }
