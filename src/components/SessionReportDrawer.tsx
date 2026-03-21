@@ -499,20 +499,24 @@ export function SessionReportDrawer({
                   <Skeleton className="h-10 w-full" />
                 ) : previousData ? (
                   <div className="space-y-1.5">
-                    {schema.map((field) => {
-                      const val = previousData[field.key];
-                      if (!val) return null;
-                      return (
-                        <div key={field.key} className="flex items-baseline gap-2 text-xs">
-                          <span className="font-medium text-slate-500 whitespace-nowrap">{field.label} :</span>
-                          <span className="text-slate-800">{val}{field.type === "number" && field.max ? ` / ${field.max}` : ""}</span>
-                        </div>
-                      );
-                    })}
-                    {previousData["position_actuelle"] && goalProgress && (
+                    {Object.entries(previousData)
+                      .filter(([key]) => !["todo_next", "position_actuelle", "mastery_validated"].includes(key))
+                      .filter(([, val]) => !!val)
+                      .map(([key, val]) => {
+                        const fieldDef = schema.find((f) => f.key === key);
+                        const label = fieldDef?.label ?? key;
+                        const suffix = fieldDef?.type === "number" && fieldDef?.max ? ` / ${fieldDef.max}` : "";
+                        return (
+                          <div key={key} className="flex items-baseline gap-2 text-xs">
+                            <span className="font-medium text-slate-500 whitespace-nowrap">{label} :</span>
+                            <span className="text-slate-800">{val}{suffix}</span>
+                          </div>
+                        );
+                      })}
+                    {previousData["position_actuelle"] && (
                       <div className="flex items-baseline gap-2 text-xs">
                         <span className="font-medium text-slate-500 whitespace-nowrap">Position :</span>
-                        <span className="text-slate-800 font-semibold">{previousData["position_actuelle"]} {goalProgress.unit}</span>
+                        <span className="text-slate-800 font-semibold">{previousData["position_actuelle"]} {goalProgress.defined ? goalProgress.unit : ""}</span>
                       </div>
                     )}
                     {previousTodo ? (
