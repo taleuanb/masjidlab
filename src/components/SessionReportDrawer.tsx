@@ -472,10 +472,10 @@ export function SessionReportDrawer({
                       </div>
                     );
                   })}
-                  {previousData["_goal_position"] && goalProgress && (
+                  {previousData["position_actuelle"] && goalProgress && (
                     <div className="flex items-baseline gap-2 text-xs">
                       <span className="font-medium text-muted-foreground whitespace-nowrap">Position :</span>
-                      <span className="text-foreground">{previousData["_goal_position"]} {goalProgress.unit}</span>
+                      <span className="text-foreground">{previousData["position_actuelle"]} {goalProgress.unit}</span>
                     </div>
                   )}
                   {previousTodo ? (

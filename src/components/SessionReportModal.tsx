@@ -156,7 +156,7 @@ export function SessionReportModal({
         }
       }
 
-      const dataToSave = { ...formData, _todo_next: todoNext };
+      const dataToSave = { ...formData, todo_next: todoNext };
 
       if (existingProgress) {
         // Update
