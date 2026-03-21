@@ -204,7 +204,7 @@ export function SessionReportDrawer({
       const smartFilled: Record<string, string> = {};
       if (previousData) {
         // Pre-fill "content" type fields with previous todo
-        const prevTodo = previousData["_todo_next"];
+        const prevTodo = previousData["todo_next"];
         if (prevTodo) {
           const contentField = schema.find(
             (f) => f.type === "text" || f.type === "textarea"
