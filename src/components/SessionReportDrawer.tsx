@@ -164,7 +164,7 @@ export function SessionReportDrawer({
     ? (previousProgress.data_json as Record<string, string>)
     : null;
 
-  const previousTodo = previousData?.["_todo_next"] ?? null;
+  const previousTodo = previousData?.["todo_next"] ?? null;
 
   // ── Existing progress for today ──
   const { data: existingProgress } = useQuery({
