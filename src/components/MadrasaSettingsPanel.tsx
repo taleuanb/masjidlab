@@ -332,11 +332,13 @@ export function MadrasaSettingsPanel() {
           <TabsTrigger value="subjects">Matières</TabsTrigger>
           <TabsTrigger value="levels">Niveaux</TabsTrigger>
           <TabsTrigger value="tracking">Suivis</TabsTrigger>
+          <TabsTrigger value="communications">Communications</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralTab /></TabsContent>
         <TabsContent value="subjects"><SubjectsTab /></TabsContent>
         <TabsContent value="levels"><LevelsTab /></TabsContent>
         <TabsContent value="tracking"><TrackingConfigTab /></TabsContent>
+        <TabsContent value="communications"><CommunicationsTab /></TabsContent>
       </Tabs>
     </div>
   );
