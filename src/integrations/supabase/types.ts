@@ -794,6 +794,7 @@ export type Database = {
           currency: string | null
           org_id: string
           updated_at: string | null
+          whatsapp_session_template: string | null
         }
         Insert: {
           allow_public_registration?: boolean | null
@@ -802,6 +803,7 @@ export type Database = {
           currency?: string | null
           org_id: string
           updated_at?: string | null
+          whatsapp_session_template?: string | null
         }
         Update: {
           allow_public_registration?: boolean | null
@@ -810,6 +812,7 @@ export type Database = {
           currency?: string | null
           org_id?: string
           updated_at?: string | null
+          whatsapp_session_template?: string | null
         }
         Relationships: [
           {
