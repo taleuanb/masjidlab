@@ -45,12 +45,8 @@ export function CommunicationsTab() {
 
   const upsert = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("madrasa_settings")
-        .upsert(
-          { org_id: orgId!, whatsapp_session_template: template } as Record<string, unknown>,
-          { onConflict: "org_id" }
-        );
+      const payload: Record<string, unknown> = { org_id: orgId!, whatsapp_session_template: template };
+      const { error } = await (supabase.from("madrasa_settings") as any).upsert(payload, { onConflict: "org_id" });
       if (error) throw error;
     },
     onSuccess: () => {
