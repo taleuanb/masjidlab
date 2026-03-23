@@ -1,0 +1,1 @@
+ALTER TABLE public.madrasa_settings ADD COLUMN whatsapp_session_template text;
