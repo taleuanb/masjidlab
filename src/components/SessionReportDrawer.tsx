@@ -280,31 +280,48 @@ export function SessionReportDrawer({
     return { current, target, newPos, currentPct, newPct, unit, defined: !!hasGoal };
   }, [studentGoal, newPosition]);
 
+  // ── Fetch WhatsApp template from settings ──
+  const { data: madrasaSettings } = useQuery({
+    queryKey: ["madrasa_settings", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_settings")
+        .select("*")
+        .eq("org_id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   // ── WhatsApp message generator ──
   const handleWhatsAppShare = useCallback(() => {
     if (!student) return;
+    const rawTemplate = (madrasaSettings as Record<string, unknown> | null)?.["whatsapp_session_template"] as string | null;
+    const tpl = rawTemplate || WA_DEFAULT_TEMPLATE;
+
     const matiere = subjectInfo?.name ?? "la matière";
-    const lines: string[] = [
-      `🕌 *Point d'étape Madrasa*`,
-      `As-salamu alaykum, voici le résumé de la séance de *${student.prenom}* aujourd'hui en *${matiere}*.`,
-      ``,
-    ];
-    if (newPosition) {
-      const unit = goalProgress?.unit ?? "";
-      lines.push(`📈 *Avancée :* ${newPosition} ${unit}`);
-    }
+    const unit = goalProgress?.unit ?? "";
+    const positionStr = newPosition ? `${newPosition} ${unit}`.trim() : "—";
+
+    // Build notes string from star ratings
+    const notesLines: string[] = [];
     for (const field of schema) {
       if (field.type === "number" && field.max === 5 && formData[field.key]) {
-        lines.push(`⭐ ${field.label} : ${formData[field.key]}/5`);
+        notesLines.push(`⭐ ${field.label} : ${formData[field.key]}/5`);
       }
     }
-    if (todoNext) {
-      lines.push(``, `🗣️ *Mot du professeur :*`, `>  ${todoNext}`);
-    }
-    lines.push(``, `BarakAllahu fikum pour votre suivi à la maison ! 🤲`);
-    const encoded = encodeURIComponent(lines.join("\n"));
+
+    const message = tpl
+      .replace(/\[PRENOM\]/g, student.prenom)
+      .replace(/\[MATIERE\]/g, matiere)
+      .replace(/\[POSITION\]/g, positionStr)
+      .replace(/\[NOTES\]/g, notesLines.join("\n") || "—")
+      .replace(/\[REMARQUE\]/g, todoNext || "Aucune remarque");
+
+    const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encoded}`, "_blank");
-  }, [student, subjectInfo, newPosition, goalProgress, schema, formData, todoNext]);
+  }, [student, subjectInfo, newPosition, goalProgress, schema, formData, todoNext, madrasaSettings]);
 
   // ── Save mutation ──
   const saveMutation = useMutation({
