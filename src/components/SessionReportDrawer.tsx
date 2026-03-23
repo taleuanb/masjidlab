@@ -312,12 +312,22 @@ export function SessionReportDrawer({
       }
     }
 
-    const message = tpl
+    let message = tpl
       .replace(/\[PRENOM\]/g, student.prenom)
       .replace(/\[MATIERE\]/g, matiere)
       .replace(/\[POSITION\]/g, positionStr)
-      .replace(/\[NOTES\]/g, notesLines.join("\n") || "—")
-      .replace(/\[REMARQUE\]/g, todoNext || "Aucune remarque");
+      .replace(/\[NOTES\]/g, notesLines.join("\n") || "—");
+
+    // Smart cleanup: if remarque is empty, remove the entire line containing [REMARQUE]
+    if (todoNext) {
+      message = message.replace(/\[REMARQUE\]/g, todoNext);
+    } else {
+      // Remove any line that contains [REMARQUE] (including its label prefix)
+      message = message.replace(/^.*\[REMARQUE\].*$/gm, "");
+    }
+
+    // Clean up multiple consecutive blank lines
+    message = message.replace(/\n{3,}/g, "\n\n").trim();
 
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encoded}`, "_blank");
