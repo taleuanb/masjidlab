@@ -3,8 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
-  ClipboardCheck, Loader2, Check, ChevronLeft, Users, AlertTriangle,
-  UserCheck, UserX, Clock, ArrowLeft, History, Notebook, MessageCircle, CheckCircle2,
+  ClipboardCheck, ClipboardList, Loader2, Check, ChevronLeft, Users, AlertTriangle,
+  UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -503,12 +503,6 @@ const Attendance = () => {
                       {s.prenom} {s.nom}
                     </span>
                     <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {allCompletedReports.has(s.student_id) && (
-                        <span className="flex items-center gap-1 text-brand-emerald text-[10px] font-medium">
-                          <Check className="h-3.5 w-3.5" />
-                          Suivi
-                        </span>
-                      )}
                       {overThreshold && (
                         <span className="flex items-center gap-1 text-amber-600 text-[10px] font-medium">
                           <AlertTriangle className="h-3.5 w-3.5" />
@@ -552,9 +546,21 @@ const Attendance = () => {
                           </Tooltip>
                         </TooltipProvider>
                       )}
-                      <span className={cn("shrink-0", allCompletedReports.has(s.student_id) ? "text-brand-emerald" : "text-muted-foreground/40")}>
-                        <Notebook className="h-3.5 w-3.5" />
-                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-7 px-2 text-xs font-medium gap-1",
+                          allCompletedReports.has(s.student_id)
+                            ? "text-brand-emerald hover:text-brand-emerald/80"
+                            : "text-brand-cyan hover:text-brand-cyan/80"
+                        )}
+                        onClick={(e) => { e.stopPropagation(); setReportStudent({ id: s.student_id, prenom: s.prenom, nom: s.nom }); setReportOpen(true); }}
+                      >
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        {allCompletedReports.has(s.student_id) ? "Suivi ✓" : "Saisir le suivi"}
+                      </Button>
                     </div>
                   </div>
 
