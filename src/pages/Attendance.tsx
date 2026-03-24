@@ -502,21 +502,60 @@ const Attendance = () => {
                     <span className="font-medium text-sm text-foreground flex-1 truncate">
                       {s.prenom} {s.nom}
                     </span>
-                    {allCompletedReports.has(s.student_id) && (
-                      <span className="flex items-center gap-1 text-brand-emerald text-[10px] font-medium shrink-0">
-                        <Check className="h-3.5 w-3.5" />
-                        Suivi
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {allCompletedReports.has(s.student_id) && (
+                        <span className="flex items-center gap-1 text-brand-emerald text-[10px] font-medium">
+                          <Check className="h-3.5 w-3.5" />
+                          Suivi
+                        </span>
+                      )}
+                      {overThreshold && (
+                        <span className="flex items-center gap-1 text-amber-600 text-[10px] font-medium">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          {s.absenceCount} abs.
+                        </span>
+                      )}
+                      {current === "absent" && (
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {notifiedAbsences.has(s.student_id) ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  className="h-7 px-2 text-[10px] text-muted-foreground bg-muted/50 border-border"
+                                >
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Notifié
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2 text-[10px] text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                                  onClick={() => {
+                                    window.open(`https://wa.me/?text=${generateAbsenceMessage(s.prenom)}`, "_blank");
+                                    setNotifiedAbsences((prev) => new Set(prev).add(s.student_id));
+                                  }}
+                                >
+                                  <MessageCircle className="h-3 w-3 mr-1" />
+                                  Notifier
+                                </Button>
+                              )}
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              {notifiedAbsences.has(s.student_id)
+                                ? "Notification d'absence déjà envoyée"
+                                : "Envoyer une notification d'absence via WhatsApp"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      <span className={cn("shrink-0", allCompletedReports.has(s.student_id) ? "text-brand-emerald" : "text-muted-foreground/40")}>
+                        <Notebook className="h-3.5 w-3.5" />
                       </span>
-                    )}
-                    {overThreshold && (
-                      <span className="flex items-center gap-1 text-amber-600 text-[10px] font-medium shrink-0">
-                        <AlertTriangle className="h-3.5 w-3.5" />
-                        {s.absenceCount} abs.
-                      </span>
-                    )}
-                    <span className={cn("shrink-0", allCompletedReports.has(s.student_id) ? "text-brand-emerald" : "text-muted-foreground/40")}>
-                      <Notebook className="h-3.5 w-3.5" />
-                    </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-4 gap-1.5" onClick={(e) => e.stopPropagation()}>
