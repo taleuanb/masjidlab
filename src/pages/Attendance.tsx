@@ -552,9 +552,21 @@ const Attendance = () => {
                           </Tooltip>
                         </TooltipProvider>
                       )}
-                      <span className={cn("shrink-0", allCompletedReports.has(s.student_id) ? "text-brand-emerald" : "text-muted-foreground/40")}>
-                        <Notebook className="h-3.5 w-3.5" />
-                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-7 px-2 text-xs font-medium gap-1",
+                          allCompletedReports.has(s.student_id)
+                            ? "text-brand-emerald hover:text-brand-emerald/80"
+                            : "text-brand-cyan hover:text-brand-cyan/80"
+                        )}
+                        onClick={(e) => { e.stopPropagation(); setSelectedStudent(s); }}
+                      >
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        {allCompletedReports.has(s.student_id) ? "Suivi ✓" : "Saisir le suivi"}
+                      </Button>
                     </div>
                   </div>
 
