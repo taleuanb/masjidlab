@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardCheck, Loader2, Check, ChevronLeft, Users, AlertTriangle,
-  UserCheck, UserX, Clock, ArrowLeft, History, Notebook,
+  UserCheck, UserX, Clock, ArrowLeft, History, Notebook, MessageCircle, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
