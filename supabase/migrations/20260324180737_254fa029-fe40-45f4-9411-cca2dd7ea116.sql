@@ -1,0 +1,1 @@
+ALTER TABLE public.madrasa_settings ADD COLUMN IF NOT EXISTS whatsapp_absence_template text;

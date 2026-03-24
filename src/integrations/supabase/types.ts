@@ -794,6 +794,7 @@ export type Database = {
           currency: string | null
           org_id: string
           updated_at: string | null
+          whatsapp_absence_template: string | null
           whatsapp_session_template: string | null
         }
         Insert: {
@@ -803,6 +804,7 @@ export type Database = {
           currency?: string | null
           org_id: string
           updated_at?: string | null
+          whatsapp_absence_template?: string | null
           whatsapp_session_template?: string | null
         }
         Update: {
@@ -812,6 +814,7 @@ export type Database = {
           currency?: string | null
           org_id?: string
           updated_at?: string | null
+          whatsapp_absence_template?: string | null
           whatsapp_session_template?: string | null
         }
         Relationships: [
