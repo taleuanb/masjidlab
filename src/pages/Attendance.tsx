@@ -19,6 +19,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AttendanceHistory } from "@/components/AttendanceHistory";
 import { SessionReportDrawer } from "@/components/SessionReportDrawer";
+import { WA_DEFAULT_ABSENCE_TEMPLATE } from "@/components/madrasa/CommunicationsTab";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -70,6 +72,7 @@ const Attendance = () => {
   const [reportStudent, setReportStudent] = useState<{ id: string; prenom: string; nom: string } | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [completedReports, setCompletedReports] = useState<Set<string>>(new Set());
+  const [notifiedAbsences, setNotifiedAbsences] = useState<Set<string>>(new Set());
 
   const today = format(new Date(), "yyyy-MM-dd");
   const todayLabel = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
