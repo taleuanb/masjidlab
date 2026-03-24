@@ -3,8 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
-  ClipboardCheck, Loader2, Check, ChevronLeft, Users, AlertTriangle,
-  UserCheck, UserX, Clock, ArrowLeft, History, Notebook, MessageCircle, CheckCircle2,
+  ClipboardCheck, ClipboardList, Loader2, Check, ChevronLeft, Users, AlertTriangle,
+  UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -562,7 +562,7 @@ const Attendance = () => {
                             ? "text-brand-emerald hover:text-brand-emerald/80"
                             : "text-brand-cyan hover:text-brand-cyan/80"
                         )}
-                        onClick={(e) => { e.stopPropagation(); setSelectedStudent(s); }}
+                        onClick={(e) => { e.stopPropagation(); setReportStudent({ id: s.student_id, prenom: s.prenom, nom: s.nom }); setReportOpen(true); }}
                       >
                         <ClipboardList className="h-3.5 w-3.5" />
                         {allCompletedReports.has(s.student_id) ? "Suivi ✓" : "Saisir le suivi"}
