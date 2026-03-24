@@ -150,18 +150,33 @@ const Attendance = () => {
 
   useEffect(() => { fetchClasses(); }, [fetchClasses]);
 
-  // ── Fetch settings threshold ──
+  // ── Fetch settings threshold + absence template ──
+  const { data: madrasaSettings } = useQuery({
+    queryKey: ["madrasa_settings", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_settings")
+        .select("*")
+        .eq("org_id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   useEffect(() => {
-    if (!orgId) return;
-    supabase
-      .from("madrasa_settings")
-      .select("attendance_threshold")
-      .eq("org_id", orgId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.attendance_threshold) setThreshold(data.attendance_threshold);
-      });
-  }, [orgId]);
+    if (madrasaSettings?.attendance_threshold) setThreshold(madrasaSettings.attendance_threshold);
+  }, [madrasaSettings]);
+
+  const generateAbsenceMessage = useCallback((studentPrenom: string) => {
+    const rawTpl = (madrasaSettings as Record<string, unknown> | null)?.["whatsapp_absence_template"] as string | null;
+    const tpl = rawTpl || WA_DEFAULT_ABSENCE_TEMPLATE;
+    const dateStr = format(new Date(), "d MMMM yyyy", { locale: fr });
+    const message = tpl
+      .replace(/\[PRENOM\]/g, studentPrenom)
+      .replace(/\[DATE\]/g, dateStr);
+    return encodeURIComponent(message);
+  }, [madrasaSettings]);
 
   // ── Select class → load students & existing attendance ──
   const handleSelectClass = useCallback(async (cls: ClassInfo) => {
