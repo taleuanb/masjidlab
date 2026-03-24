@@ -503,12 +503,6 @@ const Attendance = () => {
                       {s.prenom} {s.nom}
                     </span>
                     <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {allCompletedReports.has(s.student_id) && (
-                        <span className="flex items-center gap-1 text-brand-emerald text-[10px] font-medium">
-                          <Check className="h-3.5 w-3.5" />
-                          Suivi
-                        </span>
-                      )}
                       {overThreshold && (
                         <span className="flex items-center gap-1 text-amber-600 text-[10px] font-medium">
                           <AlertTriangle className="h-3.5 w-3.5" />
