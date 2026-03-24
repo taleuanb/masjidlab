@@ -546,21 +546,39 @@ const Attendance = () => {
                           </Tooltip>
                         </TooltipProvider>
                       )}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          "h-7 px-2 text-xs font-medium gap-1",
-                          allCompletedReports.has(s.student_id)
-                            ? "text-brand-emerald hover:text-brand-emerald/80"
-                            : "text-brand-cyan hover:text-brand-cyan/80"
-                        )}
-                        onClick={(e) => { e.stopPropagation(); setReportStudent({ id: s.student_id, prenom: s.prenom, nom: s.nom }); setReportOpen(true); }}
-                      >
-                        <ClipboardList className="h-3.5 w-3.5" />
-                        {allCompletedReports.has(s.student_id) ? "Suivi ✓" : "Saisir le suivi"}
-                      </Button>
+                      <TooltipProvider delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={current !== "present" && current !== "late"}
+                                className={cn(
+                                  "h-7 px-2 text-xs font-medium gap-1",
+                                  current !== "present" && current !== "late"
+                                    ? "text-muted-foreground/40 opacity-40 cursor-not-allowed"
+                                    : allCompletedReports.has(s.student_id)
+                                      ? "text-brand-emerald hover:text-brand-emerald/80"
+                                      : "text-brand-cyan hover:text-brand-cyan/80"
+                                )}
+                                onClick={(e) => { e.stopPropagation(); setReportStudent({ id: s.student_id, prenom: s.prenom, nom: s.nom }); setReportOpen(true); }}
+                              >
+                                <ClipboardList className="h-3.5 w-3.5" />
+                                {allCompletedReports.has(s.student_id) ? "Suivi ✓" : "Saisir le suivi"}
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">
+                            {current !== "present" && current !== "late"
+                              ? "L'élève doit être présent pour saisir un suivi"
+                              : allCompletedReports.has(s.student_id)
+                                ? "Suivi déjà saisi pour cette séance"
+                                : "Ouvrir le carnet de suivi pédagogique"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
 
