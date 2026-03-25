@@ -1,14 +1,13 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, subDays } from "date-fns";
+import { format, subDays, differenceInDays, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ArrowUpDown, Printer, TrendingUp, Filter, Target, CalendarCheck } from "lucide-react";
+import { ArrowUpDown, Printer, TrendingUp, Filter, Target, CalendarCheck, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -20,33 +19,7 @@ interface ClassProgressBoardProps {
   subjects: { id: string; name: string }[];
 }
 
-/** Mini badge for a score out of max (default 5) */
-function ScoreBadge({ score, max = 5 }: { score: number; max?: number }) {
-  const ratio = score / max;
-  const color =
-    ratio >= 0.8 ? "bg-brand-emerald text-white" :
-    ratio >= 0.6 ? "bg-amber-400/80 text-amber-900" :
-    "bg-destructive/70 text-white";
-  return (
-    <span className={cn("inline-flex items-center justify-center h-6 w-6 rounded-full text-[10px] font-bold", color)}>
-      {score}
-    </span>
-  );
-}
-
-/** Progress bar color class based on ratio */
-function progressColor(ratio: number): string {
-  if (ratio >= 0.7) return "bg-brand-emerald";
-  if (ratio >= 0.4) return "bg-amber-500";
-  return "bg-destructive";
-}
-
-/** Attendance badge color */
-function attendanceColor(pct: number): string {
-  if (pct >= 85) return "text-brand-emerald";
-  if (pct >= 60) return "text-amber-600";
-  return "text-destructive";
-}
+type ScoreEntry = { score: number; date: string; subjectName: string };
 
 type StudentRow = {
   student_id: string;
@@ -54,6 +27,64 @@ type StudentRow = {
   prenom: string;
   nom: string;
 };
+
+/** Color for a score dot */
+function dotColor(score: number, max: number): string {
+  const ratio = score / max;
+  if (ratio >= 1) return "bg-secondary"; // emerald
+  if (ratio >= 0.8) return "bg-emerald-400";
+  if (ratio >= 0.6) return "bg-amber-warm";
+  return "bg-destructive";
+}
+
+/** Attendance text color */
+function attendanceColor(pct: number): string {
+  if (pct >= 85) return "text-secondary";
+  if (pct >= 60) return "text-amber-600";
+  return "text-destructive";
+}
+
+/** Academic year bounds (Sept 1 → June 30) */
+function getAcademicYearProgress(): number {
+  const now = new Date();
+  const year = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+  const start = new Date(year, 8, 1); // Sept 1
+  const end = new Date(year + 1, 5, 30); // June 30
+  const total = differenceInDays(end, start);
+  const elapsed = differenceInDays(now, start);
+  return Math.max(0, Math.min(1, elapsed / total));
+}
+
+/** Skeleton rows for loading state */
+function TableSkeletons() {
+  return (
+    <>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <tr key={i} className="border-t border-border/50">
+          <td className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-28" />
+                <Skeleton className="h-2.5 w-16" />
+              </div>
+            </div>
+          </td>
+          <td className="px-4 py-3"><Skeleton className="h-4 w-full max-w-[180px]" /></td>
+          <td className="px-4 py-3">
+            <div className="flex justify-center gap-1.5">
+              {Array.from({ length: 5 }).map((_, j) => (
+                <Skeleton key={j} className="h-[8px] w-[8px] rounded-full" />
+              ))}
+            </div>
+          </td>
+          <td className="px-4 py-3 text-center"><Skeleton className="h-4 w-10 mx-auto" /></td>
+          <td className="px-4 py-3"><Skeleton className="h-6 w-6 mx-auto rounded" /></td>
+        </tr>
+      ))}
+    </>
+  );
+}
 
 export function ClassProgressBoard({ classId, className, subjects }: ClassProgressBoardProps) {
   const { orgId } = useOrganization();
@@ -64,6 +95,9 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerStudent, setDrawerStudent] = useState<{ id: string; prenom: string; nom: string } | null>(null);
+
+  const selectedSubjectName = subjects.find((s) => s.id === selectedSubjectId)?.name ?? "";
+  const academicProgress = useMemo(() => getAcademicYearProgress(), []);
 
   // ── Fetch config for selected subject ──
   const { data: config } = useQuery({
@@ -102,7 +136,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
     },
   });
 
-  // ── Fetch annual goals for all students ──
+  // ── Fetch annual goals ──
   const { data: goalsMap = new Map() } = useQuery({
     queryKey: ["class_goals", orgId, classId, selectedSubjectId],
     enabled: !!orgId && !!selectedSubjectId && students.length > 0,
@@ -123,7 +157,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
     },
   });
 
-  // ── Determine the score field from schema ──
+  // ── Score field from schema ──
   const scoreFieldKey = useMemo(() => {
     if (!config?.form_schema_json) return null;
     const schema = config.form_schema_json as any[];
@@ -131,13 +165,13 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
     return numField ? { key: numField.key, max: numField.max ?? 5, label: numField.label } : null;
   }, [config]);
 
-  // ── Fetch last 5 scores per student ──
+  // ── Fetch last 5 scores per student WITH dates ──
   const { data: scoresMap = new Map(), isLoading: isLoadingScores } = useQuery({
     queryKey: ["class_last_scores", orgId, classId, config?.id],
     enabled: !!orgId && !!classId && !!config?.id && students.length > 0,
     queryFn: async () => {
       const studentIds = students.map((s) => s.student_id).filter(Boolean);
-      if (studentIds.length === 0) return new Map<string, number[]>();
+      if (studentIds.length === 0) return new Map<string, ScoreEntry[]>();
       const { data } = await supabase
         .from("madrasa_student_progress")
         .select("student_id, lesson_date, data_json")
@@ -147,14 +181,20 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
         .in("student_id", studentIds)
         .order("lesson_date", { ascending: false })
         .limit(500);
-      const m = new Map<string, number[]>();
+      const m = new Map<string, ScoreEntry[]>();
       for (const p of data ?? []) {
         if (!scoreFieldKey) continue;
         const json = p.data_json as Record<string, any>;
         const val = json[scoreFieldKey.key];
         if (val == null) continue;
         const arr = m.get(p.student_id) ?? [];
-        if (arr.length < 5) arr.push(Number(val));
+        if (arr.length < 5) {
+          arr.push({
+            score: Number(val),
+            date: p.lesson_date,
+            subjectName: selectedSubjectName,
+          });
+        }
         m.set(p.student_id, arr);
       }
       return m;
@@ -185,38 +225,84 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
     },
   });
 
-  // ── Computed: priority score for sorting ──
-  const getPriority = (sid: string): number => {
+  // ── WhatsApp template from settings ──
+  const { data: waSettings } = useQuery({
+    queryKey: ["madrasa_settings_wa", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_settings")
+        .select("whatsapp_session_template, whatsapp_absence_template")
+        .eq("org_id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  // ── Priority score for sorting ──
+  const getPriority = useCallback((sid: string): number => {
     let priority = 0;
-    // Low goal progress → higher priority
     const goal = goalsMap.get(sid);
     if (goal && goal.target > 0) {
       const ratio = goal.current / goal.target;
       if (ratio < 0.4) priority += 3;
       else if (ratio < 0.7) priority += 1;
     }
-    // Declining scores → higher priority
     const scores = scoresMap.get(sid);
     if (scores && scores.length >= 2 && scoreFieldKey) {
-      const recent = scores[0] / scoreFieldKey.max;
-      const older = scores[scores.length - 1] / scoreFieldKey.max;
+      const recent = scores[0].score / scoreFieldKey.max;
+      const older = scores[scores.length - 1].score / scoreFieldKey.max;
       if (recent < older) priority += 2;
       if (recent < 0.4) priority += 2;
     }
-    // Low attendance
     const att = attendanceMap.get(sid);
     if (att && att.total > 0 && (att.present / att.total) < 0.7) priority += 2;
     return priority;
-  };
+  }, [goalsMap, scoresMap, attendanceMap, scoreFieldKey]);
 
   const sortedStudents = useMemo(() => {
     if (!sortByPriority) return students;
     return [...students].sort((a, b) => getPriority(b.student_id) - getPriority(a.student_id));
-  }, [students, sortByPriority, goalsMap, scoresMap, attendanceMap, scoreFieldKey]);
+  }, [students, sortByPriority, getPriority]);
 
   const openDrawer = (student: StudentRow) => {
     setDrawerStudent({ id: student.student_id, prenom: student.prenom, nom: student.nom });
     setDrawerOpen(true);
+  };
+
+  const sendWhatsApp = (student: StudentRow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const goal = goalsMap.get(student.student_id);
+    const scores = scoresMap.get(student.student_id);
+    const att = attendanceMap.get(student.student_id);
+    const attPct = att && att.total > 0 ? Math.round((att.present / att.total) * 100) : null;
+
+    // Choose template: if low attendance or absent pattern → absence, otherwise session
+    const isAbsenceContext = attPct != null && attPct < 60;
+    let template: string;
+
+    if (isAbsenceContext) {
+      template = waSettings?.whatsapp_absence_template ||
+        `⚠️ *Absence remarquée*\nAs-salamu alaykum, nous avons noté des absences répétées de [PRENOM].\nMerci de nous contacter.\n\nLa Direction.`;
+      template = template
+        .replace(/\[PRENOM\]/g, student.prenom)
+        .replace(/\[DATE\]/g, format(new Date(), "dd MMMM yyyy", { locale: fr }));
+    } else {
+      template = waSettings?.whatsapp_session_template ||
+        `🕌 *Point Madrasa*\nVoici le résumé de [PRENOM] en [MATIERE].\n📈 *Avancée :* [POSITION]\n[NOTES]\n🗣️ *Mot du prof :* [REMARQUE]`;
+      const notesTxt = scores && scores.length > 0
+        ? scores.map((s) => `⭐ ${scoreFieldKey?.label ?? "Note"} : ${s.score}/${scoreFieldKey?.max ?? 5}`).join("\n")
+        : "";
+      template = template
+        .replace(/\[PRENOM\]/g, student.prenom)
+        .replace(/\[MATIERE\]/g, selectedSubjectName)
+        .replace(/\[POSITION\]/g, goal ? `${goal.current}/${goal.target} ${goal.unit}` : "—")
+        .replace(/\[NOTES\]/g, notesTxt)
+        .replace(/\[REMARQUE\]/g, "");
+    }
+
+    const encoded = encodeURIComponent(template);
+    window.open(`https://wa.me/?text=${encoded}`, "_blank");
   };
 
   const handlePrint = () => {
@@ -231,13 +317,12 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
         th { background: #0B1A3D; color: white; }
         td:first-child { text-align: left; font-weight: 500; }
-        .bar { height: 8px; border-radius: 4px; }
-        .good { background: #10b981; } .mid { background: #f59e0b; } .bad { background: #ef4444; }
         h2 { color: #0B1A3D; margin-bottom: 4px; }
         p { color: #666; font-size: 12px; }
+        @media print { .no-print { display: none; } }
       </style></head><body>
       <h2>${className} — Pilotage Pédagogique</h2>
-      <p>Matière : ${subjects.find(s => s.id === selectedSubjectId)?.name ?? ""} · Généré le ${format(new Date(), "dd/MM/yyyy à HH:mm")}</p>
+      <p>Matière : ${selectedSubjectName} · Généré le ${format(new Date(), "dd/MM/yyyy à HH:mm")}</p>
       ${printRef.current.querySelector("table")?.outerHTML ?? ""}
       </body></html>
     `);
@@ -252,8 +337,6 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
       </div>
     );
   }
-
-  const isLoading = isLoadingScores;
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -275,7 +358,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
           <Button
             variant={sortByPriority ? "default" : "outline"}
             size="sm"
-            className={cn("gap-1.5", sortByPriority && "bg-brand-navy hover:bg-brand-navy/90")}
+            className={cn("gap-1.5", sortByPriority && "bg-primary hover:bg-primary/90")}
             onClick={() => setSortByPriority(!sortByPriority)}
           >
             <ArrowUpDown className="h-3.5 w-3.5" />
@@ -293,15 +376,16 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
           <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Objectif annuel</span>
           <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 5 dernières notes</span>
           <span className="flex items-center gap-1"><CalendarCheck className="h-3 w-3" /> Assiduité 30j</span>
-          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-brand-emerald" /> ≥ 70%</span>
+          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-secondary" /> ≥ 70%</span>
           <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> 40–70%</span>
           <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-destructive" /> &lt; 40%</span>
+          <span className="flex items-center gap-1 ml-2 border-l pl-2 border-border">
+            <span className="h-3 w-px bg-destructive inline-block" /> Marqueur théorique
+          </span>
         </div>
 
         {/* Table */}
-        {isLoading ? (
-          <Skeleton className="h-48 rounded-xl" />
-        ) : students.length === 0 ? (
+        {students.length === 0 && !isLoadingScores ? (
           <div className="py-12 text-center text-muted-foreground text-sm rounded-xl border border-dashed">
             <TrendingUp className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
             Aucun élève inscrit dans cette classe.
@@ -310,121 +394,182 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
           <div ref={printRef} className="rounded-xl border border-border overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-brand-navy text-white">
+                <tr className="bg-primary text-primary-foreground">
                   <th className="px-4 py-3 text-left font-semibold min-w-[180px]">Élève</th>
-                  <th className="px-4 py-3 text-left font-medium min-w-[200px]">
-                    <div className="flex items-center gap-1.5">
-                      <Target className="h-3.5 w-3.5" /> Objectif Annuel
-                    </div>
+                  <th className="px-4 py-3 text-left font-medium min-w-[220px]">
+                    <div className="flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Objectif Annuel</div>
                   </th>
-                  <th className="px-4 py-3 text-center font-medium min-w-[160px]">
-                    <div className="flex items-center gap-1.5 justify-center">
-                      <TrendingUp className="h-3.5 w-3.5" /> Santé Académique
-                    </div>
+                  <th className="px-4 py-3 text-center font-medium min-w-[130px]">
+                    <div className="flex items-center gap-1.5 justify-center"><TrendingUp className="h-3.5 w-3.5" /> Santé Académique</div>
                   </th>
-                  <th className="px-4 py-3 text-center font-medium min-w-[100px]">
-                    <div className="flex items-center gap-1.5 justify-center">
-                      <CalendarCheck className="h-3.5 w-3.5" /> Assiduité
-                    </div>
+                  <th className="px-4 py-3 text-center font-medium min-w-[90px]">
+                    <div className="flex items-center gap-1.5 justify-center"><CalendarCheck className="h-3.5 w-3.5" /> Assiduité</div>
+                  </th>
+                  <th className="px-4 py-3 text-center font-medium w-[60px] no-print">
+                    <MessageCircle className="h-3.5 w-3.5 mx-auto" />
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {sortedStudents.map((student, idx) => {
-                  const goal = goalsMap.get(student.student_id);
-                  const goalRatio = goal && goal.target > 0 ? goal.current / goal.target : null;
-                  const goalPct = goalRatio != null ? Math.min(goalRatio * 100, 100) : null;
+                {isLoadingScores ? (
+                  <TableSkeletons />
+                ) : (
+                  sortedStudents.map((student, idx) => {
+                    const goal = goalsMap.get(student.student_id);
+                    const goalRatio = goal && goal.target > 0 ? goal.current / goal.target : null;
+                    const goalPct = goalRatio != null ? Math.min(goalRatio * 100, 100) : null;
 
-                  const scores = scoresMap.get(student.student_id) ?? [];
-                  const att = attendanceMap.get(student.student_id);
-                  const attPct = att && att.total > 0 ? Math.round((att.present / att.total) * 100) : null;
+                    // Is the student behind the theoretical pace?
+                    const isBehind = goalRatio != null && goalRatio < academicProgress;
+                    const theoreticalPct = Math.min(academicProgress * 100, 100);
 
-                  const initials = `${student.prenom?.[0] ?? ""}${student.nom?.[0] ?? ""}`.toUpperCase();
+                    const scores = scoresMap.get(student.student_id) ?? [];
+                    const att = attendanceMap.get(student.student_id);
+                    const attPct = att && att.total > 0 ? Math.round((att.present / att.total) * 100) : null;
 
-                  return (
-                    <tr
-                      key={student.student_id}
-                      onClick={() => openDrawer(student)}
-                      className={cn(
-                        "border-t border-border/50 cursor-pointer transition-colors hover:bg-primary/5",
-                        idx % 2 === 0 && "bg-muted/10",
-                        sortByPriority && getPriority(student.student_id) >= 4 && "bg-destructive/5 hover:bg-destructive/10"
-                      )}
-                    >
-                      {/* Élève */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="bg-brand-navy/10 text-brand-navy text-xs font-semibold">
-                              {initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium text-foreground leading-tight">{student.prenom} {student.nom}</p>
-                            {sortByPriority && getPriority(student.student_id) >= 4 && (
-                              <span className="text-[10px] text-destructive font-medium">⚠ Attention requise</span>
+                    const initials = `${student.prenom?.[0] ?? ""}${student.nom?.[0] ?? ""}`.toUpperCase();
+                    const priority = getPriority(student.student_id);
+
+                    return (
+                      <tr
+                        key={student.student_id}
+                        onClick={() => openDrawer(student)}
+                        className={cn(
+                          "border-t border-border/50 cursor-pointer transition-colors hover:bg-muted/40",
+                          idx % 2 === 0 && "bg-muted/10",
+                          sortByPriority && priority >= 4 && "bg-destructive/5 hover:bg-destructive/10"
+                        )}
+                      >
+                        {/* Élève */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-foreground leading-tight">{student.prenom} {student.nom}</p>
+                              {sortByPriority && priority >= 4 && (
+                                <span className="text-[10px] text-destructive font-medium">⚠ Attention requise</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Objectif Annuel — Smart progress */}
+                        <td className="px-4 py-3">
+                          {goalPct != null && goal ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-[11px]">
+                                    <span className="text-muted-foreground">{goal.current}/{goal.target} {goal.unit}</span>
+                                    <span className={cn("font-semibold",
+                                      isBehind ? "text-destructive" : goalRatio! >= 0.7 ? "text-secondary" : "text-amber-600"
+                                    )}>
+                                      {Math.round(goalPct)}%
+                                    </span>
+                                  </div>
+                                  {/* Progress bar with theoretical marker */}
+                                  <div className="relative">
+                                    <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+                                      <div
+                                        className={cn(
+                                          "h-full rounded-full transition-all",
+                                          isBehind ? "bg-destructive" : goalRatio! >= 0.7 ? "bg-secondary" : "bg-amber-500"
+                                        )}
+                                        style={{ width: `${goalPct}%` }}
+                                      />
+                                    </div>
+                                    {/* Theoretical marker */}
+                                    <div
+                                      className="absolute top-0 h-2 w-px bg-foreground/60"
+                                      style={{ left: `${theoreticalPct}%` }}
+                                    />
+                                    <div
+                                      className="absolute -top-0.5 h-3 w-0.5 rounded-full bg-foreground/40"
+                                      style={{ left: `${theoreticalPct}%`, transform: "translateX(-50%)" }}
+                                    />
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                <p>{goal.current} / {goal.target} {goal.unit}</p>
+                                <p className="text-muted-foreground">
+                                  Objectif théorique : {Math.round(theoreticalPct)}% à ce jour
+                                </p>
+                                {isBehind && <p className="text-destructive font-medium">⚠ En retard sur le rythme</p>}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span className="text-muted-foreground/40 text-xs italic">Non défini</span>
+                          )}
+                        </td>
+
+                        {/* Santé Académique — Score dots */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {scores.length > 0 ? (
+                              scores.map((entry, i) => (
+                                <Tooltip key={i}>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className={cn(
+                                        "inline-block h-2 w-2 rounded-full transition-transform hover:scale-150",
+                                        dotColor(entry.score, scoreFieldKey?.max ?? 5)
+                                      )}
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    <p className="font-medium">{entry.score}/{scoreFieldKey?.max ?? 5}</p>
+                                    <p className="text-muted-foreground">
+                                      {entry.date ? format(parseISO(entry.date), "dd MMM yyyy", { locale: fr }) : "—"} · {entry.subjectName}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ))
+                            ) : (
+                              Array.from({ length: 5 }).map((_, i) => (
+                                <span key={i} className="inline-block h-2 w-2 rounded-full bg-muted" />
+                              ))
                             )}
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Objectif Annuel */}
-                      <td className="px-4 py-3">
-                        {goalPct != null && goal ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="space-y-1">
-                                <div className="flex justify-between text-[11px]">
-                                  <span className="text-muted-foreground">{goal.current}/{goal.target} {goal.unit}</span>
-                                  <span className={cn("font-semibold", goalRatio! >= 0.7 ? "text-brand-emerald" : goalRatio! >= 0.4 ? "text-amber-600" : "text-destructive")}>
-                                    {Math.round(goalPct)}%
-                                  </span>
-                                </div>
-                                <Progress
-                                  value={goalPct}
-                                  className="h-2"
-                                  style={{
-                                    // Override indicator color via CSS variable
-                                    ["--progress-color" as any]: goalRatio! >= 0.7 ? "hsl(var(--brand-emerald))" : goalRatio! >= 0.4 ? "hsl(38, 92%, 50%)" : "hsl(var(--destructive))",
-                                  }}
-                                />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs">
-                              {goal.current} / {goal.target} {goal.unit} mémorisés
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <span className="text-muted-foreground/40 text-xs italic">Non défini</span>
-                        )}
-                      </td>
-
-                      {/* Santé Académique - 5 dernières notes */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          {scores.length > 0 ? (
-                            scores.map((s, i) => (
-                              <ScoreBadge key={i} score={s} max={scoreFieldKey?.max ?? 5} />
-                            ))
+                        {/* Assiduité */}
+                        <td className="px-4 py-3 text-center">
+                          {attPct != null ? (
+                            <span className={cn("text-sm font-bold", attendanceColor(attPct))}>
+                              {attPct}%
+                            </span>
                           ) : (
                             <span className="text-muted-foreground/40 text-xs italic">—</span>
                           )}
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Assiduité */}
-                      <td className="px-4 py-3 text-center">
-                        {attPct != null ? (
-                          <span className={cn("text-sm font-bold", attendanceColor(attPct))}>
-                            {attPct}%
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground/40 text-xs italic">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        {/* WhatsApp quick action */}
+                        <td className="px-4 py-3 text-center no-print">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-secondary"
+                                onClick={(e) => sendWhatsApp(student, e)}
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="text-xs">
+                              Envoyer un bilan au parent via WhatsApp
+                            </TooltipContent>
+                          </Tooltip>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
