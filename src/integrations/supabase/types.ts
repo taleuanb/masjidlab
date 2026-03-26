@@ -382,6 +382,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "madrasa_attendance_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "v_madrasa_class_health"
+            referencedColumns: ["class_id"]
+          },
+          {
             foreignKeyName: "madrasa_attendance_enrollment_id_fkey"
             columns: ["enrollment_id"]
             isOneToOne: false
@@ -472,6 +479,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_classes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_class_subjects_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "v_madrasa_class_health"
+            referencedColumns: ["class_id"]
           },
           {
             foreignKeyName: "madrasa_class_subjects_subject_id_fkey"
@@ -577,6 +591,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "madrasa_enrollments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "v_madrasa_class_health"
+            referencedColumns: ["class_id"]
+          },
+          {
             foreignKeyName: "madrasa_enrollments_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
@@ -636,6 +657,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_classes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluations_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "v_madrasa_class_health"
+            referencedColumns: ["class_id"]
           },
           {
             foreignKeyName: "madrasa_evaluations_org_id_fkey"
@@ -835,6 +863,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "madrasa_schedules_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "v_madrasa_class_health"
+            referencedColumns: ["class_id"]
+          },
+          {
             foreignKeyName: "madrasa_schedules_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
@@ -888,6 +923,8 @@ export type Database = {
       madrasa_sessions: {
         Row: {
           actual_teacher_id: string
+          attendance_count: number | null
+          average_rating: number | null
           class_id: string
           completed_at: string | null
           created_at: string | null
@@ -900,6 +937,8 @@ export type Database = {
         }
         Insert: {
           actual_teacher_id: string
+          attendance_count?: number | null
+          average_rating?: number | null
           class_id: string
           completed_at?: string | null
           created_at?: string | null
@@ -912,6 +951,8 @@ export type Database = {
         }
         Update: {
           actual_teacher_id?: string
+          attendance_count?: number | null
+          average_rating?: number | null
           class_id?: string
           completed_at?: string | null
           created_at?: string | null
@@ -929,6 +970,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_classes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "v_madrasa_class_health"
+            referencedColumns: ["class_id"]
           },
           {
             foreignKeyName: "madrasa_sessions_org_id_fkey"
@@ -1102,6 +1150,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_classes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_student_progress_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "v_madrasa_class_health"
+            referencedColumns: ["class_id"]
           },
           {
             foreignKeyName: "madrasa_student_progress_config_id_fkey"
@@ -1799,6 +1854,26 @@ export type Database = {
       }
     }
     Views: {
+      v_madrasa_class_health: {
+        Row: {
+          avg_attendance_abs: number | null
+          class_id: string | null
+          class_name: string | null
+          global_performance_avg: number | null
+          last_session_at: string | null
+          org_id: string | null
+          total_sessions: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_classes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       view_student_attendance_kpi: {
         Row: {
           attendance_percentage: number | null
@@ -1814,6 +1889,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_classes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_attendance_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "v_madrasa_class_health"
+            referencedColumns: ["class_id"]
           },
           {
             foreignKeyName: "madrasa_attendance_student_id_fkey"
