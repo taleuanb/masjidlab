@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useEffect, useState } from "react";
+import { Suspense } from "react";
 import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { motion } from "framer-motion";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -8,12 +8,9 @@ import { QuickActions } from "@/components/QuickActions";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRole, UI_ROLE_TO_DB } from "@/contexts/RoleContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { useOrganization } from "@/contexts/OrganizationContext";
 import { DashboardErrorState } from "@/components/dashboard/DashboardShell";
-import { getVisibleWidgets, type WidgetDef, type DbWidgetConfig } from "@/config/widget-registry";
-import { supabase } from "@/integrations/supabase/client";
+import { useDashboardWidgets } from "@/hooks/useDashboardWidgets";
+import type { WidgetDef } from "@/config/widget-registry";
 
 // ── Section header ───────────────────────────────────────────────────
 function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
@@ -26,18 +23,19 @@ function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
   );
 }
 
-// ── Widget wrapper with Suspense ─────────────────────────────────────
+// ── Widget wrapper with Suspense + grid colSpan ──────────────────────
+const COL_SPAN_MAP: Record<number, string> = {
+  1: "col-span-12 sm:col-span-6 lg:col-span-4",
+  2: "col-span-12 lg:col-span-8",
+  3: "col-span-12",
+  4: "col-span-12 sm:col-span-6 lg:col-span-4",
+  6: "col-span-12 sm:col-span-6",
+  8: "col-span-12 lg:col-span-8",
+  12: "col-span-12",
+};
+
 function WidgetSlot({ widget, index }: { widget: WidgetDef; index: number }) {
-  const spanMap: Record<number, string> = {
-    1: "col-span-12 sm:col-span-6 lg:col-span-4",
-    2: "col-span-12 lg:col-span-8",
-    3: "col-span-12",
-    4: "col-span-12 sm:col-span-6 lg:col-span-4",
-    6: "col-span-12 sm:col-span-6",
-    8: "col-span-12 lg:col-span-8",
-    12: "col-span-12",
-  };
-  const colClass = spanMap[widget.colSpan] ?? "col-span-12 sm:col-span-6 lg:col-span-4";
+  const colClass = COL_SPAN_MAP[widget.colSpan] ?? "col-span-12 sm:col-span-6 lg:col-span-4";
 
   return (
     <motion.div
@@ -54,60 +52,9 @@ function WidgetSlot({ widget, index }: { widget: WidgetDef; index: number }) {
 }
 
 export default function Dashboard() {
-  const { isSuperAdmin, userDbRoles, role } = useRole();
-  const { impersonatedUser } = useAuth();
-  const { orgId, activePoles, loading: orgLoading, org } = useOrganization();
+  const { sections, orgId, orgLoading, isParentRole, role } = useDashboardWidgets();
 
   const isChef = role === "Responsable";
-  const isParentRole = role === "Parent d'élève";
-
-  // ── Resolve effective roles for widget filtering ──
-  // Ghost mode: use impersonated user's roles
-  // Role preview: restrict to previewed role only
-  const isGhostMode = !!impersonatedUser;
-  const isPreviewingRole = isSuperAdmin && !isGhostMode && role !== "Super Admin";
-
-  const effectiveRoles = isGhostMode
-    ? (impersonatedUser.roles ?? [])
-    : isPreviewingRole
-    ? [UI_ROLE_TO_DB[role] ?? "benevole"]
-    : userDbRoles;
-  const effectiveSuperAdmin = isSuperAdmin && !isGhostMode && !isPreviewingRole;
-
-  // ── Fetch DB widget configs ──
-  const [dbConfigs, setDbConfigs] = useState<DbWidgetConfig[] | undefined>(undefined);
-  useEffect(() => {
-    supabase
-      .from("saas_widget_configs")
-      .select("widget_key, label, required_plans, allowed_roles, required_pole, priority, is_enabled")
-      .then(({ data }) => {
-        if (data && data.length > 0) setDbConfigs(data as DbWidgetConfig[]);
-      });
-  }, []);
-
-  // ── Registry-driven filtering ──
-  const visibleWidgets = useMemo(
-    () => getVisibleWidgets(
-      activePoles,
-      effectiveRoles,
-      effectiveSuperAdmin,
-      org?.subscription_plan,
-      dbConfigs,
-    ),
-    [activePoles, effectiveRoles, effectiveSuperAdmin, org?.subscription_plan, dbConfigs],
-  );
-
-  // Group by section preserving weight order
-  const sections = useMemo(() => {
-    const map = new Map<string, { emoji: string; widgets: WidgetDef[] }>();
-    for (const w of visibleWidgets) {
-      if (!map.has(w.section)) {
-        map.set(w.section, { emoji: w.sectionEmoji, widgets: [] });
-      }
-      map.get(w.section)!.widgets.push(w);
-    }
-    return Array.from(map.entries());
-  }, [visibleWidgets]);
 
   if (!orgLoading && !orgId) {
     return <DashboardErrorState />;
@@ -161,15 +108,15 @@ export default function Dashboard() {
         )}
       </header>
 
+      {/* ── Widget Grid ── */}
       <main className="p-6 space-y-6">
-        {sections.map(([sectionName, { emoji, widgets }]) => (
-          <section key={sectionName} className="space-y-4">
-            {/* KPIs span full width without a section header */}
-            {sectionName !== "Vue d'ensemble" && (
-              <SectionHeader emoji={emoji} title={sectionName} />
+        {sections.map((section) => (
+          <section key={section.name} className="space-y-4">
+            {section.name !== "Vue d'ensemble" && (
+              <SectionHeader emoji={section.emoji} title={section.name} />
             )}
             <div className="grid grid-cols-12 gap-6">
-              {widgets.map((w, i) => (
+              {section.widgets.map((w, i) => (
                 <WidgetSlot key={w.id} widget={w} index={i} />
               ))}
             </div>
