@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ClassProgressBoard } from "@/components/ClassProgressBoard";
+import GlobalCalendarView from "@/components/madrasa/GlobalCalendarView";
 import type { Tables } from "@/integrations/supabase/types";
 
 type ClassRow = {
