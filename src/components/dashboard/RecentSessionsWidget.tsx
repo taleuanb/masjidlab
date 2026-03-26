@@ -36,29 +36,6 @@ export function RecentSessionsWidget() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<SessionRow | null>(null);
 
-  // Teacher with no classes assigned → show initialisation state
-  if (isTeacher && teacherClassIds.length === 0) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" />
-            Mon activité pédagogique
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-6">
-          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-            <Activity className="h-8 w-8 mb-2 opacity-20 animate-pulse" />
-            <p className="text-sm font-medium">Initialisation</p>
-            <p className="text-xs mt-1 text-center max-w-[260px]">
-              En attente d'assignation de vos classes par l'administration
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const { data: sessions, isLoading } = useQuery({
     queryKey: ["recent-sessions", orgId, isTeacher, teacherClassIds, isParent, childrenClassIds],
     enabled: !!orgId && (!isParent || childrenClassIds.length > 0) && (!isTeacher || teacherClassIds.length > 0),
@@ -77,7 +54,6 @@ export function RecentSessionsWidget() {
       if (isParent) {
         query = query.in("class_id", childrenClassIds).eq("status", "completed");
       } else if (isTeacher) {
-        // Scope strictly to assigned classes
         query = query.in("class_id", teacherClassIds);
       }
 
@@ -179,6 +155,29 @@ export function RecentSessionsWidget() {
   };
 
   const activeSchedule = isTeacher ? getActiveSchedule() : null;
+
+  // ── Teacher with no classes → initialisation state ──
+  if (isTeacher && teacherClassIds.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" />
+            Mon activité pédagogique
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-6">
+          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+            <Activity className="h-8 w-8 mb-2 opacity-20 animate-pulse" />
+            <p className="text-sm font-medium">Initialisation</p>
+            <p className="text-xs mt-1 text-center max-w-[260px]">
+              En attente d'assignation de vos classes par l'administration
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
