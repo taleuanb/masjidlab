@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardCheck, ClipboardList, Loader2, Check, ChevronLeft, Users, AlertTriangle,
-  UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2, CalendarClock, PlayCircle,
+  UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2, CalendarClock, PlayCircle, Handshake,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ import { SessionReportDrawer } from "@/components/SessionReportDrawer";
 import { WA_DEFAULT_ABSENCE_TEMPLATE } from "@/components/madrasa/CommunicationsTab";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -37,6 +38,8 @@ interface ScheduledCourse {
   classInfo: ClassInfo;
   startTime: string;
   endTime: string;
+  profId: string | null;
+  profName: string | null;
 }
 
 interface StudentRow {
@@ -91,8 +94,8 @@ const Attendance = () => {
   const todayLabel = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
   const todayDbDay = jsDayToDbDay(new Date().getDay());
 
-  // ── Fetch today's scheduled courses for this teacher ──
-  const { data: scheduledCourses = [], isLoading: loadingSchedules } = useQuery({
+  // ── Fetch today's scheduled courses for entire org ──
+  const { data: allCourses = [], isLoading: loadingSchedules } = useQuery({
     queryKey: ["today_schedules", orgId, user?.id, todayDbDay],
     enabled: !!orgId && !!user,
     queryFn: async () => {
@@ -103,14 +106,6 @@ const Attendance = () => {
         .eq("user_id", user!.id)
         .maybeSingle();
       if (!profile) return [];
-
-      // Check if admin
-      const { data: userRoles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user!.id);
-      const roles = (userRoles ?? []).map((r: any) => r.role);
-      const isAdmin = roles.includes("super_admin") || roles.includes("admin") || roles.includes("responsable");
 
       // Fetch schedules for today's day_of_week
       const { data: schedules, error: schedErr } = await supabase
@@ -123,29 +118,33 @@ const Attendance = () => {
 
       // Fetch classes for those schedules
       const classIds = [...new Set(schedules.map((s) => s.class_id))];
-      let classQuery = supabase
+      const { data: classData } = await supabase
         .from("madrasa_classes")
         .select("id, nom, niveau, prof_id")
         .eq("org_id", orgId!)
         .in("id", classIds);
-      const { data: classData } = await classQuery;
       const classMap = new Map((classData ?? []).map((c: any) => [c.id, c]));
 
-      // Filter by prof_id if not admin
-      const filteredSchedules = schedules.filter((s) => {
-        const cls = classMap.get(s.class_id);
-        if (!cls) return false;
-        return isAdmin || cls.prof_id === profile.id;
-      });
+      // Fetch prof display names
+      const profIds = [...new Set((classData ?? []).map((c: any) => c.prof_id).filter(Boolean))];
+      const profNameMap = new Map<string, string>();
+      if (profIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, display_name")
+          .in("id", profIds);
+        for (const p of profs ?? []) {
+          profNameMap.set(p.id, p.display_name);
+        }
+      }
 
       // Count enrolled students per class
-      const filteredClassIds = [...new Set(filteredSchedules.map((s) => s.class_id))];
       const countMap: Record<string, number> = {};
-      if (filteredClassIds.length > 0) {
+      if (classIds.length > 0) {
         const { data: enrollments } = await supabase
           .from("madrasa_enrollments")
           .select("class_id")
-          .in("class_id", filteredClassIds)
+          .in("class_id", classIds)
           .eq("org_id", orgId!)
           .eq("statut", "Actif");
         for (const e of enrollments ?? []) {
@@ -153,8 +152,9 @@ const Attendance = () => {
         }
       }
 
-      // Build result sorted by start_time
-      const courses: ScheduledCourse[] = filteredSchedules
+      // Build result sorted by start_time (include ALL courses)
+      const courses: (ScheduledCourse & { _profileId: string })[] = schedules
+        .filter((s) => classMap.has(s.class_id))
         .map((s) => {
           const cls = classMap.get(s.class_id)!;
           return {
@@ -167,6 +167,9 @@ const Attendance = () => {
             },
             startTime: (s.start_time as string).slice(0, 5),
             endTime: (s.end_time as string).slice(0, 5),
+            profId: cls.prof_id ?? null,
+            profName: cls.prof_id ? profNameMap.get(cls.prof_id) ?? null : null,
+            _profileId: profile.id,
           };
         })
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -175,8 +178,13 @@ const Attendance = () => {
     },
   });
 
+  // Split into my courses vs other teachers' courses
+  const myProfileId = allCourses[0]?._profileId ?? null;
+  const scheduledCourses = useMemo(() => allCourses.filter((c) => c.profId === myProfileId || !c.profId), [allCourses, myProfileId]);
+  const otherCourses = useMemo(() => allCourses.filter((c) => c.profId && c.profId !== myProfileId), [allCourses, myProfileId]);
+
   // ── Pre-check which classes already have a session today ──
-  const scheduledClassIds = useMemo(() => scheduledCourses.map((c) => c.classInfo.id), [scheduledCourses]);
+  const scheduledClassIds = useMemo(() => allCourses.map((c) => c.classInfo.id), [allCourses]);
   const { data: existingSessionsMap = new Map<string, string>() } = useQuery({
     queryKey: ["today_sessions_check", orgId, today, scheduledClassIds],
     enabled: !!orgId && scheduledClassIds.length > 0,
@@ -553,6 +561,76 @@ const Attendance = () => {
                     </Card>
                   ))}
                 </div>
+              )}
+
+              {/* ── Remplacer un collègue ── */}
+              {!loadingSchedules && otherCourses.length > 0 && (
+                <Accordion type="single" collapsible className="mt-2">
+                  <AccordionItem value="remplacement" className="border rounded-lg">
+                    <AccordionTrigger className="px-4 py-3 text-sm font-medium hover:no-underline">
+                      <span className="flex items-center gap-2">
+                        <Handshake className="h-4 w-4 text-muted-foreground" />
+                        Remplacer un collègue
+                        <Badge variant="outline" className="ml-1 text-[10px]">{otherCourses.length}</Badge>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {otherCourses.map((course) => (
+                          <Card
+                            key={course.scheduleId}
+                            className="hover:border-primary/50 hover:shadow-sm transition-all"
+                          >
+                            <CardContent className="p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-foreground">{course.classInfo.nom}</span>
+                                {course.classInfo.niveau && (
+                                  <Badge variant="outline" className="text-[10px]">{course.classInfo.niveau}</Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  {course.startTime} – {course.endTime}
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                  <Users className="h-3.5 w-3.5" />
+                                  {course.classInfo.studentCount} élève{course.classInfo.studentCount > 1 ? "s" : ""}
+                                </span>
+                              </div>
+                              {course.profName && (
+                                <p className="text-xs text-muted-foreground">
+                                  Enseignant : <span className="font-medium text-foreground">{course.profName}</span>
+                                </p>
+                              )}
+                              {(() => {
+                                const hasSession = existingSessionsMap.has(course.classInfo.id);
+                                const isOpening = openingScheduleId === course.scheduleId;
+                                return (
+                                  <Button
+                                    className="w-full"
+                                    variant="outline"
+                                    disabled={isOpening}
+                                    onClick={() => handleOpenSession(course)}
+                                  >
+                                    {isOpening ? (
+                                      <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                                    ) : hasSession ? (
+                                      <PlayCircle className="h-4 w-4 mr-1.5" />
+                                    ) : (
+                                      <Handshake className="h-4 w-4 mr-1.5" />
+                                    )}
+                                    {isOpening ? "Ouverture…" : hasSession ? "Reprendre la session" : "Ouvrir cette session (Remplacement)"}
+                                  </Button>
+                                );
+                              })()}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               )}
             </TabsContent>
 
