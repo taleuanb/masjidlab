@@ -95,31 +95,33 @@ const METIER_BLOCKS: NavBlock[] = [
   },
 ];
 
-const LOGISTIQUE_BLOCK: NavBlock = {
-  id: "operations",
-  label: "Logistique",
-  icon: Truck,
-  items: [
-    { title: "Dashboard Logistique", url: "/", icon: LayoutDashboard },
-    { title: "Planning", url: "/planning", icon: CalendarDays, moduleKey: "operations.planning" },
-    { title: "Événements", url: "/evenements", icon: Calendar, moduleKey: "operations.evenements" },
-    { title: "Inventaire", url: "/inventaire", icon: Package, moduleKey: "operations.inventaire" },
-    { title: "Parking", url: "/parking", icon: Car, moduleKey: "operations.parking" },
-    { title: "Maintenance", url: "/maintenance", icon: Wrench, moduleKey: "operations.maintenance" },
-  ],
-};
-
-const PERSONNEL_BLOCK: NavBlock = {
-  id: "gestion-rh",
-  label: "Personnel",
-  icon: ShieldCheck,
-  items: [
-    { title: "Approbations", url: "/approbations", icon: UserCheck, moduleKey: "gestion-rh.approbations" },
-    { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, moduleKey: "gestion-rh.contrats" },
-    { title: "Documents", url: "/documents", icon: FileText, moduleKey: "gestion-rh.documents" },
-    { title: "Structure", url: "/organisation", icon: Users, moduleKey: "gestion-rh.structure" },
-  ],
-};
+// All business blocks in display order (métiers + logistique + personnel)
+const ALL_BUSINESS_BLOCKS: NavBlock[] = [
+  ...METIER_BLOCKS,
+  {
+    id: "operations",
+    label: "Logistique",
+    icon: Truck,
+    items: [
+      { title: "Planning", url: "/planning", icon: CalendarDays, moduleKey: "operations.planning" },
+      { title: "Événements", url: "/evenements", icon: Calendar, moduleKey: "operations.evenements" },
+      { title: "Inventaire", url: "/inventaire", icon: Package, moduleKey: "operations.inventaire" },
+      { title: "Parking", url: "/parking", icon: Car, moduleKey: "operations.parking" },
+      { title: "Maintenance", url: "/maintenance", icon: Wrench, moduleKey: "operations.maintenance" },
+    ],
+  },
+  {
+    id: "gestion-rh",
+    label: "Personnel",
+    icon: ShieldCheck,
+    items: [
+      { title: "Approbations", url: "/approbations", icon: UserCheck, moduleKey: "gestion-rh.approbations" },
+      { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, moduleKey: "gestion-rh.contrats" },
+      { title: "Documents", url: "/documents", icon: FileText, moduleKey: "gestion-rh.documents" },
+      { title: "Structure", url: "/organisation", icon: Users, moduleKey: "gestion-rh.structure" },
+    ],
+  },
+];
 
 // ── GROUPE C: MON ESPACE ──
 const MON_ESPACE_ITEMS: NavItem[] = [
