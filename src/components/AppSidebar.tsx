@@ -336,7 +336,7 @@ export function AppSidebar() {
         )}
 
         {/* ══════════ PARENT SIMPLIFIED NAV ══════════ */}
-        {isParentOnly ? (
+        {hasNoBusinessAccess ? (
           <SidebarGroup className="py-1">
             <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
               <UserCircle className="h-3 w-3" />
@@ -393,7 +393,7 @@ export function AppSidebar() {
             )}
 
             {/* ══════════ GROUPE B : PÔLES MÉTIERS ══════════ */}
-            {(visibleMetierBlocks.length > 0 || showLogistique || showPersonnel) && (
+            {visibleBusinessBlocks.length > 0 && (
               <SidebarGroup className="py-1">
                 <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
                   <Building2 className="h-3 w-3" />
@@ -401,15 +401,9 @@ export function AppSidebar() {
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <div className="space-y-px">
-                    {visibleMetierBlocks.map((block) => (
+                    {visibleBusinessBlocks.map((block) => (
                       <SidebarBlock key={block.id} block={block} location={location} isModuleVisible={isModuleVisible} />
                     ))}
-                    {showLogistique && (
-                      <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} isModuleVisible={isModuleVisible} />
-                    )}
-                    {showPersonnel && (
-                      <SidebarBlock block={PERSONNEL_BLOCK} location={location} isModuleVisible={isModuleVisible} />
-                    )}
                   </div>
                 </SidebarGroupContent>
               </SidebarGroup>
