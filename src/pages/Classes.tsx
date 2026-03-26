@@ -336,9 +336,35 @@ const Classes = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {classes.filter((c) => filterNiveau === "all" || c.niveau === filterNiveau).map((c) => (
+                {classes
+                  .filter((c) => filterNiveau === "all" || c.niveau === filterNiveau)
+                  .filter((c) => {
+                    if (filterSubjects.length === 0) return true;
+                    const classSubjectIds = new Set(c.scheduleSlots.flatMap((s) => s.subject_ids));
+                    return filterSubjects.some((sid) => classSubjectIds.has(sid));
+                  })
+                  .map((c) => {
+                    // Compute next/first schedule slot for display
+                    const nextSlot = c.scheduleSlots[0];
+                    const extraSlots = c.scheduleSlots.length - 1;
+
+                    return (
                   <Card key={c.id} className="group relative cursor-pointer hover:border-primary/30 transition-colors" onClick={() => openEdit(c)}>
-                    <CardHeader className="pb-2">
+                    {/* Schedule banner */}
+                    {nextSlot && (
+                      <div className="flex items-center gap-1.5 px-4 pt-3 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 shrink-0" />
+                        <span>
+                          {DAY_LABELS[nextSlot.day_of_week]} {nextSlot.start_time.slice(0, 5)} – {nextSlot.end_time.slice(0, 5)}
+                        </span>
+                        {extraSlots > 0 && (
+                          <Badge variant="secondary" className="text-[10px] font-normal ml-1 px-1.5 py-0">
+                            +{extraSlots}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    <CardHeader className={nextSlot ? "pb-2 pt-1.5" : "pb-2"}>
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-base">{c.nom}</CardTitle>
                         <div className="flex items-center gap-1">
@@ -375,17 +401,21 @@ const Classes = () => {
                       )}
                       {c.subjects.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
-                          {c.subjects.map((s) => (
-                            <Badge key={s.id} variant="secondary" className="text-[10px] font-normal">{s.name}</Badge>
+                          {c.subjects.slice(0, 3).map((s) => (
+                            <Badge key={s.id} variant="secondary" className="text-[10px] font-normal max-w-[100px] truncate">{s.name}</Badge>
                           ))}
+                          {c.subjects.length > 3 && (
+                            <Badge variant="secondary" className="text-[10px] font-normal">+{c.subjects.length - 3}</Badge>
+                          )}
                         </div>
                       )}
-                      {!c.niveau && !c.prof?.display_name && c.subjects.length === 0 && (
+                      {!c.niveau && !c.prof?.display_name && c.subjects.length === 0 && c.scheduleSlots.length === 0 && (
                         <p className="text-xs text-muted-foreground/50 italic">Aucun détail configuré</p>
                       )}
                     </CardContent>
                   </Card>
-                ))}
+                    );
+                  })}
               </div>
             )}
           </TabsContent>
