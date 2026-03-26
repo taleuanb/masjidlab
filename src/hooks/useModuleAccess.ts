@@ -83,7 +83,7 @@ export function useModuleAccess(): UseModuleAccessReturn {
       const map = new Map<string, boolean>();
       for (const row of data as any[]) {
         const current = map.get(row.module) ?? false;
-        map.set(row.module, current || !!(row.enabled || row.can_view));
+        map.set(row.module, current || !!row.enabled || !!row.can_view);
       }
       setGlobalPerms(map);
     })();
