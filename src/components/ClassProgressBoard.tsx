@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, subDays, differenceInDays, parseISO } from "date-fns";
+import { format, differenceInDays, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ArrowUpDown, Printer, TrendingUp, Filter, Target, CalendarCheck, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
