@@ -195,60 +195,6 @@ const Attendance = () => {
     },
   });
 
-  // ── JIT Session creation / retrieval ──
-  const handleOpenSession = useCallback(async (course: ScheduledCourse) => {
-    if (!orgId || !user) return;
-    setOpeningScheduleId(course.scheduleId);
-    try {
-      // Get profile id for actual_teacher_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (!profile) throw new Error("Profil introuvable");
-
-      // Check if session already exists
-      const { data: existing } = await supabase
-        .from("madrasa_sessions")
-        .select("id")
-        .eq("class_id", course.classInfo.id)
-        .eq("date", today)
-        .eq("org_id", orgId)
-        .maybeSingle();
-
-      let sessionId: string;
-
-      if (existing) {
-        sessionId = existing.id;
-      } else {
-        const { data: newSession, error: insertErr } = await supabase
-          .from("madrasa_sessions")
-          .insert({
-            org_id: orgId,
-            class_id: course.classInfo.id,
-            schedule_id: course.scheduleId,
-            actual_teacher_id: profile.id,
-            date: today,
-            status: "completed",
-          })
-          .select("id")
-          .single();
-        if (insertErr) throw insertErr;
-        sessionId = newSession.id;
-      }
-
-      setActiveSessionId(sessionId);
-      // Invalidate session check cache
-      queryClient.invalidateQueries({ queryKey: ["today_sessions_check"] });
-      // Transition to roll call
-      handleSelectClass(course.classInfo);
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setOpeningScheduleId(null);
-    }
-  }, [orgId, user, today, queryClient, toast, handleSelectClass]);
 
   // ── Fetch settings threshold + absence template ──
   const { data: madrasaSettings } = useQuery({
