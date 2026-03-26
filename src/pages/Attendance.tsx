@@ -462,6 +462,59 @@ const Attendance = () => {
     }
   };
 
+  // ── Close session mutation ──
+  const generateSessionMessage = useCallback(() => {
+    const rawTpl = (madrasaSettings as Record<string, unknown> | null)?.["session_report_template"] as string | null;
+    const tpl = rawTpl || WA_DEFAULT_SESSION_REPORT;
+    const dateStr = format(new Date(), "d MMMM yyyy", { locale: fr });
+
+    // Find current course info
+    const currentCourse = allCourses.find((c) => c.classInfo.id === selectedClass?.id);
+    const profName = currentCourse?.profName ?? "—";
+
+    const message = tpl
+      .replace(/\{nom_classe\}/g, selectedClass?.nom ?? "—")
+      .replace(/\{date\}/g, dateStr)
+      .replace(/\{prof\}/g, profName)
+      .replace(/\{presents\}/g, `${summary.present + summary.late}/${summary.total} élèves`)
+      .replace(/\{bilan_collectif\}/g, summaryNote);
+
+    return message;
+  }, [madrasaSettings, selectedClass, allCourses, summary, summaryNote]);
+
+  const closeSession = useMutation({
+    mutationFn: async () => {
+      if (!activeSessionId || !orgId) throw new Error("Aucune session active");
+      if (!summaryNote.trim()) throw new Error("Le bilan est obligatoire");
+
+      const { error } = await (supabase.from("madrasa_sessions") as any)
+        .update({
+          summary_note: summaryNote.trim(),
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", activeSessionId)
+        .eq("org_id", orgId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      const message = generateSessionMessage();
+      try {
+        await navigator.clipboard.writeText(message);
+      } catch {
+        // clipboard might not be available
+      }
+      setSessionCompleted(true);
+      setCloseDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["today_sessions_check"] });
+      toast({
+        title: "Bilan enregistré et copié ! ✅",
+        description: "Le message a été copié dans le presse-papier.",
+      });
+    },
+    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
   // ── Class selection view ──
   if (!selectedClass) {
     return (
