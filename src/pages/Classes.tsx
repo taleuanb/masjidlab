@@ -285,7 +285,7 @@ const Classes = () => {
           <TabsContent value="liste" className="mt-4 space-y-4">
             {/* Filter */}
             {classes.length > 0 && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <Select value={filterNiveau} onValueChange={setFilterNiveau}>
                   <SelectTrigger className="h-9 w-48"><SelectValue placeholder="Filtrer par niveau" /></SelectTrigger>
@@ -294,6 +294,34 @@ const Classes = () => {
                     {levels.map((l) => (<SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>))}
                   </SelectContent>
                 </Select>
+                {subjects.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 gap-1.5 text-sm font-normal">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        {filterSubjects.length === 0 ? "Toutes les matières" : `${filterSubjects.length} matière(s)`}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="start">
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {subjects.map((s) => (
+                          <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-accent">
+                            <Checkbox
+                              checked={filterSubjects.includes(s.id)}
+                              onCheckedChange={() => setFilterSubjects((prev) => prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id])}
+                            />
+                            <span className="truncate">{s.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {filterSubjects.length > 0 && (
+                        <Button variant="ghost" size="sm" className="w-full mt-1 text-xs text-muted-foreground" onClick={() => setFilterSubjects([])}>
+                          Réinitialiser
+                        </Button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
             )}
 
