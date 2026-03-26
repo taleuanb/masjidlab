@@ -893,6 +893,28 @@ const Attendance = () => {
         )}
       </div>
 
+      {/* Session completed banner */}
+      {sessionCompleted && (
+        <div className="rounded-lg border border-brand-emerald/30 bg-brand-emerald/10 p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-brand-emerald">
+            <CheckCircle className="h-4 w-4" />
+            Séance terminée avec succès
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={() => {
+              const msg = generateSessionMessage();
+              window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+            }}
+          >
+            <ExternalLink className="h-3.5 w-3.5 mr-1" />
+            Ouvrir WhatsApp
+          </Button>
+        </div>
+      )}
+
       {/* Fixed bottom CTA */}
       {students.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 backdrop-blur-sm p-4 md:pl-[calc(var(--sidebar-width,280px)+1rem)]">
@@ -903,24 +925,94 @@ const Attendance = () => {
               <span className="text-destructive">{summary.absent}A</span> /{" "}
               <span className="text-amber-600">{summary.late}R</span>
             </div>
-            <Button
-              onClick={handleSave}
-              disabled={saving || saved}
-              size="lg"
-              className="min-w-[160px]"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-              ) : saved ? (
-                <Check className="h-4 w-4 mr-1.5" />
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleSave}
+                disabled={saving || saved}
+                size="lg"
+                className="min-w-[140px]"
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                ) : saved ? (
+                  <Check className="h-4 w-4 mr-1.5" />
+                ) : (
+                  <ClipboardCheck className="h-4 w-4 mr-1.5" />
+                )}
+                {saved ? "Enregistré ✓" : existingAttendance ? "Mettre à jour" : "Valider l'appel"}
+              </Button>
+              {sessionCompleted ? (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  disabled
+                  className="text-brand-emerald border-brand-emerald/30"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1.5" />
+                  Séance clôturée
+                </Button>
               ) : (
-                <ClipboardCheck className="h-4 w-4 mr-1.5" />
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  disabled={!activeSessionId}
+                  onClick={() => { setSummaryNote(""); setCloseDialogOpen(true); }}
+                >
+                  <Send className="h-4 w-4 mr-1.5" />
+                  Terminer & Partager
+                </Button>
               )}
-              {saved ? "Enregistré ✓" : existingAttendance ? "Mettre à jour" : "Valider l'appel"}
-            </Button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Close Session Dialog */}
+      <Dialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bilan de la séance</DialogTitle>
+            <DialogDescription>
+              Saisissez un résumé global pour les parents (objectifs atteints, comportement général...).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="summary-note">Note collective <span className="text-destructive">*</span></Label>
+            <Textarea
+              id="summary-note"
+              className="min-h-[140px]"
+              placeholder="Ex: Révision de la sourate Al-Mulk, versets 1 à 10. Bonne participation générale."
+              value={summaryNote}
+              onChange={(e) => setSummaryNote(e.target.value)}
+            />
+            <div className="rounded-lg bg-muted/50 border p-3 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Aperçu du message</p>
+              <p className="text-sm whitespace-pre-wrap text-foreground">
+                {generateSessionMessage()}
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setCloseDialogOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={() => closeSession.mutate()}
+              disabled={closeSession.isPending || !summaryNote.trim()}
+            >
+              {closeSession.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+              ) : (
+                <Send className="h-4 w-4 mr-1.5" />
+              )}
+              Valider et copier le bilan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Session Report Drawer */}
       <SessionReportDrawer
