@@ -22,6 +22,7 @@ import { SessionReportDrawer } from "@/components/SessionReportDrawer";
 import { WA_DEFAULT_ABSENCE_TEMPLATE } from "@/components/madrasa/CommunicationsTab";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
