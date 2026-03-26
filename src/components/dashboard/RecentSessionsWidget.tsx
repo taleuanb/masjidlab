@@ -140,8 +140,8 @@ export function RecentSessionsWidget() {
             <span className="text-right">KPIs</span>
           </div>
 
-          {/* Rows */}
-          <div className="divide-y divide-border/40">
+          {/* Rows — journal style with clear separators */}
+          <div className="divide-y divide-border">
             {sessions.map((session) => {
               const totalEnrolled = enrollmentCounts?.[session.class_id] ?? 0;
               const attendanceRate =
