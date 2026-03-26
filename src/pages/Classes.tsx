@@ -462,6 +462,10 @@ const Classes = () => {
               </>
             )}
           </TabsContent>
+
+          <TabsContent value="planning" className="mt-4">
+            <GlobalCalendarView filterNiveau={filterNiveau} filterSubjects={filterSubjects} />
+          </TabsContent>
         </Tabs>
       </div>
 
