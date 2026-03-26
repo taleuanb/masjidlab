@@ -529,13 +529,26 @@ const Attendance = () => {
                             {course.classInfo.studentCount} élève{course.classInfo.studentCount > 1 ? "s" : ""}
                           </span>
                         </div>
-                        <Button
-                          className="w-full"
-                          onClick={() => handleSelectClass(course.classInfo)}
-                        >
-                          <ClipboardCheck className="h-4 w-4 mr-1.5" />
-                          Sélectionner cette classe
-                        </Button>
+                        {(() => {
+                          const hasSession = existingSessionsMap.has(course.classInfo.id);
+                          const isOpening = openingScheduleId === course.scheduleId;
+                          return (
+                            <Button
+                              className="w-full"
+                              disabled={isOpening}
+                              onClick={() => handleOpenSession(course)}
+                            >
+                              {isOpening ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                              ) : hasSession ? (
+                                <PlayCircle className="h-4 w-4 mr-1.5" />
+                              ) : (
+                                <ClipboardCheck className="h-4 w-4 mr-1.5" />
+                              )}
+                              {isOpening ? "Ouverture…" : hasSession ? "Reprendre la session" : "Ouvrir la session"}
+                            </Button>
+                          );
+                        })()}
                       </CardContent>
                     </Card>
                   ))}
