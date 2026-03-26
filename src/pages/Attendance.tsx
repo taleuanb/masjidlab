@@ -562,6 +562,76 @@ const Attendance = () => {
                   ))}
                 </div>
               )}
+
+              {/* ── Remplacer un collègue ── */}
+              {!loadingSchedules && otherCourses.length > 0 && (
+                <Accordion type="single" collapsible className="mt-2">
+                  <AccordionItem value="remplacement" className="border rounded-lg">
+                    <AccordionTrigger className="px-4 py-3 text-sm font-medium hover:no-underline">
+                      <span className="flex items-center gap-2">
+                        <Handshake className="h-4 w-4 text-muted-foreground" />
+                        Remplacer un collègue
+                        <Badge variant="outline" className="ml-1 text-[10px]">{otherCourses.length}</Badge>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {otherCourses.map((course) => (
+                          <Card
+                            key={course.scheduleId}
+                            className="hover:border-primary/50 hover:shadow-sm transition-all"
+                          >
+                            <CardContent className="p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-foreground">{course.classInfo.nom}</span>
+                                {course.classInfo.niveau && (
+                                  <Badge variant="outline" className="text-[10px]">{course.classInfo.niveau}</Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  {course.startTime} – {course.endTime}
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                  <Users className="h-3.5 w-3.5" />
+                                  {course.classInfo.studentCount} élève{course.classInfo.studentCount > 1 ? "s" : ""}
+                                </span>
+                              </div>
+                              {course.profName && (
+                                <p className="text-xs text-muted-foreground">
+                                  Enseignant : <span className="font-medium text-foreground">{course.profName}</span>
+                                </p>
+                              )}
+                              {(() => {
+                                const hasSession = existingSessionsMap.has(course.classInfo.id);
+                                const isOpening = openingScheduleId === course.scheduleId;
+                                return (
+                                  <Button
+                                    className="w-full"
+                                    variant="outline"
+                                    disabled={isOpening}
+                                    onClick={() => handleOpenSession(course)}
+                                  >
+                                    {isOpening ? (
+                                      <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                                    ) : hasSession ? (
+                                      <PlayCircle className="h-4 w-4 mr-1.5" />
+                                    ) : (
+                                      <Handshake className="h-4 w-4 mr-1.5" />
+                                    )}
+                                    {isOpening ? "Ouverture…" : hasSession ? "Reprendre la session" : "Ouvrir cette session (Remplacement)"}
+                                  </Button>
+                                );
+                              })()}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              )}
             </TabsContent>
 
             <TabsContent value="historique" className="mt-4">
