@@ -34,10 +34,9 @@ const RecentSessionsWidget = lazy(() => import("@/components/dashboard/RecentSes
 // ─── Role shorthands ────────────────────────────────────────────────
 const ADMIN_ROLES = ["super_admin", "admin", "responsable"];
 const EDUCATION_ROLES = ["super_admin", "admin", "responsable", "enseignant"];
-const PARENT_ROLES = ["parent"];
+const EDUCATION_ALL_ROLES = ["super_admin", "admin", "responsable", "enseignant", "parent"];
 
 // ─── Icon mapping for SaaS admin console ────────────────────────────
-// Keys = widget IDs, values = lucide icon names (kebab-case)
 export const WIDGET_ICON_MAP: Record<string, string> = {
   "org-kpis": "bar-chart-3",
   "edu-assiduité": "user-check",
@@ -45,9 +44,8 @@ export const WIDGET_ICON_MAP: Record<string, string> = {
   "edu-inscriptions": "user-plus",
   "edu-finance": "wallet",
   "edu-vigilance": "shield-alert",
-  "edu-recent-sessions": "activity",
-  "parent-recent-sessions": "book-open",
-  "parent-student-progress": "graduation-cap",
+  "recent-sessions": "activity",
+  "student-progress": "graduation-cap",
   "parent-invoices": "receipt",
   "school-agenda": "calendar-days",
   "rooms-occupancy": "door-open",
@@ -56,7 +54,7 @@ export const WIDGET_ICON_MAP: Record<string, string> = {
   "assets-inventory": "package",
 };
 
-// ─── Registry ───────────────────────────────────────────────────────
+// ─── Registry (1 ID = 1 composant physique) ─────────────────────────
 export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Vue d'ensemble KPIs (full width) ──
   {
@@ -130,61 +128,54 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     component: EducationVigilanceWidget,
   },
 
-  // ── Ligne Activité : full width ──
+  // ── Activité des Classes / Journal des Cours (polymorphe) ──
   {
-    id: "edu-recent-sessions",
-    label: "Activité des Classes",
+    id: "recent-sessions",
+    label: "Activité des Classes / Journal",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
-    allowedRoles: EDUCATION_ROLES,
+    allowedRoles: EDUCATION_ALL_ROLES,
     defaultWeight: 850,
     colSpan: 12,
     component: RecentSessionsWidget,
   },
 
-  // ── Parent widgets ──
+  // ── Suivi Scolaire (polymorphe admin/parent) ──
   {
-    id: "parent-recent-sessions",
-    label: "Journal des Cours",
-    section: "Suivi Famille",
-    sectionEmoji: "👨‍👩‍👧‍👦",
+    id: "student-progress",
+    label: "Suivi Scolaire",
+    section: "École Madrassa",
+    sectionEmoji: "📚",
     requiredPole: "education",
-    allowedRoles: PARENT_ROLES,
-    defaultWeight: 960,
-    colSpan: 12,
-    component: RecentSessionsWidget,
-  },
-  {
-    id: "parent-student-progress",
-    label: "Suivi Scolaire (Enfants)",
-    section: "Suivi Famille",
-    sectionEmoji: "👨‍👩‍👧‍👦",
-    requiredPole: "education",
-    allowedRoles: PARENT_ROLES,
-    defaultWeight: 950,
+    allowedRoles: [...EDUCATION_ROLES, "parent"],
+    defaultWeight: 840,
     colSpan: 8,
     component: StudentProgressWidget,
   },
+
+  // ── Factures Parent ──
   {
     id: "parent-invoices",
     label: "Mes Factures & Paiements",
-    section: "Suivi Famille",
-    sectionEmoji: "👨‍👩‍👧‍👦",
+    section: "École Madrassa",
+    sectionEmoji: "📚",
     requiredPole: "education",
-    allowedRoles: PARENT_ROLES,
-    defaultWeight: 940,
+    allowedRoles: ["parent"],
+    defaultWeight: 830,
     colSpan: 4,
     component: ParentInvoicesWidget,
   },
+
+  // ── Agenda Scolaire ──
   {
     id: "school-agenda",
     label: "Agenda Scolaire",
-    section: "Suivi Famille",
-    sectionEmoji: "👨‍👩‍👧‍👦",
+    section: "École Madrassa",
+    sectionEmoji: "📚",
     requiredPole: "education",
-    allowedRoles: PARENT_ROLES,
-    defaultWeight: 930,
+    allowedRoles: EDUCATION_ALL_ROLES,
+    defaultWeight: 820,
     colSpan: 12,
     component: SchoolAgendaWidget,
   },
