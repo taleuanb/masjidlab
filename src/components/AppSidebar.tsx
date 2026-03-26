@@ -224,10 +224,6 @@ export function AppSidebar() {
   const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
   const { hasAccess, isBypassing } = useModuleAccess();
 
-  const isParentOnly = useMemo(() => {
-    return userDbRoles.length > 0 && userDbRoles.every((r) => r === "parent") && !isSuperAdmin;
-  }, [userDbRoles, isSuperAdmin]);
-
   const isGhostActive = !!impersonatedUser;
   const isPreviewingOtherRole = !isGhostActive && isSuperAdmin && role !== "Super Admin";
   const effectiveBypass = isBypassing && !isPreviewingOtherRole;
@@ -276,21 +272,22 @@ export function AppSidebar() {
     return true;
   }, [hasAccess, isPreviewingOtherRole, previewPermissions, role]);
 
-  // ── GROUPE A: Administration — visible for admin roles ──
+  // ── GROUPE A: Administration — visible if any admin item is accessible ──
   const visibleAdminItems = useMemo(
     () => ADMIN_ITEMS.filter((item) => isModuleVisible(item.moduleKey)),
     [isModuleVisible]
   );
 
-  // ── GROUPE B: Pôles Métiers — show block if parent OR any child is visible ──
-  const visibleMetierBlocks = useMemo(
-    () => METIER_BLOCKS.filter((block) =>
-      isModuleVisible(block.id) || block.items.some((item) => item.moduleKey && isModuleVisible(item.moduleKey))
+  // ── GROUPE B: All business blocks — show block if any child item is visible ──
+  const visibleBusinessBlocks = useMemo(
+    () => ALL_BUSINESS_BLOCKS.filter((block) =>
+      block.items.some((item) => item.moduleKey && isModuleVisible(item.moduleKey))
     ),
     [isModuleVisible]
   );
-  const showLogistique = isModuleVisible(LOGISTIQUE_BLOCK.id) || LOGISTIQUE_BLOCK.items.some((i) => i.moduleKey && isModuleVisible(i.moduleKey));
-  const showPersonnel = isModuleVisible(PERSONNEL_BLOCK.id) || PERSONNEL_BLOCK.items.some((i) => i.moduleKey && isModuleVisible(i.moduleKey));
+
+  // ── Detect "no business access" → show simplified parent-like nav ──
+  const hasNoBusinessAccess = visibleAdminItems.length === 0 && visibleBusinessBlocks.length === 0;
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => { window.location.href = getVitrineUrl(); };
