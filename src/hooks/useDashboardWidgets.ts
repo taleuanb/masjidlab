@@ -36,7 +36,10 @@ export function useDashboardWidgets() {
       .from("saas_widget_configs")
       .select("widget_key, label, required_plans, allowed_roles, required_pole, priority, is_enabled")
       .then(({ data }) => {
-        if (data && data.length > 0) setDbConfigs(data as DbWidgetConfig[]);
+        if (data && data.length > 0) {
+          console.log("Widgets reçus de la BDD :", data.map((d: any) => d.widget_key));
+          setDbConfigs(data as DbWidgetConfig[]);
+        }
       });
   }, []);
 

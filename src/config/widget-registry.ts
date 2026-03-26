@@ -148,7 +148,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
-    allowedRoles: [...EDUCATION_ROLES, "parent"],
+    allowedRoles: EDUCATION_ALL_ROLES,
     defaultWeight: 840,
     colSpan: 8,
     component: StudentProgressWidget,
