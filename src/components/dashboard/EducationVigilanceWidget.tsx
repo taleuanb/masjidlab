@@ -74,7 +74,9 @@ export function EducationVigilanceWidget() {
           <h3 className="text-base font-semibold">
             {isTeacher ? "Mes points de vigilance" : "Points de vigilance"}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Suivi temps réel</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isTeacher ? "Élèves de vos classes nécessitant une attention particulière." : "Suivi temps réel"}
+          </p>
         </div>
         <ShieldAlert className={`h-4 w-4 ${hasAlerts ? "text-destructive" : "text-muted-foreground"}`} />
       </div>
