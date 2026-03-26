@@ -17,11 +17,16 @@ export interface CalendarEvent {
   status: CalendarEventStatus;
   classId: string | null;
   className: string | null;
+  classNiveau: string | null;
   isReplacement: boolean;
   /** Profile ID of the teacher who actually taught (from madrasa_sessions) */
   actualTeacherId: string | null;
+  /** Display name of the actual teacher */
+  actualTeacherName: string | null;
   /** Profile ID of the assigned teacher (from madrasa_classes) */
   assignedTeacherId: string | null;
+  /** Display name of the assigned teacher */
+  assignedTeacherName: string | null;
   /** Original schedule ID */
   scheduleId: string | null;
   /** Session ID if completed */
@@ -100,7 +105,22 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("madrasa_classes")
-        .select("id, nom, prof_id")
+        .select("id, nom, niveau, prof_id")
+        .eq("org_id", orgId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // ── Profiles (teacher name resolution) ───────────────────────────────
+  const profilesQuery = useQuery({
+    queryKey: ["cal-profiles", orgId],
+    enabled: !!orgId,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, display_name")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
@@ -178,6 +198,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     const schedules = schedulesQuery.data ?? [];
     const classes = classesQuery.data ?? [];
     const subjects = subjectsQuery.data ?? [];
+    const profiles = profilesQuery.data ?? [];
     const holidays = calendarQuery.data ?? [];
     const sessions = sessionsQuery.data ?? [];
     const globalEvents = globalEventsQuery.data ?? [];
@@ -185,6 +206,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     // Look-ups
     const classMap = new Map(classes.map((c) => [c.id, c]));
     const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
+    const profileMap = new Map(profiles.map((p) => [p.id, p.display_name]));
 
     // Index sessions by "classId|date" for O(1) lookup
     const sessionIndex = new Map<string, (typeof sessions)[number]>();
@@ -251,9 +273,12 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           status,
           classId: sched.class_id,
           className: cls.nom,
+          classNiveau: cls.niveau ?? null,
           isReplacement,
           actualTeacherId: session?.actual_teacher_id ?? null,
+          actualTeacherName: session?.actual_teacher_id ? (profileMap.get(session.actual_teacher_id) ?? null) : null,
           assignedTeacherId: cls.prof_id,
+          assignedTeacherName: cls.prof_id ? (profileMap.get(cls.prof_id) ?? null) : null,
           scheduleId: sched.id,
           sessionId: session?.id ?? null,
           subjectNames,
@@ -272,9 +297,12 @@ export function useCalendarData(options: UseCalendarDataOptions) {
         status: "cancelled",
         classId: null,
         className: null,
+        classNiveau: null,
         isReplacement: false,
         actualTeacherId: null,
+        actualTeacherName: null,
         assignedTeacherId: null,
+        assignedTeacherName: null,
         scheduleId: null,
         sessionId: null,
         subjectNames: [],
@@ -295,9 +323,12 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           status: "scheduled",
           classId: null,
           className: null,
+          classNiveau: null,
           isReplacement: false,
           actualTeacherId: null,
+          actualTeacherName: null,
           assignedTeacherId: null,
+          assignedTeacherName: null,
           scheduleId: null,
           sessionId: null,
           subjectNames: [],
@@ -313,6 +344,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     schedulesQuery.data,
     classesQuery.data,
     subjectsQuery.data,
+    profilesQuery.data,
     calendarQuery.data,
     sessionsQuery.data,
     globalEventsQuery.data,
@@ -327,6 +359,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     schedulesQuery.isLoading ||
     classesQuery.isLoading ||
     subjectsQuery.isLoading ||
+    profilesQuery.isLoading ||
     calendarQuery.isLoading ||
     sessionsQuery.isLoading ||
     (includeGlobalEvents && globalEventsQuery.isLoading);

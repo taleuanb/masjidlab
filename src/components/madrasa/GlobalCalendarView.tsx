@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Calendar as CalendarIcon,
   LayoutGrid,
+  AlertCircle,
 } from "lucide-react";
 import {
   addDays,
@@ -40,7 +41,9 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-
+import { Progress } from "@/components/ui/progress";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 type ViewMode = "week" | "month";
 
 interface Props {
@@ -455,29 +458,67 @@ function EventDetailPanel({
 }) {
   const isSession = ev.type === "session";
   const isReplacement = ev.isReplacement;
+  const isPastUnopened =
+    isSession &&
+    ev.status === "scheduled" &&
+    isBefore(ev.end, new Date()) &&
+    !ev.sessionId;
+
+  // Fetch attendance stats for completed sessions
+  const { data: attendanceStats } = useQuery({
+    queryKey: ["attendance-stats", ev.sessionId],
+    enabled: isSession && ev.status === "completed" && !!ev.sessionId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_attendance")
+        .select("status")
+        .eq("session_id", ev.sessionId!);
+      if (error) throw error;
+      const total = data?.length ?? 0;
+      const present = data?.filter((a) => a.status === "present" || a.status === "late").length ?? 0;
+      return { total, present, percentage: total > 0 ? Math.round((present / total) * 100) : 0 };
+    },
+  });
 
   return (
     <div className="space-y-5 pt-2">
+      {/* Header */}
       <SheetHeader>
-        <SheetTitle className="text-lg">{ev.className ?? ev.title}</SheetTitle>
-        <SheetDescription>
-          {format(ev.start, "EEEE d MMMM yyyy", { locale: fr })}
-        </SheetDescription>
+        <div className="space-y-1">
+          <SheetTitle className="text-lg leading-tight">
+            {ev.className ?? ev.title}
+          </SheetTitle>
+          {isSession && ev.classNiveau && (
+            <Badge variant="secondary" className="text-[10px] font-normal">
+              {ev.classNiveau}
+            </Badge>
+          )}
+          <SheetDescription>
+            {format(ev.start, "EEEE d MMMM yyyy", { locale: fr })}
+          </SheetDescription>
+        </div>
       </SheetHeader>
 
-      <Separator />
-
-      {/* Status */}
+      {/* Status badge */}
       <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Statut :</span>
         {ev.status === "completed" && (
           <Badge variant="outline" className="text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-700">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Session validée
           </Badge>
         )}
-        {ev.status === "scheduled" && (
-          <Badge variant="outline" className="text-xs">Planifié</Badge>
+        {ev.status === "scheduled" && !isPastUnopened && (
+          <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20 text-primary">
+            <Clock className="h-3 w-3 mr-1" />
+            Planifié
+          </Badge>
+        )}
+        {isPastUnopened && (
+          <Badge variant="outline" className="text-xs bg-destructive/10 border-destructive/20 text-destructive">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Session non ouverte
+          </Badge>
         )}
         {ev.status === "cancelled" && (
           <Badge variant="outline" className="text-xs bg-destructive/10 border-destructive/20 text-destructive">
@@ -487,18 +528,57 @@ function EventDetailPanel({
         )}
       </div>
 
+      <Separator />
+
       {/* Time */}
-      <div className="flex items-center gap-2 text-sm">
-        <Clock className="h-4 w-4 text-muted-foreground" />
-        <span className="tabular-nums">
+      <div className="flex items-center gap-3 text-sm">
+        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="font-medium tabular-nums">
           {format(ev.start, "HH:mm")} – {format(ev.end, "HH:mm")}
         </span>
       </div>
 
+      {/* Teachers */}
+      {isSession && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Équipe pédagogique
+          </p>
+          {ev.assignedTeacherId && (
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">
+                <Users className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground">Oustaz titulaire</p>
+                <p className="text-sm font-medium">
+                  {ev.assignedTeacherName ?? "Non assigné"}
+                </p>
+              </div>
+            </div>
+          )}
+          {isReplacement && ev.actualTeacherId && (
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center h-8 w-8 rounded-full bg-violet-500/10">
+                <Handshake className="h-4 w-4 text-violet-500" />
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground">Remplacé par</p>
+                <p className="text-sm font-medium text-violet-700">
+                  {ev.actualTeacherName ?? "Inconnu"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Subjects */}
       {ev.subjectNames.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">Matières</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Matières
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {ev.subjectNames.map((name, i) => (
               <Badge key={i} variant="secondary" className="text-xs">
@@ -510,43 +590,41 @@ function EventDetailPanel({
         </div>
       )}
 
-      <Separator />
-
-      {/* Teachers */}
-      {isSession && (
-        <div className="space-y-3">
-          {ev.assignedTeacherId && (
-            <div className="flex items-center gap-2 text-sm">
-              <Users className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground">Professeur titulaire</p>
-                <p className="font-medium text-sm">{ev.assignedTeacherId}</p>
-              </div>
+      {/* Attendance stats (completed sessions only) */}
+      {isSession && ev.status === "completed" && attendanceStats && attendanceStats.total > 0 && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Bilan rapide
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Présence</span>
+              <span className="font-medium tabular-nums">
+                {attendanceStats.present} / {attendanceStats.total} élèves
+              </span>
             </div>
-          )}
-
-          {isReplacement && ev.actualTeacherId && (
-            <div className="flex items-center gap-2 text-sm">
-              <Handshake className="h-4 w-4 text-violet-500 shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground">Remplaçant (session)</p>
-                <p className="font-medium text-sm text-violet-700">{ev.actualTeacherId}</p>
-              </div>
-            </div>
-          )}
-        </div>
+            <Progress value={attendanceStats.percentage} className="h-2" />
+            <p className="text-[10px] text-muted-foreground text-right tabular-nums">
+              {attendanceStats.percentage}%
+            </p>
+          </div>
+        </>
       )}
 
       {/* Holiday meta */}
       {ev.type === "holiday" && ev.meta && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">
-            Type : {(ev.meta.calendarType as string) === "holiday" ? "Vacances" : (ev.meta.calendarType as string) === "exam" ? "Examens" : "Pédagogique"}
-          </p>
-          {ev.meta.affectsClasses && (
-            <p className="text-xs text-destructive">Affecte les cours — classes fermées</p>
-          )}
-        </div>
+        <>
+          <Separator />
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">
+              Type : {(ev.meta.calendarType as string) === "holiday" ? "Vacances" : (ev.meta.calendarType as string) === "exam" ? "Examens" : "Pédagogique"}
+            </p>
+            {ev.meta.affectsClasses && (
+              <p className="text-xs text-destructive">Affecte les cours — classes fermées</p>
+            )}
+          </div>
+        </>
       )}
 
       <Separator />
