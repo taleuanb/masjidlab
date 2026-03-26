@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter, Pencil, TrendingUp } from "lucide-react";
+import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter, Pencil, TrendingUp, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ClassProgressBoard } from "@/components/ClassProgressBoard";
@@ -34,6 +35,17 @@ type ClassRow = {
   subjects: { id: string; name: string }[];
 };
 
+interface ScheduleSlot {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  subject_ids: string[];
+}
+
+const DAY_LABELS: Record<number, string> = {
+  0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi", 4: "Jeudi", 5: "Vendredi", 6: "Samedi",
+};
+
 const Classes = () => {
   const { orgId } = useOrganization();
   const queryClient = useQueryClient();
@@ -41,7 +53,9 @@ const Classes = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassRow | null>(null);
   const [form, setForm] = useState({ nom: "", niveau: "", prof_id: "", salle_id: "" });
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleSlot[]>([
+    { day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] },
+  ]);
   const [filterNiveau, setFilterNiveau] = useState<string>("all");
   const [progressClassId, setProgressClassId] = useState<string>("");
 
@@ -97,53 +111,88 @@ const Classes = () => {
     },
   });
 
+  // ── Fix: Fetch all active profiles in the org (teachers) ──
   const { data: teachers = [] } = useQuery({
-    queryKey: ["teachers_education", orgId],
+    queryKey: ["org_profiles_teachers", orgId],
     enabled: !!orgId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name, user_roles!inner(role)")
-        .eq("user_roles.role", "enseignant")
-        .eq("org_id", orgId!);
+        .select("id, display_name")
+        .eq("org_id", orgId!)
+        .eq("is_active", true)
+        .order("display_name");
       if (error) throw error;
-      return (data ?? []).map((t: any) => ({ id: t.id, display_name: t.display_name }));
+      return (data ?? []) as { id: string; display_name: string }[];
     },
   });
+
+  // ── Derived: all unique subject_ids used in schedules ──
+  const selectedSubjects = useMemo(() => {
+    const ids = new Set<string>();
+    schedules.forEach((s) => s.subject_ids.forEach((id) => ids.add(id)));
+    return Array.from(ids);
+  }, [schedules]);
+
+  // ── Schedule helpers ──
+  const addSlot = () => setSchedules((prev) => [...prev, { day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] }]);
+  const removeSlot = (idx: number) => setSchedules((prev) => prev.filter((_, i) => i !== idx));
+  const updateSlot = (idx: number, patch: Partial<ScheduleSlot>) =>
+    setSchedules((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+  const toggleSlotSubject = (idx: number, subjectId: string) =>
+    setSchedules((prev) =>
+      prev.map((s, i) =>
+        i === idx
+          ? { ...s, subject_ids: s.subject_ids.includes(subjectId) ? s.subject_ids.filter((id) => id !== subjectId) : [...s.subject_ids, subjectId] }
+          : s
+      )
+    );
 
   // ── Mutations ──
   const saveClass = useMutation({
     mutationFn: async () => {
       if (!form.nom.trim()) throw new Error("Nom requis");
 
+      let classId: string;
+
       if (isEditing) {
-        // Update class
+        classId = editingClass.id;
         const { error } = await supabase
           .from("madrasa_classes")
           .update({ nom: form.nom.trim(), niveau: form.niveau || null, prof_id: form.prof_id || null, salle_id: form.salle_id || null })
-          .eq("id", editingClass.id);
+          .eq("id", classId);
         if (error) throw error;
-
-        // Sync subjects: delete old, insert new
-        await supabase.from("madrasa_class_subjects").delete().eq("class_id", editingClass.id);
-        if (selectedSubjects.length > 0) {
-          const links = selectedSubjects.map((sid) => ({ class_id: editingClass.id, subject_id: sid }));
-          const { error: linkErr } = await supabase.from("madrasa_class_subjects").insert(links);
-          if (linkErr) throw linkErr;
-        }
       } else {
-        // Create class
         const { data: created, error } = await supabase
           .from("madrasa_classes")
           .insert({ nom: form.nom.trim(), niveau: form.niveau || null, prof_id: form.prof_id || null, salle_id: form.salle_id || null, org_id: orgId! })
           .select("id")
           .single();
         if (error) throw error;
-        if (selectedSubjects.length > 0) {
-          const links = selectedSubjects.map((sid) => ({ class_id: created.id, subject_id: sid }));
-          const { error: linkErr } = await supabase.from("madrasa_class_subjects").insert(links);
-          if (linkErr) throw linkErr;
-        }
+        classId = created.id;
+      }
+
+      // Sync class_subjects from all schedule subject_ids
+      await supabase.from("madrasa_class_subjects").delete().eq("class_id", classId);
+      if (selectedSubjects.length > 0) {
+        const links = selectedSubjects.map((sid) => ({ class_id: classId, subject_id: sid }));
+        const { error: linkErr } = await supabase.from("madrasa_class_subjects").insert(links);
+        if (linkErr) throw linkErr;
+      }
+
+      // Sync schedules: delete old, insert new
+      await supabase.from("madrasa_schedules").delete().eq("class_id", classId);
+      if (schedules.length > 0) {
+        const rows = schedules.map((s) => ({
+          class_id: classId,
+          org_id: orgId!,
+          day_of_week: s.day_of_week,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          subject_ids: s.subject_ids,
+        }));
+        const { error: schedErr } = await supabase.from("madrasa_schedules").insert(rows);
+        if (schedErr) throw schedErr;
       }
     },
     onSuccess: () => {
@@ -158,6 +207,7 @@ const Classes = () => {
   const deleteClass = useMutation({
     mutationFn: async (id: string) => {
       await supabase.from("madrasa_class_subjects").delete().eq("class_id", id);
+      await supabase.from("madrasa_schedules").delete().eq("class_id", id);
       const { error } = await supabase.from("madrasa_classes").delete().eq("id", id);
       if (error) throw error;
     },
@@ -165,13 +215,31 @@ const Classes = () => {
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
-  const resetForm = () => { setForm({ nom: "", niveau: "", prof_id: "", salle_id: "" }); setSelectedSubjects([]); setEditingClass(null); };
-  const toggleSubject = (id: string) => setSelectedSubjects((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  const resetForm = () => {
+    setForm({ nom: "", niveau: "", prof_id: "", salle_id: "" });
+    setSchedules([{ day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] }]);
+    setEditingClass(null);
+  };
 
-  const openEdit = (c: ClassRow) => {
+  const openEdit = async (c: ClassRow) => {
     setEditingClass(c);
     setForm({ nom: c.nom, niveau: c.niveau ?? "", prof_id: c.prof_id ?? "", salle_id: c.salle_id ?? "" });
-    setSelectedSubjects(c.subjects.map((s) => s.id));
+    // Load existing schedules for this class
+    const { data: existingSchedules } = await supabase
+      .from("madrasa_schedules")
+      .select("*")
+      .eq("class_id", c.id)
+      .order("day_of_week");
+    if (existingSchedules && existingSchedules.length > 0) {
+      setSchedules(existingSchedules.map((s) => ({
+        day_of_week: s.day_of_week,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        subject_ids: (s.subject_ids ?? []) as string[],
+      })));
+    } else {
+      setSchedules([{ day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] }]);
+    }
     setDialogOpen(true);
   };
 
@@ -328,10 +396,10 @@ const Classes = () => {
 
       {/* ── Create / Edit Dialog ── */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditing ? "Modifier la classe" : "Nouvelle classe"}</DialogTitle>
-            <DialogDescription>{isEditing ? `Modifiez « ${editingClass?.nom} » et ses matières.` : "Créez une classe et liez-la à des matières."}</DialogDescription>
+            <DialogDescription>{isEditing ? `Modifiez « ${editingClass?.nom} » et son planning.` : "Créez une classe et définissez son planning."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
@@ -349,20 +417,114 @@ const Classes = () => {
               <Label className="text-xs">Professeur</Label>
               <Select value={form.prof_id} onValueChange={(v) => setForm((f) => ({ ...f, prof_id: v }))}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="Assigner un professeur" /></SelectTrigger>
-                <SelectContent>{teachers.map((t) => (<SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>))}</SelectContent>
+                <SelectContent>
+                  {teachers.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Matières</Label>
-              {subjects.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Aucune matière configurée.</p>
+
+            {/* ── Planning des cours ── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" /> Planning des cours
+                </Label>
+                <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={addSlot}>
+                  <Plus className="h-3 w-3 mr-1" /> Ajouter un créneau
+                </Button>
+              </div>
+
+              {schedules.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3 border border-dashed rounded-md">
+                  Aucun créneau. Ajoutez-en un pour définir le planning.
+                </p>
               ) : (
-                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto rounded-md border p-3">
-                  {subjects.map((s) => (
-                    <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox checked={selectedSubjects.includes(s.id)} onCheckedChange={() => toggleSubject(s.id)} />
-                      <span className="truncate">{s.name}</span>
-                    </label>
+                <div className="space-y-3">
+                  {schedules.map((slot, idx) => (
+                    <Card key={idx} className="p-3 space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        {/* Day */}
+                        <Select
+                          value={String(slot.day_of_week)}
+                          onValueChange={(v) => updateSlot(idx, { day_of_week: Number(v) })}
+                        >
+                          <SelectTrigger className="h-8 w-[130px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(DAY_LABELS).map(([val, label]) => (
+                              <SelectItem key={val} value={val}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {/* Times */}
+                        <Input
+                          type="time"
+                          value={slot.start_time}
+                          onChange={(e) => updateSlot(idx, { start_time: e.target.value })}
+                          className="h-8 w-[100px] text-xs"
+                        />
+                        <span className="text-xs text-muted-foreground">→</span>
+                        <Input
+                          type="time"
+                          value={slot.end_time}
+                          onChange={(e) => updateSlot(idx, { end_time: e.target.value })}
+                          className="h-8 w-[100px] text-xs"
+                        />
+
+                        {/* Delete */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeSlot(idx)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
+                      {/* Subject multi-select */}
+                      {subjects.length > 0 && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className="h-8 w-full justify-start text-xs font-normal">
+                              {slot.subject_ids.length === 0
+                                ? "Sélectionner les matières…"
+                                : `${slot.subject_ids.length} matière(s)`}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-2" align="start">
+                            <div className="space-y-1 max-h-48 overflow-y-auto">
+                              {subjects.map((s) => (
+                                <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-accent">
+                                  <Checkbox
+                                    checked={slot.subject_ids.includes(s.id)}
+                                    onCheckedChange={() => toggleSlotSubject(idx, s.id)}
+                                  />
+                                  <span className="truncate">{s.name}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+
+                      {/* Show selected subject badges */}
+                      {slot.subject_ids.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {slot.subject_ids.map((sid) => {
+                            const sub = subjects.find((s) => s.id === sid);
+                            return sub ? (
+                              <Badge key={sid} variant="secondary" className="text-[10px] font-normal">{sub.name}</Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                    </Card>
                   ))}
                 </div>
               )}
