@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronRight, Lock, Clock, Mail, MapPin, CalendarDays,
   MoreHorizontal, Search, UserCog, KeyRound, Ban, LayoutDashboard, Crown,
   UserPlus, TrendingUp, Activity, Settings2, Eye, ShieldOff, RotateCcw,
-  PlusCircle, FileText, ArrowRight, LayoutGrid,
+  PlusCircle, FileText, ArrowRight, LayoutGrid, SearchCheck,
 } from "lucide-react";
 import { WidgetsTab } from "@/components/saas/WidgetsTab";
 import { AccessDiagnosticTab } from "@/components/saas/AccessDiagnosticTab";
