@@ -345,6 +345,7 @@ export type Database = {
           id: string
           notes: string | null
           org_id: string
+          session_id: string | null
           status: string
           student_id: string | null
         }
@@ -356,6 +357,7 @@ export type Database = {
           id?: string
           notes?: string | null
           org_id: string
+          session_id?: string | null
           status?: string
           student_id?: string | null
         }
@@ -367,6 +369,7 @@ export type Database = {
           id?: string
           notes?: string | null
           org_id?: string
+          session_id?: string | null
           status?: string
           student_id?: string | null
         }
@@ -393,10 +396,58 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "madrasa_attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_sessions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "madrasa_attendance_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "madrasa_students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_calendar: {
+        Row: {
+          affects_classes: boolean | null
+          created_at: string | null
+          end_date: string
+          id: string
+          org_id: string
+          start_date: string
+          title: string
+          type: string
+        }
+        Insert: {
+          affects_classes?: boolean | null
+          created_at?: string | null
+          end_date: string
+          id?: string
+          org_id: string
+          start_date: string
+          title: string
+          type: string
+        }
+        Update: {
+          affects_classes?: boolean | null
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          org_id?: string
+          start_date?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_calendar_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -744,6 +795,54 @@ export type Database = {
           },
         ]
       }
+      madrasa_schedules: {
+        Row: {
+          class_id: string
+          created_at: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          org_id: string
+          start_time: string
+          subject_ids: string[] | null
+        }
+        Insert: {
+          class_id: string
+          created_at?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          org_id: string
+          start_time: string
+          subject_ids?: string[] | null
+        }
+        Update: {
+          class_id?: string
+          created_at?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          org_id?: string
+          start_time?: string
+          subject_ids?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_schedules_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_schedules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       madrasa_session_configs: {
         Row: {
           created_at: string | null
@@ -782,6 +881,68 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "madrasa_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_sessions: {
+        Row: {
+          actual_teacher_id: string
+          class_id: string
+          created_at: string | null
+          date: string
+          id: string
+          org_id: string
+          schedule_id: string | null
+          status: string | null
+        }
+        Insert: {
+          actual_teacher_id: string
+          class_id: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          org_id: string
+          schedule_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          actual_teacher_id?: string
+          class_id?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          org_id?: string
+          schedule_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_sessions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_sessions_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_sessions_teacher_id_fkey"
+            columns: ["actual_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -897,6 +1058,7 @@ export type Database = {
           id: string
           lesson_date: string
           org_id: string
+          session_id: string | null
           student_id: string
           updated_at: string | null
         }
@@ -908,6 +1070,7 @@ export type Database = {
           id?: string
           lesson_date?: string
           org_id: string
+          session_id?: string | null
           student_id: string
           updated_at?: string | null
         }
@@ -919,6 +1082,7 @@ export type Database = {
           id?: string
           lesson_date?: string
           org_id?: string
+          session_id?: string | null
           student_id?: string
           updated_at?: string | null
         }
@@ -942,6 +1106,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_student_progress_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_sessions"
             referencedColumns: ["id"]
           },
           {
@@ -1619,7 +1790,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      view_student_attendance_kpi: {
+        Row: {
+          attendance_percentage: number | null
+          class_id: string | null
+          present_count: number | null
+          student_id: string | null
+          total_recorded_sessions: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_attendance_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       clone_default_permissions: {
