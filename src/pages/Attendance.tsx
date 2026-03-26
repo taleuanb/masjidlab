@@ -93,6 +93,9 @@ const Attendance = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [completedReports, setCompletedReports] = useState<Set<string>>(new Set());
   const [notifiedAbsences, setNotifiedAbsences] = useState<Set<string>>(new Set());
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [summaryNote, setSummaryNote] = useState("");
+  const [sessionCompleted, setSessionCompleted] = useState(false);
 
   const today = format(new Date(), "yyyy-MM-dd");
   const todayLabel = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
