@@ -202,25 +202,23 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
     },
   });
 
-  // ── Fetch attendance last 30 days ──
-  const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  // ── Fetch attendance from SQL KPI view ──
   const { data: attendanceMap = new Map() } = useQuery({
-    queryKey: ["class_attendance_30d", orgId, classId],
-    enabled: !!orgId && !!classId && students.length > 0,
+    queryKey: ["class_attendance_kpi", classId],
+    enabled: !!classId && students.length > 0,
     queryFn: async () => {
       const { data } = await supabase
-        .from("madrasa_attendance")
-        .select("student_id, status")
-        .eq("class_id", classId)
-        .eq("org_id", orgId!)
-        .gte("date", thirtyDaysAgo);
-      const m = new Map<string, { total: number; present: number }>();
-      for (const a of data ?? []) {
-        if (!a.student_id) continue;
-        const entry = m.get(a.student_id) ?? { total: 0, present: 0 };
-        entry.total++;
-        if (a.status === "present" || a.status === "late") entry.present++;
-        m.set(a.student_id, entry);
+        .from("view_student_attendance_kpi" as any)
+        .select("*")
+        .eq("class_id", classId);
+      const m = new Map<string, { total: number; present: number; pct: number }>();
+      for (const row of (data ?? []) as any[]) {
+        if (!row.student_id) continue;
+        m.set(row.student_id, {
+          total: Number(row.total_recorded_sessions ?? 0),
+          present: Number(row.present_count ?? 0),
+          pct: Number(row.attendance_percentage ?? 0),
+        });
       }
       return m;
     },
