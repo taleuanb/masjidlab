@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardCheck, ClipboardList, Loader2, Check, ChevronLeft, Users, AlertTriangle,
-  UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2, CalendarClock,
+  UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2, CalendarClock, PlayCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,6 +72,8 @@ const Attendance = () => {
   const { toast } = useToast();
 
   const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [openingScheduleId, setOpeningScheduleId] = useState<string | null>(null);
 
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -172,6 +174,81 @@ const Attendance = () => {
       return courses;
     },
   });
+
+  // ── Pre-check which classes already have a session today ──
+  const scheduledClassIds = useMemo(() => scheduledCourses.map((c) => c.classInfo.id), [scheduledCourses]);
+  const { data: existingSessionsMap = new Map<string, string>() } = useQuery({
+    queryKey: ["today_sessions_check", orgId, today, scheduledClassIds],
+    enabled: !!orgId && scheduledClassIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_sessions")
+        .select("id, class_id")
+        .eq("org_id", orgId!)
+        .eq("date", today)
+        .in("class_id", scheduledClassIds);
+      const map = new Map<string, string>();
+      for (const s of data ?? []) {
+        map.set(s.class_id, s.id);
+      }
+      return map;
+    },
+  });
+
+  // ── JIT Session creation / retrieval ──
+  const handleOpenSession = useCallback(async (course: ScheduledCourse) => {
+    if (!orgId || !user) return;
+    setOpeningScheduleId(course.scheduleId);
+    try {
+      // Get profile id for actual_teacher_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!profile) throw new Error("Profil introuvable");
+
+      // Check if session already exists
+      const { data: existing } = await supabase
+        .from("madrasa_sessions")
+        .select("id")
+        .eq("class_id", course.classInfo.id)
+        .eq("date", today)
+        .eq("org_id", orgId)
+        .maybeSingle();
+
+      let sessionId: string;
+
+      if (existing) {
+        sessionId = existing.id;
+      } else {
+        const { data: newSession, error: insertErr } = await supabase
+          .from("madrasa_sessions")
+          .insert({
+            org_id: orgId,
+            class_id: course.classInfo.id,
+            schedule_id: course.scheduleId,
+            actual_teacher_id: profile.id,
+            date: today,
+            status: "completed",
+          })
+          .select("id")
+          .single();
+        if (insertErr) throw insertErr;
+        sessionId = newSession.id;
+      }
+
+      setActiveSessionId(sessionId);
+      // Invalidate session check cache
+      queryClient.invalidateQueries({ queryKey: ["today_sessions_check"] });
+      // Transition to roll call
+      handleSelectClass(course.classInfo);
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setOpeningScheduleId(null);
+    }
+  }, [orgId, user, today, queryClient, toast, handleSelectClass]);
 
   // ── Fetch settings threshold + absence template ──
   const { data: madrasaSettings } = useQuery({
@@ -342,7 +419,7 @@ const Attendance = () => {
         for (const [enrollId, status] of entries) {
           await supabase
             .from("madrasa_attendance")
-            .update({ status })
+            .update({ status, session_id: activeSessionId })
             .eq("enrollment_id", enrollId)
             .eq("date", today)
             .eq("org_id", orgId);
@@ -354,6 +431,7 @@ const Attendance = () => {
           status,
           date: today,
           org_id: orgId,
+          session_id: activeSessionId,
         }));
         const { error } = await supabase.from("madrasa_attendance").insert(rows);
         if (error) throw error;
