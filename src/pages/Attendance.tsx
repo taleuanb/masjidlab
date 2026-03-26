@@ -575,7 +575,7 @@ const Attendance = () => {
             variant="ghost"
             size="icon"
             className="h-9 w-9 shrink-0"
-            onClick={() => { setSelectedClass(null); setSaved(false); }}
+            onClick={() => { setSelectedClass(null); setActiveSessionId(null); setSaved(false); }}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
