@@ -93,7 +93,7 @@ export function EducationAssiduiteWidget() {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bento-card flex flex-col items-center cursor-pointer hover:border-secondary/50 transition-colors"
+      className="bento-card h-full flex flex-col items-center cursor-pointer hover:border-secondary/50 transition-colors"
       onClick={() => navigate("/appel")}
     >
       <div className="flex items-center justify-between w-full mb-4">

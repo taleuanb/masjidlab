@@ -2,22 +2,14 @@ import { lazy, type ComponentType } from "react";
 
 export interface WidgetDef {
   id: string;
-  /** Display section label */
   section: string;
   sectionEmoji: string;
-  /** Technical pole required in active_poles (null = always visible) */
   requiredPole: string | null;
-  /** DB roles allowed (empty = all authenticated) */
   allowedRoles: string[];
-  /** Higher = rendered first */
   defaultWeight: number;
-  /** Grid column span (out of 12) */
   colSpan: 1 | 2 | 3 | 4 | 6 | 8 | 12;
-  /** Lazy-loaded component */
   component: React.LazyExoticComponent<ComponentType<any>>;
-  /** Plans required (from DB config) */
   requiredPlans?: string[];
-  /** Globally enabled (from DB config) */
   isEnabled?: boolean;
 }
 
@@ -27,34 +19,37 @@ const RoomsOccupancyWidget = lazy(() => import("@/components/dashboard/RoomsOccu
 const EventsTimelineWidget = lazy(() => import("@/components/dashboard/EventsTimelineWidget").then((m) => ({ default: m.EventsTimelineWidget })));
 const FinanceWidget = lazy(() => import("@/components/dashboard/FinanceWidget").then((m) => ({ default: m.FinanceWidget })));
 const AssetsWidget = lazy(() => import("@/components/dashboard/AssetsWidget").then((m) => ({ default: m.AssetsWidget })));
+const EducationAssiduiteWidget = lazy(() => import("@/components/dashboard/EducationAssiduiteWidget").then((m) => ({ default: m.EducationAssiduiteWidget })));
 const EducationEffectifsWidget = lazy(() => import("@/components/dashboard/EducationEffectifsWidget").then((m) => ({ default: m.EducationEffectifsWidget })));
 const EducationInscriptionsWidget = lazy(() => import("@/components/dashboard/EducationInscriptionsWidget").then((m) => ({ default: m.EducationInscriptionsWidget })));
 const EducationAlertesWidget = lazy(() => import("@/components/dashboard/EducationAlertesWidget").then((m) => ({ default: m.EducationAlertesWidget })));
-const EducationAssiduiteWidget = lazy(() => import("@/components/dashboard/EducationAssiduiteWidget").then((m) => ({ default: m.EducationAssiduiteWidget })));
 const EducationFinanceWidget = lazy(() => import("@/components/dashboard/EducationFinanceWidget").then((m) => ({ default: m.EducationFinanceWidget })));
+const EducationVigilanceWidget = lazy(() => import("@/components/dashboard/EducationVigilanceWidget").then((m) => ({ default: m.EducationVigilanceWidget })));
 const StudentProgressWidget = lazy(() => import("@/components/dashboard/StudentProgressWidget").then((m) => ({ default: m.StudentProgressWidget })));
 const ParentInvoicesWidget = lazy(() => import("@/components/dashboard/ParentInvoicesWidget").then((m) => ({ default: m.ParentInvoicesWidget })));
 const SchoolAgendaWidget = lazy(() => import("@/components/dashboard/SchoolAgendaWidget").then((m) => ({ default: m.SchoolAgendaWidget })));
 const RecentSessionsWidget = lazy(() => import("@/components/dashboard/RecentSessionsWidget").then((m) => ({ default: m.RecentSessionsWidget })));
 
-// ─── All roles shorthand ────────────────────────────────────────────
+// ─── Role shorthands ────────────────────────────────────────────────
 const ADMIN_ROLES = ["super_admin", "admin", "responsable"];
 const EDUCATION_ROLES = ["super_admin", "admin", "responsable", "enseignant"];
 const PARENT_ROLES = ["parent"];
 
 // ─── Registry ───────────────────────────────────────────────────────
 export const WIDGET_REGISTRY: WidgetDef[] = [
+  // ── Vue d'ensemble KPIs (full width) ──
   {
     id: "org-kpis",
     section: "Vue d'ensemble",
     sectionEmoji: "📊",
     requiredPole: null,
-    allowedRoles: ["super_admin", "admin", "responsable"],
+    allowedRoles: ADMIN_ROLES,
     defaultWeight: 1000,
     colSpan: 12,
     component: OrgKpiStats,
   },
-  // ── Education Row 1: Assiduité (6) + Effectifs (3) + Inscriptions (3) ──
+
+  // ── Ligne Macro : 3 × col-4 ──
   {
     id: "edu-assiduité",
     section: "École Madrassa",
@@ -62,7 +57,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: EDUCATION_ROLES,
     defaultWeight: 900,
-    colSpan: 6,
+    colSpan: 4,
     component: EducationAssiduiteWidget,
   },
   {
@@ -85,28 +80,30 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 4,
     component: EducationInscriptionsWidget,
   },
-  // ── Education Row 2: Finance (8) + Alertes (4) ──
+
+  // ── Ligne Opérationnelle : Finance (col-8) + Vigilance (col-4) ──
   {
     id: "edu-finance",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
-    allowedRoles: ["super_admin", "admin", "responsable"],
+    allowedRoles: ADMIN_ROLES,
     defaultWeight: 870,
     colSpan: 8,
     component: EducationFinanceWidget,
   },
   {
-    id: "edu-alertes",
+    id: "edu-vigilance",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
     allowedRoles: EDUCATION_ROLES,
     defaultWeight: 860,
     colSpan: 4,
-    component: EducationAlertesWidget,
+    component: EducationVigilanceWidget,
   },
-  // ── Education Row 3: Activity feed (full width) ──
+
+  // ── Ligne Activité : full width ──
   {
     id: "edu-recent-sessions",
     section: "École Madrassa",
@@ -117,6 +114,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 12,
     component: RecentSessionsWidget,
   },
+
   // ── Parent widgets ──
   {
     id: "parent-progress",
@@ -148,7 +146,8 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 4,
     component: SchoolAgendaWidget,
   },
-  // ── Admin/Staff widgets ──
+
+  // ── Gestion des Espaces ──
   {
     id: "rooms-occupancy",
     section: "Gestion des Espaces",
@@ -169,6 +168,8 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 4,
     component: EventsTimelineWidget,
   },
+
+  // ── Finance & Social ──
   {
     id: "finance-overview",
     section: "Finance & Social",
@@ -214,9 +215,6 @@ export interface DbWidgetConfig {
   is_enabled: boolean;
 }
 
-/**
- * Merge DB configs into local registry: DB overrides priority, roles, plans, enabled.
- */
 export function mergeDbConfigs(dbConfigs: DbWidgetConfig[]): WidgetDef[] {
   const dbMap = new Map<string, DbWidgetConfig>();
   dbConfigs.forEach((c) => dbMap.set(c.widget_key, c));
@@ -247,15 +245,11 @@ export function getVisibleWidgets(
 
   return registry
     .filter((w) => {
-      // DB-level kill switch
       if (w.isEnabled === false) return false;
-      // Plan check (if DB config provides plans)
       if (w.requiredPlans && orgPlan && !w.requiredPlans.includes(orgPlan)) {
         if (!isSuperAdmin) return false;
       }
-      // Pole check
       if (w.requiredPole && !poleIsActive(w.requiredPole, activePoles)) return false;
-      // Role check (empty = all, super_admin bypasses)
       if (isSuperAdmin) return true;
       if (w.allowedRoles.length === 0) return true;
       return w.allowedRoles.some((r) => userDbRoles.includes(r));

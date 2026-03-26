@@ -44,7 +44,7 @@ export function EducationInscriptionsWidget() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 }}
-      className="bento-card"
+      className="bento-card h-full"
     >
       <div className="flex items-center justify-between mb-4">
         <div>
