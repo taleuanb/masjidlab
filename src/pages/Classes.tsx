@@ -33,6 +33,7 @@ type ClassRow = {
   prof: { display_name: string } | null;
   salle: { name: string } | null;
   subjects: { id: string; name: string }[];
+  scheduleSlots: { day_of_week: number; start_time: string; end_time: string; subject_ids: string[] }[];
 };
 
 interface ScheduleSlot {
