@@ -424,7 +424,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
 
                     const scores = scoresMap.get(student.student_id) ?? [];
                     const att = attendanceMap.get(student.student_id);
-                    const attPct = att && att.total > 0 ? Math.round((att.present / att.total) * 100) : null;
+                    const attPct = att ? Math.round(att.pct) : null;
 
                     const initials = `${student.prenom?.[0] ?? ""}${student.nom?.[0] ?? ""}`.toUpperCase();
                     const priority = getPriority(student.student_id);
@@ -515,7 +515,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
                                   <TooltipTrigger asChild>
                                     <span
                                       className={cn(
-                                        "inline-block h-2 w-2 rounded-full transition-transform hover:scale-150",
+                                        "inline-block h-3 w-3 rounded-full transition-transform hover:scale-150",
                                         dotColor(entry.score, scoreFieldKey?.max ?? 5)
                                       )}
                                     />
@@ -530,18 +530,23 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
                               ))
                             ) : (
                               Array.from({ length: 5 }).map((_, i) => (
-                                <span key={i} className="inline-block h-2 w-2 rounded-full bg-muted" />
+                                <span key={i} className="inline-block h-3 w-3 rounded-full bg-slate-200" />
                               ))
                             )}
                           </div>
                         </td>
 
-                        {/* Assiduité */}
+                        {/* Assiduité — Badge */}
                         <td className="px-4 py-3 text-center">
                           {attPct != null ? (
-                            <span className={cn("text-sm font-bold", attendanceColor(attPct))}>
-                              {attPct}%
-                            </span>
+                            (() => {
+                              const badge = attendanceBadge(attPct);
+                              return (
+                                <Badge variant={badge.variant} className={cn("text-xs font-bold", badge.className)}>
+                                  {attPct}%
+                                </Badge>
+                              );
+                            })()
                           ) : (
                             <span className="text-muted-foreground/40 text-xs italic">—</span>
                           )}
