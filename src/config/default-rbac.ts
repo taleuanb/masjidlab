@@ -51,6 +51,9 @@ export const DEFAULT_RBAC_MATRIX: Record<string, Record<string, DefaultPermissio
     map["education.eleves"] = VIEW_EDIT;
     map["education.classes"] = VIEW_EDIT;
     map["education.inscriptions"] = VIEW_EDIT;
+    map["education.sessions"] = VIEW_EDIT;
+    map["education.evaluations"] = VIEW_EDIT;
+    map["education.frais"] = VIEW_EDIT;
     // Finance — view + edit
     map["finance"] = VIEW_EDIT;
     map["finance.transactions"] = VIEW_EDIT;
@@ -85,6 +88,9 @@ export const DEFAULT_RBAC_MATRIX: Record<string, Record<string, DefaultPermissio
     map["education.eleves"] = VIEW_ONLY;
     map["education.classes"] = VIEW_ONLY;
     map["education.inscriptions"] = VIEW_ONLY;
+    map["education.sessions"] = VIEW_EDIT;
+    map["education.evaluations"] = VIEW_EDIT;
+    map["education.frais"] = VIEW_ONLY;
     return map;
   })(),
 

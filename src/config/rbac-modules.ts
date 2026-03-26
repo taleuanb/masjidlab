@@ -40,6 +40,9 @@ export const RBAC_MODULE_HIERARCHY: RbacModuleGroup[] = [
       { id: "education.eleves", label: "Élèves" },
       { id: "education.classes", label: "Classes" },
       { id: "education.inscriptions", label: "Inscriptions" },
+      { id: "education.sessions", label: "Session & Suivi" },
+      { id: "education.evaluations", label: "Évaluations" },
+      { id: "education.frais", label: "Frais Scolarité" },
     ],
   },
   {
