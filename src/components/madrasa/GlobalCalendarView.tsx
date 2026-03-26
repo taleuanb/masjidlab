@@ -218,15 +218,24 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
             const dateStr = format(day, "yyyy-MM-dd");
             const dayEvents = byDay.get(dateStr) ?? [];
             const today = isToday(day);
+            const holidays = dayEvents.filter((e) => e.type === "holiday" && e.meta?.affectsClasses);
+            const isClosed = holidays.length > 0;
+            const sessions = dayEvents.filter((e) => e.type === "session");
 
             return (
               <div
                 key={dateStr}
                 className={`rounded-xl border min-h-[220px] flex flex-col transition-colors ${
-                  today ? "border-primary/30 bg-primary/[0.03]" : "border-border bg-card"
+                  isClosed
+                    ? "border-destructive/30 bg-destructive/[0.06]"
+                    : today
+                    ? "border-primary/30 bg-primary/[0.03]"
+                    : "border-border bg-card"
                 }`}
               >
-                <div className={`px-3 py-2 border-b text-center ${today ? "border-primary/20" : "border-border/50"}`}>
+                <div className={`px-3 py-2 border-b text-center ${
+                  isClosed ? "border-destructive/20" : today ? "border-primary/20" : "border-border/50"
+                }`}>
                   <p className={`text-[10px] font-medium uppercase tracking-wider ${
                     today ? "text-primary" : "text-muted-foreground"
                   }`}>
@@ -240,16 +249,42 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                     {format(day, "d")}
                   </p>
                 </div>
+
+                {/* Holiday banner */}
+                {isClosed && (
+                  <div className="flex items-center gap-1 px-2 py-1 bg-destructive/10 border-b border-destructive/15">
+                    <Palmtree className="h-3 w-3 text-destructive shrink-0" />
+                    <span className="text-[9px] font-semibold text-destructive truncate">
+                      {holidays[0].title}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex-1 p-1.5 space-y-1 overflow-y-auto">
-                  {dayEvents.length === 0 && (
+                  {!isClosed && dayEvents.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground/40 py-6">
                       <CalendarOff className="h-5 w-5 mb-1" />
                       <span className="text-[10px]">Aucun cours</span>
                     </div>
                   )}
-                  {dayEvents.map((ev) => (
-                    <WeekEventBlock key={ev.id} event={ev} onClick={() => setSelectedEvent(ev)} />
+                  {isClosed && sessions.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-destructive/30 py-6">
+                      <CalendarOff className="h-5 w-5 mb-1" />
+                      <span className="text-[10px]">École fermée</span>
+                    </div>
+                  )}
+                  {/* Show sessions dimmed if closed */}
+                  {sessions.map((ev) => (
+                    <div key={ev.id} className={isClosed ? "opacity-30 pointer-events-none" : ""} title={isClosed ? "Cours annulé — École fermée" : undefined}>
+                      <WeekEventBlock event={ev} onClick={() => !isClosed && setSelectedEvent(ev)} />
+                    </div>
                   ))}
+                  {/* Non-session, non-holiday events */}
+                  {dayEvents
+                    .filter((e) => e.type !== "session" && e.type !== "holiday")
+                    .map((ev) => (
+                      <WeekEventBlock key={ev.id} event={ev} onClick={() => setSelectedEvent(ev)} />
+                    ))}
                 </div>
               </div>
             );
@@ -281,9 +316,15 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                 <button
                   key={dateStr}
                   onClick={() => drillToWeek(day)}
-                  className={`relative flex flex-col items-start border-b border-r border-border/30 p-1.5 min-h-[72px] text-left transition-colors hover:bg-accent/50 ${
+                  className={`relative flex flex-col items-start border-b border-r p-1.5 min-h-[72px] text-left transition-colors hover:bg-accent/50 ${
                     !inMonth ? "opacity-40" : ""
-                  } ${today ? "bg-primary/[0.04]" : ""} ${hasHoliday ? "bg-destructive/[0.04]" : ""}`}
+                  } ${
+                    hasHoliday
+                      ? "bg-destructive/[0.07] border-destructive/20"
+                      : today
+                      ? "bg-primary/[0.04] border-border/30"
+                      : "border-border/30"
+                  }`}
                 >
                   <span className={`text-xs font-medium leading-none ${
                     today
@@ -294,17 +335,19 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                   </span>
                   <div className="mt-1 space-y-0.5 w-full overflow-hidden">
                     {hasHoliday && (
-                      <div className="flex items-center gap-0.5 text-[9px] text-destructive truncate">
+                      <div className="flex items-center gap-0.5 text-[9px] text-destructive font-medium truncate">
                         <Palmtree className="h-2.5 w-2.5 shrink-0" />
                         <span className="truncate">{holidays[0].title}</span>
                       </div>
                     )}
-                    {sessions.slice(0, 2).map((ev) => (
-                      <MonthDot key={ev.id} event={ev} />
-                    ))}
-                    {sessions.length > 2 && (
-                      <span className="text-[9px] text-muted-foreground pl-3">+{sessions.length - 2}</span>
-                    )}
+                    <div className={hasHoliday ? "opacity-30" : ""}>
+                      {sessions.slice(0, 2).map((ev) => (
+                        <MonthDot key={ev.id} event={ev} />
+                      ))}
+                      {sessions.length > 2 && (
+                        <span className="text-[9px] text-muted-foreground pl-3">+{sessions.length - 2}</span>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
