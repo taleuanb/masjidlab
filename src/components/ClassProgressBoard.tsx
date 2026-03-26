@@ -255,7 +255,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
       if (recent < 0.4) priority += 2;
     }
     const att = attendanceMap.get(sid);
-    if (att && att.total > 0 && (att.present / att.total) < 0.7) priority += 2;
+    if (att && att.pct < 70) priority += 2;
     return priority;
   }, [goalsMap, scoresMap, attendanceMap, scoreFieldKey]);
 
