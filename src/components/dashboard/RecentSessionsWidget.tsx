@@ -322,8 +322,8 @@ export function RecentSessionsWidget() {
                 </p>
               </div>
               <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => navigate(`/appel?class=${activeSchedule.class_id}`)}>
-                <Phone className="h-3.5 w-3.5" />
-                Prendre l'appel
+                <ClipboardEdit className="h-3.5 w-3.5" />
+                Démarrer le suivi
               </Button>
             </div>
           )}
