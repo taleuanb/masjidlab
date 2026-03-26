@@ -954,6 +954,7 @@ export type Database = {
           billing_cycle: string | null
           currency: string | null
           org_id: string
+          session_report_template: string | null
           updated_at: string | null
           whatsapp_absence_template: string | null
           whatsapp_session_template: string | null
@@ -964,6 +965,7 @@ export type Database = {
           billing_cycle?: string | null
           currency?: string | null
           org_id: string
+          session_report_template?: string | null
           updated_at?: string | null
           whatsapp_absence_template?: string | null
           whatsapp_session_template?: string | null
@@ -974,6 +976,7 @@ export type Database = {
           billing_cycle?: string | null
           currency?: string | null
           org_id?: string
+          session_report_template?: string | null
           updated_at?: string | null
           whatsapp_absence_template?: string | null
           whatsapp_session_template?: string | null
