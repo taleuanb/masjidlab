@@ -11,8 +11,8 @@ export interface WidgetDef {
   allowedRoles: string[];
   /** Higher = rendered first */
   defaultWeight: number;
-  /** Grid column span hint: 1 | 2 | 3 */
-  colSpan: 1 | 2 | 3;
+  /** Grid column span (out of 12) */
+  colSpan: 1 | 2 | 3 | 4 | 6 | 8 | 12;
   /** Lazy-loaded component */
   component: React.LazyExoticComponent<ComponentType<any>>;
   /** Plans required (from DB config) */
@@ -51,9 +51,10 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: null,
     allowedRoles: ["super_admin", "admin", "responsable"],
     defaultWeight: 1000,
-    colSpan: 3,
+    colSpan: 12,
     component: OrgKpiStats,
   },
+  // ── Education Row 1: Assiduité (6) + Effectifs (3) + Inscriptions (3) ──
   {
     id: "edu-assiduité",
     section: "École Madrassa",
@@ -61,7 +62,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: EDUCATION_ROLES,
     defaultWeight: 900,
-    colSpan: 1,
+    colSpan: 6,
     component: EducationAssiduiteWidget,
   },
   {
@@ -71,7 +72,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: EDUCATION_ROLES,
     defaultWeight: 890,
-    colSpan: 1,
+    colSpan: 4,
     component: EducationEffectifsWidget,
   },
   {
@@ -81,8 +82,19 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: EDUCATION_ROLES,
     defaultWeight: 880,
-    colSpan: 1,
+    colSpan: 4,
     component: EducationInscriptionsWidget,
+  },
+  // ── Education Row 2: Finance (8) + Alertes (4) ──
+  {
+    id: "edu-finance",
+    section: "École Madrassa",
+    sectionEmoji: "📚",
+    requiredPole: "education",
+    allowedRoles: ["super_admin", "admin", "responsable"],
+    defaultWeight: 870,
+    colSpan: 8,
+    component: EducationFinanceWidget,
   },
   {
     id: "edu-alertes",
@@ -90,28 +102,19 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     sectionEmoji: "📚",
     requiredPole: "education",
     allowedRoles: EDUCATION_ROLES,
-    defaultWeight: 870,
-    colSpan: 1,
+    defaultWeight: 860,
+    colSpan: 4,
     component: EducationAlertesWidget,
   },
-  {
-    id: "edu-finance",
-    section: "École Madrassa",
-    sectionEmoji: "📚",
-    requiredPole: "education",
-    allowedRoles: ["super_admin", "admin", "responsable"],
-    defaultWeight: 860,
-    colSpan: 1,
-    component: EducationFinanceWidget,
-  },
+  // ── Education Row 3: Activity feed (full width) ──
   {
     id: "edu-recent-sessions",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
     allowedRoles: EDUCATION_ROLES,
-    defaultWeight: 855,
-    colSpan: 2,
+    defaultWeight: 850,
+    colSpan: 12,
     component: RecentSessionsWidget,
   },
   // ── Parent widgets ──
@@ -122,7 +125,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: PARENT_ROLES,
     defaultWeight: 950,
-    colSpan: 2,
+    colSpan: 8,
     component: StudentProgressWidget,
   },
   {
@@ -132,7 +135,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: PARENT_ROLES,
     defaultWeight: 940,
-    colSpan: 1,
+    colSpan: 4,
     component: ParentInvoicesWidget,
   },
   {
@@ -142,7 +145,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: PARENT_ROLES,
     defaultWeight: 930,
-    colSpan: 1,
+    colSpan: 4,
     component: SchoolAgendaWidget,
   },
   // ── Admin/Staff widgets ──
@@ -153,7 +156,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "logistics",
     allowedRoles: ADMIN_ROLES,
     defaultWeight: 700,
-    colSpan: 2,
+    colSpan: 8,
     component: RoomsOccupancyWidget,
   },
   {
@@ -163,7 +166,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "logistics",
     allowedRoles: [...ADMIN_ROLES, "enseignant"],
     defaultWeight: 690,
-    colSpan: 1,
+    colSpan: 4,
     component: EventsTimelineWidget,
   },
   {
@@ -173,7 +176,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "finance",
     allowedRoles: ADMIN_ROLES,
     defaultWeight: 500,
-    colSpan: 1,
+    colSpan: 6,
     component: FinanceWidget,
   },
   {
@@ -183,7 +186,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "logistics",
     allowedRoles: ADMIN_ROLES,
     defaultWeight: 490,
-    colSpan: 1,
+    colSpan: 6,
     component: AssetsWidget,
   },
 ];
