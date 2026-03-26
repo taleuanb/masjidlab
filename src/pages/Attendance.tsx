@@ -184,7 +184,7 @@ const Attendance = () => {
   const otherCourses = useMemo(() => allCourses.filter((c) => c.profId && c.profId !== myProfileId), [allCourses, myProfileId]);
 
   // ── Pre-check which classes already have a session today ──
-  const scheduledClassIds = useMemo(() => scheduledCourses.map((c) => c.classInfo.id), [scheduledCourses]);
+  const scheduledClassIds = useMemo(() => allCourses.map((c) => c.classInfo.id), [allCourses]);
   const { data: existingSessionsMap = new Map<string, string>() } = useQuery({
     queryKey: ["today_sessions_check", orgId, today, scheduledClassIds],
     enabled: !!orgId && scheduledClassIds.length > 0,
