@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardCheck, ClipboardList, Loader2, Check, ChevronLeft, Users, AlertTriangle,
   UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2, CalendarClock, PlayCircle, Handshake,
+  Send, ExternalLink, CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,10 +20,13 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AttendanceHistory } from "@/components/AttendanceHistory";
 import { SessionReportDrawer } from "@/components/SessionReportDrawer";
-import { WA_DEFAULT_ABSENCE_TEMPLATE } from "@/components/madrasa/CommunicationsTab";
+import { WA_DEFAULT_ABSENCE_TEMPLATE, WA_DEFAULT_SESSION_REPORT } from "@/components/madrasa/CommunicationsTab";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 

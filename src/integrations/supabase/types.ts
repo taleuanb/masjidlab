@@ -889,32 +889,38 @@ export type Database = {
         Row: {
           actual_teacher_id: string
           class_id: string
+          completed_at: string | null
           created_at: string | null
           date: string
           id: string
           org_id: string
           schedule_id: string | null
           status: string | null
+          summary_note: string | null
         }
         Insert: {
           actual_teacher_id: string
           class_id: string
+          completed_at?: string | null
           created_at?: string | null
           date?: string
           id?: string
           org_id: string
           schedule_id?: string | null
           status?: string | null
+          summary_note?: string | null
         }
         Update: {
           actual_teacher_id?: string
           class_id?: string
+          completed_at?: string | null
           created_at?: string | null
           date?: string
           id?: string
           org_id?: string
           schedule_id?: string | null
           status?: string | null
+          summary_note?: string | null
         }
         Relationships: [
           {
