@@ -15,9 +15,27 @@ export function EducationVigilanceWidget() {
   const { isTeacher, profileId, teacherClassIds } = useTeacherScope();
   const navigate = useNavigate();
 
+  // Teacher with no classes assigned → show initialisation state
+  if (isTeacher && teacherClassIds.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bento-card h-full flex flex-col items-center justify-center text-center gap-3 py-8"
+      >
+        <ShieldAlert className="h-8 w-8 text-muted-foreground/20" />
+        <div>
+          <h3 className="text-base font-semibold">Initialisation</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
+            En attente d'assignation de vos classes par l'administration
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
 
   const { data, isLoading } = useQuery({
-    queryKey: ["edu-vigilance", orgId, isTeacher, profileId],
+    queryKey: ["edu-vigilance", orgId, isTeacher, teacherClassIds],
     enabled: !!orgId && (!isTeacher || teacherClassIds.length > 0),
     refetchInterval: 60_000,
     queryFn: async () => {
@@ -32,7 +50,7 @@ export function EducationVigilanceWidget() {
         .neq("status", "completed");
 
       if (isTeacher) {
-        pendingQuery = pendingQuery.eq("actual_teacher_id", profileId!);
+        pendingQuery = pendingQuery.in("class_id", teacherClassIds);
       }
 
       const { data: pending } = await pendingQuery;
@@ -48,7 +66,7 @@ export function EducationVigilanceWidget() {
         .limit(5);
 
       if (isTeacher) {
-        bilanQuery = bilanQuery.eq("actual_teacher_id", profileId!);
+        bilanQuery = bilanQuery.in("class_id", teacherClassIds);
       }
 
       const { data: missingBilan } = await bilanQuery;
@@ -64,7 +82,7 @@ export function EducationVigilanceWidget() {
         .limit(5);
 
       if (isTeacher) {
-        lowQuery = lowQuery.eq("actual_teacher_id", profileId!);
+        lowQuery = lowQuery.in("class_id", teacherClassIds);
       }
 
       const { data: lowRated } = await lowQuery;
