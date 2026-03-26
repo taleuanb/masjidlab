@@ -198,6 +198,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     const schedules = schedulesQuery.data ?? [];
     const classes = classesQuery.data ?? [];
     const subjects = subjectsQuery.data ?? [];
+    const profiles = profilesQuery.data ?? [];
     const holidays = calendarQuery.data ?? [];
     const sessions = sessionsQuery.data ?? [];
     const globalEvents = globalEventsQuery.data ?? [];
@@ -205,6 +206,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     // Look-ups
     const classMap = new Map(classes.map((c) => [c.id, c]));
     const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
+    const profileMap = new Map(profiles.map((p) => [p.id, p.display_name]));
 
     // Index sessions by "classId|date" for O(1) lookup
     const sessionIndex = new Map<string, (typeof sessions)[number]>();
