@@ -70,7 +70,7 @@ export function useModuleAccess(): UseModuleAccessReturn {
     (async () => {
       const { data, error } = await supabase
         .from("role_permissions")
-        .select("module, enabled, role")
+        .select("module, enabled, can_view, role")
         .is("org_id", null)
         .in("role", effectiveRoles as any);
 
@@ -79,11 +79,11 @@ export function useModuleAccess(): UseModuleAccessReturn {
         setGlobalPerms(new Map());
         return;
       }
-      // BOOL_OR: if any role has enabled=true for a module, it's enabled
+      // BOOL_OR: if any role has enabled=true OR can_view=true for a module, it's visible
       const map = new Map<string, boolean>();
       for (const row of data as any[]) {
         const current = map.get(row.module) ?? false;
-        map.set(row.module, current || !!(row.enabled));
+        map.set(row.module, current || !!(row.enabled || row.can_view));
       }
       setGlobalPerms(map);
     })();
