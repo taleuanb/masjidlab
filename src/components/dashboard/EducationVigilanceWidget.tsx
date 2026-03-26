@@ -3,30 +3,38 @@ import { motion } from "framer-motion";
 import { ShieldAlert, Clock, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
 export function EducationVigilanceWidget() {
   const { orgId } = useOrganization();
+  const { isTeacher, profileId, teacherClassIds } = useTeacherScope();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["edu-vigilance", orgId],
-    enabled: !!orgId,
+    queryKey: ["edu-vigilance", orgId, isTeacher, profileId],
+    enabled: !!orgId && (!isTeacher || teacherClassIds.length > 0),
     refetchInterval: 60_000,
     queryFn: async () => {
       const today = format(new Date(), "yyyy-MM-dd");
 
       // Sessions pending today (not completed)
-      const { data: pending } = await supabase
+      let pendingQuery = supabase
         .from("madrasa_sessions")
         .select("id, class_id, madrasa_classes(nom)")
         .eq("org_id", orgId!)
         .eq("date", today)
         .neq("status", "completed");
 
+      if (isTeacher) {
+        pendingQuery = pendingQuery.eq("actual_teacher_id", profileId!);
+      }
+
+      const { data: pending } = await pendingQuery;
+
       // Sessions completed with low rating
-      const { data: lowRated } = await supabase
+      let lowQuery = supabase
         .from("madrasa_sessions")
         .select("id, class_id, average_rating, date, madrasa_classes(nom)")
         .eq("org_id", orgId!)
@@ -34,6 +42,12 @@ export function EducationVigilanceWidget() {
         .lt("average_rating", 2.5)
         .order("completed_at", { ascending: false })
         .limit(5);
+
+      if (isTeacher) {
+        lowQuery = lowQuery.eq("actual_teacher_id", profileId!);
+      }
+
+      const { data: lowRated } = await lowQuery;
 
       return {
         pendingCount: pending?.length ?? 0,
@@ -57,7 +71,9 @@ export function EducationVigilanceWidget() {
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-base font-semibold">Points de vigilance</h3>
+          <h3 className="text-base font-semibold">
+            {isTeacher ? "Mes points de vigilance" : "Points de vigilance"}
+          </h3>
           <p className="text-xs text-muted-foreground mt-0.5">Suivi temps réel</p>
         </div>
         <ShieldAlert className={`h-4 w-4 ${hasAlerts ? "text-destructive" : "text-muted-foreground"}`} />
@@ -71,7 +87,6 @@ export function EducationVigilanceWidget() {
         </div>
       ) : (
         <div className="space-y-3 flex-1">
-          {/* Pending sessions today */}
           {data.pendingCount > 0 && (
             <div className="rounded-lg border border-accent/30 bg-accent/10 p-3">
               <div className="flex items-center gap-2 mb-2">
@@ -95,7 +110,6 @@ export function EducationVigilanceWidget() {
             </div>
           )}
 
-          {/* Low-rated sessions */}
           {data.lowRatedSessions.length > 0 && (
             <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
               <div className="flex items-center gap-2 mb-2">
