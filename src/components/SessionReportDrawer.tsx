@@ -287,8 +287,11 @@ export function SessionReportDrawer({
     if (!open) {
       setPickedSubjectId("");
       setShowCelebration(false);
+    } else if (!subjectId && !pickedSubjectId && classSubjects.length > 0) {
+      // Auto-select first available subject
+      setPickedSubjectId(classSubjects[0].id);
     }
-  }, [open]);
+  }, [open, subjectId, pickedSubjectId, classSubjects]);
 
   const updateField = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -391,6 +394,7 @@ export function SessionReportDrawer({
             config_id: activeConfig.id,
             data_json: dataToSave,
             org_id: orgId,
+            ...(activeSessionId ? { session_id: activeSessionId } : {}),
           });
         if (error) throw error;
       }
