@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardCheck, ClipboardList, Loader2, Check, ChevronLeft, Users, AlertTriangle,
-  UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2,
+  UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2, CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ import { AttendanceHistory } from "@/components/AttendanceHistory";
 import { SessionReportDrawer } from "@/components/SessionReportDrawer";
 import { WA_DEFAULT_ABSENCE_TEMPLATE } from "@/components/madrasa/CommunicationsTab";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -29,6 +30,13 @@ interface ClassInfo {
   nom: string;
   niveau: string | null;
   studentCount: number;
+}
+
+interface ScheduledCourse {
+  scheduleId: string;
+  classInfo: ClassInfo;
+  startTime: string;
+  endTime: string;
 }
 
 interface StudentRow {
@@ -45,6 +53,11 @@ interface AttendanceEntry {
   status: AttendanceStatus;
 }
 
+/** Convert JS getDay() (0=Sun) to our DB day_of_week (1=Mon..7=Sun) */
+function jsDayToDbDay(jsDay: number): number {
+  return jsDay === 0 ? 7 : jsDay;
+}
+
 const STATUS_CONFIG: Record<AttendanceStatus, { label: string; icon: React.ElementType; cls: string; activeCls: string }> = {
   present: { label: "Présent", icon: UserCheck, cls: "border-border text-muted-foreground", activeCls: "bg-green-500 text-white border-green-500" },
   absent:  { label: "Absent",  icon: UserX,     cls: "border-border text-muted-foreground", activeCls: "bg-destructive text-destructive-foreground border-destructive" },
@@ -58,8 +71,6 @@ const Attendance = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [classes, setClasses] = useState<ClassInfo[]>([]);
-  const [loadingClasses, setLoadingClasses] = useState(true);
   const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(null);
 
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -76,79 +87,91 @@ const Attendance = () => {
 
   const today = format(new Date(), "yyyy-MM-dd");
   const todayLabel = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
+  const todayDbDay = jsDayToDbDay(new Date().getDay());
 
-  // ── Fetch classes for this teacher ──
-  const fetchClasses = useCallback(async () => {
-    if (!orgId || !user) return;
-    setLoadingClasses(true);
-    try {
+  // ── Fetch today's scheduled courses for this teacher ──
+  const { data: scheduledCourses = [], isLoading: loadingSchedules } = useQuery({
+    queryKey: ["today_schedules", orgId, user?.id, todayDbDay],
+    enabled: !!orgId && !!user,
+    queryFn: async () => {
       // Get user's profile id
       const { data: profile } = await supabase
         .from("profiles")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", user!.id)
         .maybeSingle();
+      if (!profile) return [];
 
-      if (!profile) {
-        setClasses([]);
-        setLoadingClasses(false);
-        return;
-      }
-
-      // Fetch classes where prof_id matches, or all classes if admin
+      // Check if admin
       const { data: userRoles } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id);
-
+        .eq("user_id", user!.id);
       const roles = (userRoles ?? []).map((r: any) => r.role);
       const isAdmin = roles.includes("super_admin") || roles.includes("admin") || roles.includes("responsable");
 
-      let query = supabase
+      // Fetch schedules for today's day_of_week
+      const { data: schedules, error: schedErr } = await supabase
+        .from("madrasa_schedules")
+        .select("id, day_of_week, start_time, end_time, class_id")
+        .eq("org_id", orgId!)
+        .eq("day_of_week", todayDbDay);
+      if (schedErr) throw schedErr;
+      if (!schedules || schedules.length === 0) return [];
+
+      // Fetch classes for those schedules
+      const classIds = [...new Set(schedules.map((s) => s.class_id))];
+      let classQuery = supabase
         .from("madrasa_classes")
-        .select("id, nom, niveau")
-        .eq("org_id", orgId);
+        .select("id, nom, niveau, prof_id")
+        .eq("org_id", orgId!)
+        .in("id", classIds);
+      const { data: classData } = await classQuery;
+      const classMap = new Map((classData ?? []).map((c: any) => [c.id, c]));
 
-      if (!isAdmin) {
-        query = query.eq("prof_id", profile.id);
-      }
-
-      const { data: classData, error } = await query.order("nom");
-      if (error) throw error;
+      // Filter by prof_id if not admin
+      const filteredSchedules = schedules.filter((s) => {
+        const cls = classMap.get(s.class_id);
+        if (!cls) return false;
+        return isAdmin || cls.prof_id === profile.id;
+      });
 
       // Count enrolled students per class
-      const classIds = (classData ?? []).map((c: any) => c.id);
-      let countMap: Record<string, number> = {};
-
-      if (classIds.length > 0) {
+      const filteredClassIds = [...new Set(filteredSchedules.map((s) => s.class_id))];
+      const countMap: Record<string, number> = {};
+      if (filteredClassIds.length > 0) {
         const { data: enrollments } = await supabase
           .from("madrasa_enrollments")
           .select("class_id")
-          .in("class_id", classIds)
-          .eq("org_id", orgId)
+          .in("class_id", filteredClassIds)
+          .eq("org_id", orgId!)
           .eq("statut", "Actif");
-
         for (const e of enrollments ?? []) {
           countMap[e.class_id] = (countMap[e.class_id] ?? 0) + 1;
         }
       }
 
-      setClasses(
-        (classData ?? []).map((c: any) => ({
-          id: c.id,
-          nom: c.nom,
-          niveau: c.niveau,
-          studentCount: countMap[c.id] ?? 0,
-        }))
-      );
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setLoadingClasses(false);
-    }
-  }, [orgId, user, toast]);
+      // Build result sorted by start_time
+      const courses: ScheduledCourse[] = filteredSchedules
+        .map((s) => {
+          const cls = classMap.get(s.class_id)!;
+          return {
+            scheduleId: s.id,
+            classInfo: {
+              id: cls.id,
+              nom: cls.nom,
+              niveau: cls.niveau,
+              studentCount: countMap[cls.id] ?? 0,
+            },
+            startTime: (s.start_time as string).slice(0, 5),
+            endTime: (s.end_time as string).slice(0, 5),
+          };
+        })
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-  useEffect(() => { fetchClasses(); }, [fetchClasses]);
+      return courses;
+    },
+  });
 
   // ── Fetch settings threshold + absence template ──
   const { data: madrasaSettings } = useQuery({
@@ -375,38 +398,71 @@ const Attendance = () => {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="appel" className="mt-4">
-              {loadingClasses ? (
-                <div className="flex justify-center py-16">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <TabsContent value="appel" className="mt-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <CalendarClock className="h-4 w-4 text-primary" />
+                Mes cours prévus aujourd'hui
+              </div>
+
+              {loadingSchedules ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[1, 2].map((i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex justify-between">
+                          <Skeleton className="h-5 w-32" />
+                          <Skeleton className="h-5 w-16 rounded-full" />
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-20" />
+                        </div>
+                        <Skeleton className="h-9 w-full rounded-md" />
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              ) : classes.length === 0 ? (
+              ) : scheduledCourses.length === 0 ? (
                 <Card>
                   <CardContent className="py-12 text-center text-muted-foreground">
-                    <ClipboardCheck className="h-10 w-10 mx-auto opacity-30 mb-3" />
-                    <p className="font-medium">Aucune classe assignée</p>
-                    <p className="text-xs mt-1">Demandez à l'administrateur de vous assigner une classe.</p>
+                    <CalendarClock className="h-10 w-10 mx-auto opacity-30 mb-3" />
+                    <p className="font-medium">Vous n'avez aucun cours prévu aujourd'hui.</p>
+                    <p className="text-xs mt-1">Vérifiez le planning ou contactez l'administrateur.</p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {classes.map((cls) => (
-                    <button
-                      key={cls.id}
-                      onClick={() => handleSelectClass(cls)}
-                      className="text-left rounded-xl border bg-card p-4 hover:border-primary/50 hover:bg-accent/30 transition-all active:scale-[0.98]"
+                  {scheduledCourses.map((course) => (
+                    <Card
+                      key={course.scheduleId}
+                      className="hover:border-primary/50 hover:shadow-sm transition-all"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-foreground">{cls.nom}</span>
-                        {cls.niveau && (
-                          <Badge variant="outline" className="text-[10px]">{cls.niveau}</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                        <Users className="h-4 w-4" />
-                        <span>{cls.studentCount} élève{cls.studentCount > 1 ? "s" : ""}</span>
-                      </div>
-                    </button>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-foreground">{course.classInfo.nom}</span>
+                          {course.classInfo.niveau && (
+                            <Badge variant="outline" className="text-[10px]">{course.classInfo.niveau}</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5" />
+                            {course.startTime} – {course.endTime}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Users className="h-3.5 w-3.5" />
+                            {course.classInfo.studentCount} élève{course.classInfo.studentCount > 1 ? "s" : ""}
+                          </span>
+                        </div>
+                        <Button
+                          className="w-full"
+                          onClick={() => handleSelectClass(course.classInfo)}
+                        >
+                          <ClipboardCheck className="h-4 w-4 mr-1.5" />
+                          Sélectionner cette classe
+                        </Button>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               )}
