@@ -35,6 +35,7 @@ const EducationFinanceWidget = lazy(() => import("@/components/dashboard/Educati
 const StudentProgressWidget = lazy(() => import("@/components/dashboard/StudentProgressWidget").then((m) => ({ default: m.StudentProgressWidget })));
 const ParentInvoicesWidget = lazy(() => import("@/components/dashboard/ParentInvoicesWidget").then((m) => ({ default: m.ParentInvoicesWidget })));
 const SchoolAgendaWidget = lazy(() => import("@/components/dashboard/SchoolAgendaWidget").then((m) => ({ default: m.SchoolAgendaWidget })));
+const RecentSessionsWidget = lazy(() => import("@/components/dashboard/RecentSessionsWidget").then((m) => ({ default: m.RecentSessionsWidget })));
 
 // ─── All roles shorthand ────────────────────────────────────────────
 const ADMIN_ROLES = ["super_admin", "admin", "responsable"];
@@ -102,6 +103,16 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultWeight: 860,
     colSpan: 1,
     component: EducationFinanceWidget,
+  },
+  {
+    id: "edu-recent-sessions",
+    section: "École Madrassa",
+    sectionEmoji: "📚",
+    requiredPole: "education",
+    allowedRoles: EDUCATION_ROLES,
+    defaultWeight: 855,
+    colSpan: 2,
+    component: RecentSessionsWidget,
   },
   // ── Parent widgets ──
   {
