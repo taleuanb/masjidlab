@@ -33,6 +33,7 @@ type ClassRow = {
   prof: { display_name: string } | null;
   salle: { name: string } | null;
   subjects: { id: string; name: string }[];
+  scheduleSlots: { day_of_week: number; start_time: string; end_time: string; subject_ids: string[] }[];
 };
 
 interface ScheduleSlot {
@@ -57,6 +58,7 @@ const Classes = () => {
     { day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] },
   ]);
   const [filterNiveau, setFilterNiveau] = useState<string>("all");
+  const [filterSubjects, setFilterSubjects] = useState<string[]>([]);
   const [progressClassId, setProgressClassId] = useState<string>("");
 
   const isEditing = !!editingClass;
@@ -75,18 +77,24 @@ const Classes = () => {
 
       const classIds = (data ?? []).map((c: any) => c.id);
       let subjectMap: Record<string, { id: string; name: string }[]> = {};
+      let scheduleMap: Record<string, { day_of_week: number; start_time: string; end_time: string; subject_ids: string[] }[]> = {};
+
       if (classIds.length > 0) {
-        const { data: links } = await supabase
-          .from("madrasa_class_subjects")
-          .select("class_id, subject:madrasa_subjects(id, name)")
-          .in("class_id", classIds);
-        for (const link of links ?? []) {
+        const [linksRes, schedsRes] = await Promise.all([
+          supabase.from("madrasa_class_subjects").select("class_id, subject:madrasa_subjects(id, name)").in("class_id", classIds),
+          supabase.from("madrasa_schedules").select("class_id, day_of_week, start_time, end_time, subject_ids").in("class_id", classIds).order("day_of_week"),
+        ]);
+        for (const link of linksRes.data ?? []) {
           if (!subjectMap[link.class_id]) subjectMap[link.class_id] = [];
           if (link.subject) subjectMap[link.class_id].push(link.subject as any);
         }
+        for (const s of schedsRes.data ?? []) {
+          if (!scheduleMap[s.class_id]) scheduleMap[s.class_id] = [];
+          scheduleMap[s.class_id].push({ day_of_week: s.day_of_week, start_time: s.start_time, end_time: s.end_time, subject_ids: (s.subject_ids ?? []) as string[] });
+        }
       }
 
-      return (data ?? []).map((c: any) => ({ ...c, subjects: subjectMap[c.id] ?? [] })) as ClassRow[];
+      return (data ?? []).map((c: any) => ({ ...c, subjects: subjectMap[c.id] ?? [], scheduleSlots: scheduleMap[c.id] ?? [] })) as ClassRow[];
     },
   });
 
@@ -277,7 +285,7 @@ const Classes = () => {
           <TabsContent value="liste" className="mt-4 space-y-4">
             {/* Filter */}
             {classes.length > 0 && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <Select value={filterNiveau} onValueChange={setFilterNiveau}>
                   <SelectTrigger className="h-9 w-48"><SelectValue placeholder="Filtrer par niveau" /></SelectTrigger>
@@ -286,6 +294,34 @@ const Classes = () => {
                     {levels.map((l) => (<SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>))}
                   </SelectContent>
                 </Select>
+                {subjects.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 gap-1.5 text-sm font-normal">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        {filterSubjects.length === 0 ? "Toutes les matières" : `${filterSubjects.length} matière(s)`}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="start">
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {subjects.map((s) => (
+                          <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-accent">
+                            <Checkbox
+                              checked={filterSubjects.includes(s.id)}
+                              onCheckedChange={() => setFilterSubjects((prev) => prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id])}
+                            />
+                            <span className="truncate">{s.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {filterSubjects.length > 0 && (
+                        <Button variant="ghost" size="sm" className="w-full mt-1 text-xs text-muted-foreground" onClick={() => setFilterSubjects([])}>
+                          Réinitialiser
+                        </Button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
             )}
 
@@ -300,9 +336,35 @@ const Classes = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {classes.filter((c) => filterNiveau === "all" || c.niveau === filterNiveau).map((c) => (
+                {classes
+                  .filter((c) => filterNiveau === "all" || c.niveau === filterNiveau)
+                  .filter((c) => {
+                    if (filterSubjects.length === 0) return true;
+                    const classSubjectIds = new Set(c.scheduleSlots.flatMap((s) => s.subject_ids));
+                    return filterSubjects.some((sid) => classSubjectIds.has(sid));
+                  })
+                  .map((c) => {
+                    // Compute next/first schedule slot for display
+                    const nextSlot = c.scheduleSlots[0];
+                    const extraSlots = c.scheduleSlots.length - 1;
+
+                    return (
                   <Card key={c.id} className="group relative cursor-pointer hover:border-primary/30 transition-colors" onClick={() => openEdit(c)}>
-                    <CardHeader className="pb-2">
+                    {/* Schedule banner */}
+                    {nextSlot && (
+                      <div className="flex items-center gap-1.5 px-4 pt-3 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 shrink-0" />
+                        <span>
+                          {DAY_LABELS[nextSlot.day_of_week]} {nextSlot.start_time.slice(0, 5)} – {nextSlot.end_time.slice(0, 5)}
+                        </span>
+                        {extraSlots > 0 && (
+                          <Badge variant="secondary" className="text-[10px] font-normal ml-1 px-1.5 py-0">
+                            +{extraSlots}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    <CardHeader className={nextSlot ? "pb-2 pt-1.5" : "pb-2"}>
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-base">{c.nom}</CardTitle>
                         <div className="flex items-center gap-1">
@@ -339,17 +401,21 @@ const Classes = () => {
                       )}
                       {c.subjects.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
-                          {c.subjects.map((s) => (
-                            <Badge key={s.id} variant="secondary" className="text-[10px] font-normal">{s.name}</Badge>
+                          {c.subjects.slice(0, 3).map((s) => (
+                            <Badge key={s.id} variant="secondary" className="text-[10px] font-normal max-w-[100px] truncate">{s.name}</Badge>
                           ))}
+                          {c.subjects.length > 3 && (
+                            <Badge variant="secondary" className="text-[10px] font-normal">+{c.subjects.length - 3}</Badge>
+                          )}
                         </div>
                       )}
-                      {!c.niveau && !c.prof?.display_name && c.subjects.length === 0 && (
+                      {!c.niveau && !c.prof?.display_name && c.subjects.length === 0 && c.scheduleSlots.length === 0 && (
                         <p className="text-xs text-muted-foreground/50 italic">Aucun détail configuré</p>
                       )}
                     </CardContent>
                   </Card>
-                ))}
+                    );
+                  })}
               </div>
             )}
           </TabsContent>
