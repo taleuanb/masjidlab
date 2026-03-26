@@ -16,6 +16,7 @@ import {
   Loader2,
   RefreshCw,
   ShieldAlert,
+  BookOpen,
 } from "lucide-react";
 import {
   addDays,
@@ -27,12 +28,16 @@ import {
   isBefore,
 } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useQuery } from "@tanstack/react-query";
 import { reservationsMock, sallesMock } from "@/data/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MadrasaAgendaView from "@/components/madrasa/MadrasaAgendaView";
 import {
   Dialog,
   DialogContent,
