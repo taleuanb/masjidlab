@@ -58,6 +58,7 @@ const Classes = () => {
     { day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] },
   ]);
   const [filterNiveau, setFilterNiveau] = useState<string>("all");
+  const [filterSubjects, setFilterSubjects] = useState<string[]>([]);
   const [progressClassId, setProgressClassId] = useState<string>("");
 
   const isEditing = !!editingClass;
