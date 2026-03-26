@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, subDays, differenceInDays, parseISO } from "date-fns";
+import { format, differenceInDays, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ArrowUpDown, Printer, TrendingUp, Filter, Target, CalendarCheck, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -28,20 +29,20 @@ type StudentRow = {
   nom: string;
 };
 
-/** Color for a score dot */
+/** Color for a score dot (w-3 h-3) */
 function dotColor(score: number, max: number): string {
   const ratio = score / max;
-  if (ratio >= 1) return "bg-secondary"; // emerald
-  if (ratio >= 0.8) return "bg-emerald-400";
-  if (ratio >= 0.6) return "bg-amber-warm";
-  return "bg-destructive";
+  if (ratio >= 1) return "bg-emerald-500";
+  if (ratio >= 0.8) return "bg-emerald-300";
+  if (ratio >= 0.6) return "bg-amber-400";
+  return "bg-red-500";
 }
 
-/** Attendance text color */
-function attendanceColor(pct: number): string {
-  if (pct >= 85) return "text-secondary";
-  if (pct >= 60) return "text-amber-600";
-  return "text-destructive";
+/** Attendance badge variant */
+function attendanceBadge(pct: number): { variant: "default" | "secondary" | "destructive" | "outline"; className: string } {
+  if (pct >= 80) return { variant: "default", className: "bg-emerald-500 hover:bg-emerald-500 text-white border-0" };
+  if (pct >= 50) return { variant: "secondary", className: "bg-amber-400 hover:bg-amber-400 text-amber-900 border-0" };
+  return { variant: "destructive", className: "" };
 }
 
 /** Academic year bounds (Sept 1 → June 30) */
@@ -201,25 +202,23 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
     },
   });
 
-  // ── Fetch attendance last 30 days ──
-  const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
+  // ── Fetch attendance from SQL KPI view ──
   const { data: attendanceMap = new Map() } = useQuery({
-    queryKey: ["class_attendance_30d", orgId, classId],
-    enabled: !!orgId && !!classId && students.length > 0,
+    queryKey: ["class_attendance_kpi", classId],
+    enabled: !!classId && students.length > 0,
     queryFn: async () => {
       const { data } = await supabase
-        .from("madrasa_attendance")
-        .select("student_id, status")
-        .eq("class_id", classId)
-        .eq("org_id", orgId!)
-        .gte("date", thirtyDaysAgo);
-      const m = new Map<string, { total: number; present: number }>();
-      for (const a of data ?? []) {
-        if (!a.student_id) continue;
-        const entry = m.get(a.student_id) ?? { total: 0, present: 0 };
-        entry.total++;
-        if (a.status === "present" || a.status === "late") entry.present++;
-        m.set(a.student_id, entry);
+        .from("view_student_attendance_kpi" as any)
+        .select("*")
+        .eq("class_id", classId);
+      const m = new Map<string, { total: number; present: number; pct: number }>();
+      for (const row of (data ?? []) as any[]) {
+        if (!row.student_id) continue;
+        m.set(row.student_id, {
+          total: Number(row.total_recorded_sessions ?? 0),
+          present: Number(row.present_count ?? 0),
+          pct: Number(row.attendance_percentage ?? 0),
+        });
       }
       return m;
     },
@@ -256,7 +255,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
       if (recent < 0.4) priority += 2;
     }
     const att = attendanceMap.get(sid);
-    if (att && att.total > 0 && (att.present / att.total) < 0.7) priority += 2;
+    if (att && att.pct < 70) priority += 2;
     return priority;
   }, [goalsMap, scoresMap, attendanceMap, scoreFieldKey]);
 
@@ -275,7 +274,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
     const goal = goalsMap.get(student.student_id);
     const scores = scoresMap.get(student.student_id);
     const att = attendanceMap.get(student.student_id);
-    const attPct = att && att.total > 0 ? Math.round((att.present / att.total) * 100) : null;
+    const attPct = att ? Math.round(att.pct) : null;
 
     // Choose template: if low attendance or absent pattern → absence, otherwise session
     const isAbsenceContext = attPct != null && attPct < 60;
@@ -425,7 +424,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
 
                     const scores = scoresMap.get(student.student_id) ?? [];
                     const att = attendanceMap.get(student.student_id);
-                    const attPct = att && att.total > 0 ? Math.round((att.present / att.total) * 100) : null;
+                    const attPct = att ? Math.round(att.pct) : null;
 
                     const initials = `${student.prenom?.[0] ?? ""}${student.nom?.[0] ?? ""}`.toUpperCase();
                     const priority = getPriority(student.student_id);
@@ -516,7 +515,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
                                   <TooltipTrigger asChild>
                                     <span
                                       className={cn(
-                                        "inline-block h-2 w-2 rounded-full transition-transform hover:scale-150",
+                                        "inline-block h-3 w-3 rounded-full transition-transform hover:scale-150",
                                         dotColor(entry.score, scoreFieldKey?.max ?? 5)
                                       )}
                                     />
@@ -531,18 +530,23 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
                               ))
                             ) : (
                               Array.from({ length: 5 }).map((_, i) => (
-                                <span key={i} className="inline-block h-2 w-2 rounded-full bg-muted" />
+                                <span key={i} className="inline-block h-3 w-3 rounded-full bg-slate-200" />
                               ))
                             )}
                           </div>
                         </td>
 
-                        {/* Assiduité */}
+                        {/* Assiduité — Badge */}
                         <td className="px-4 py-3 text-center">
                           {attPct != null ? (
-                            <span className={cn("text-sm font-bold", attendanceColor(attPct))}>
-                              {attPct}%
-                            </span>
+                            (() => {
+                              const badge = attendanceBadge(attPct);
+                              return (
+                                <Badge variant={badge.variant} className={cn("text-xs font-bold", badge.className)}>
+                                  {attPct}%
+                                </Badge>
+                              );
+                            })()
                           ) : (
                             <span className="text-muted-foreground/40 text-xs italic">—</span>
                           )}
