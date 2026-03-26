@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -77,6 +78,10 @@ const Attendance = () => {
   const { orgId } = useOrganization();
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoSelectClassId = searchParams.get("class");
+  const autoSelectDone = useRef(false);
 
   const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
