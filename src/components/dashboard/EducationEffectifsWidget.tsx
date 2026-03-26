@@ -6,39 +6,15 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const LEVEL_ICONS: Record<string, typeof GraduationCap> = {};
-
 export function EducationEffectifsWidget() {
   const { orgId } = useOrganization();
   const { isTeacher, teacherClassIds } = useTeacherScope();
-
-  // ── Teacher: waiting for class assignment ──
-  if (isTeacher && teacherClassIds.length === 0) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bento-card h-full flex flex-col items-center justify-center text-center gap-3 py-8"
-      >
-        <div className="rounded-full bg-muted p-3">
-          <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
-        </div>
-        <div>
-          <h3 className="text-base font-semibold">Initialisation</h3>
-          <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
-            En attente d'assignation de vos classes par l'administration
-          </p>
-        </div>
-      </motion.div>
-    );
-  }
 
   const { data, isLoading } = useQuery({
     queryKey: ["edu-effectifs", orgId, isTeacher, teacherClassIds],
     enabled: !!orgId && (!isTeacher || teacherClassIds.length > 0),
     queryFn: async () => {
       if (isTeacher) {
-        // ── Teacher scoped data ──
         const [enrollmentsRes, subjectsRes] = await Promise.all([
           supabase
             .from("madrasa_enrollments")
@@ -74,7 +50,7 @@ export function EducationEffectifsWidget() {
         };
       }
 
-      // ── Admin view: all students ──
+      // Admin view
       const { data: students } = await supabase
         .from("madrasa_students")
         .select("niveau")
@@ -97,6 +73,27 @@ export function EducationEffectifsWidget() {
       };
     },
   });
+
+  // ── Teacher: waiting for class assignment ──
+  if (isTeacher && teacherClassIds.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bento-card h-full flex flex-col items-center justify-center text-center gap-3 py-8"
+      >
+        <div className="rounded-full bg-muted p-3">
+          <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+        </div>
+        <div>
+          <h3 className="text-base font-semibold">Initialisation</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
+            En attente d'assignation de vos classes par l'administration
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
 
   if (isLoading) return <Skeleton className="h-48 rounded-xl" />;
   if (!data) return null;
