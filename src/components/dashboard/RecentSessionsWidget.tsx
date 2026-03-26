@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Activity, ChevronRight } from "lucide-react";
-import { format } from "date-fns";
+import { AlertTriangle, Activity, ChevronRight, ClipboardEdit, Phone } from "lucide-react";
+import { format, isToday, differenceInMinutes, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { SessionSummarySheet } from "@/components/madrasa/SessionSummarySheet";
@@ -20,6 +21,7 @@ interface SessionRow {
   attendance_count: number | null;
   average_rating: number | null;
   completed_at: string | null;
+  status: string | null;
   madrasa_classes: { nom: string; niveau: string | null; prof_id: string | null } | null;
   profiles: { display_name: string } | null;
 }
@@ -27,29 +29,50 @@ interface SessionRow {
 export function RecentSessionsWidget() {
   const { orgId } = useOrganization();
   const navigate = useNavigate();
+  const { isTeacher, profileId } = useTeacherScope();
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<SessionRow | null>(null);
 
   const { data: sessions, isLoading } = useQuery({
-    queryKey: ["recent-completed-sessions", orgId],
+    queryKey: ["recent-sessions", orgId, isTeacher, profileId],
     enabled: !!orgId,
     staleTime: 2 * 60_000,
     refetchInterval: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("madrasa_sessions")
         .select(`
-          id, class_id, date, summary_note, attendance_count, average_rating, completed_at,
+          id, class_id, date, summary_note, attendance_count, average_rating, completed_at, status,
           madrasa_classes(nom, niveau, prof_id),
           profiles:actual_teacher_id(display_name)
         `)
-        .eq("org_id", orgId!)
-        .eq("status", "completed")
-        .order("completed_at", { ascending: false })
-        .limit(5);
+        .eq("org_id", orgId!);
+
+      if (isTeacher && profileId) {
+        query = query.eq("actual_teacher_id", profileId);
+      }
+
+      const { data, error } = await query
+        .order("completed_at", { ascending: false, nullsFirst: false })
+        .order("date", { ascending: false })
+        .limit(8);
+
       if (error) throw error;
-      return (data ?? []) as unknown as SessionRow[];
+
+      const rows = (data ?? []) as unknown as SessionRow[];
+
+      if (isTeacher) {
+        // Sort: pending bilan first, then by date
+        return rows.sort((a, b) => {
+          const aPending = a.status === "completed" && !a.summary_note ? 1 : 0;
+          const bPending = b.status === "completed" && !b.summary_note ? 1 : 0;
+          if (aPending !== bPending) return bPending - aPending;
+          return 0;
+        });
+      }
+
+      return rows.filter((s) => s.status === "completed");
     },
   });
 
@@ -73,10 +96,47 @@ export function RecentSessionsWidget() {
     },
   });
 
+  // Check for today's upcoming schedule (teacher only)
+  const { data: todaySchedule } = useQuery({
+    queryKey: ["today-schedule", orgId, profileId],
+    enabled: isTeacher && !!profileId && !!orgId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const dayOfWeek = new Date().getDay();
+      const { data } = await supabase
+        .from("madrasa_schedules")
+        .select("id, class_id, start_time, end_time, madrasa_classes!inner(nom, prof_id)")
+        .eq("org_id", orgId!)
+        .eq("day_of_week", dayOfWeek);
+
+      return (data ?? []).filter((s: any) => s.madrasa_classes?.prof_id === profileId);
+    },
+  });
+
   const openSession = (session: SessionRow) => {
     setSelectedSession(session);
     setSheetOpen(true);
   };
+
+  const widgetTitle = isTeacher ? "Mon activité pédagogique" : "Activité des Classes";
+
+  // Check if a schedule is "active now" (within ±30 min)
+  const getActiveSchedule = () => {
+    if (!todaySchedule || todaySchedule.length === 0) return null;
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    for (const sched of todaySchedule) {
+      const [h, m] = sched.start_time.split(":").map(Number);
+      const schedMinutes = h * 60 + m;
+      if (Math.abs(nowMinutes - schedMinutes) <= 30) {
+        return sched;
+      }
+    }
+    return null;
+  };
+
+  const activeSchedule = isTeacher ? getActiveSchedule() : null;
 
   if (isLoading) {
     return (
@@ -99,7 +159,7 @@ export function RecentSessionsWidget() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Activity className="h-4 w-4 text-primary" />
-            Activité des Classes
+            {widgetTitle}
           </CardTitle>
         </CardHeader>
         <CardContent className="px-6">
@@ -119,7 +179,7 @@ export function RecentSessionsWidget() {
         <CardHeader className="pb-2 flex flex-row items-center justify-between px-6">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Activity className="h-4 w-4 text-primary" />
-            Activité des Classes
+            {widgetTitle}
           </CardTitle>
           <Button
             variant="ghost"
@@ -132,6 +192,28 @@ export function RecentSessionsWidget() {
           </Button>
         </CardHeader>
         <CardContent className="px-6 pb-5 pt-0">
+          {/* Quick action: Take attendance now */}
+          {activeSchedule && (
+            <div className="mb-4 p-3 rounded-lg border border-primary/30 bg-primary/5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {(activeSchedule as any).madrasa_classes?.nom} — maintenant
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {activeSchedule.start_time?.slice(0, 5)} – {activeSchedule.end_time?.slice(0, 5)}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => navigate(`/appel?class=${activeSchedule.class_id}`)}
+              >
+                <Phone className="h-3.5 w-3.5" />
+                Prendre l'appel
+              </Button>
+            </div>
+          )}
+
           {/* Table header */}
           <div className="grid grid-cols-[100px_1fr_minmax(0,2fr)_auto] gap-4 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">
             <span>Date</span>
@@ -140,7 +222,7 @@ export function RecentSessionsWidget() {
             <span className="text-right">KPIs</span>
           </div>
 
-          {/* Rows — journal style with clear separators */}
+          {/* Rows */}
           <div className="divide-y divide-border">
             {sessions.map((session) => {
               const totalEnrolled = enrollmentCounts?.[session.class_id] ?? 0;
@@ -151,6 +233,7 @@ export function RecentSessionsWidget() {
               const rating = session.average_rating ?? 0;
               const isAlert =
                 rating < 3 || (attendanceRate !== null && attendanceRate < 50);
+              const needsBilan = session.status === "completed" && !session.summary_note;
 
               return (
                 <button
@@ -183,8 +266,14 @@ export function RecentSessionsWidget() {
                       <span className="text-sm font-semibold truncate">
                         {session.madrasa_classes?.nom ?? "Classe"}
                       </span>
+                      {needsBilan && isTeacher && (
+                        <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30 text-[9px] h-4 px-1.5 shrink-0">
+                          <ClipboardEdit className="h-2.5 w-2.5 mr-0.5" />
+                          Bilan à saisir
+                        </Badge>
+                      )}
                     </div>
-                    {session.profiles?.display_name && (
+                    {!isTeacher && session.profiles?.display_name && (
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                         {session.profiles.display_name}
                       </p>
