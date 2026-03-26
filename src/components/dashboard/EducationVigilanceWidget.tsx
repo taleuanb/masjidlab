@@ -73,10 +73,10 @@ export function EducationVigilanceWidget() {
         <div className="space-y-3 flex-1">
           {/* Pending sessions today */}
           {data.pendingCount > 0 && (
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+            <div className="rounded-lg border border-accent/30 bg-accent/10 p-3">
               <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-3.5 w-3.5 text-amber-600" />
-                <span className="text-xs font-semibold text-amber-700">
+                <Clock className="h-3.5 w-3.5 text-accent-foreground" />
+                <span className="text-xs font-semibold text-accent-foreground">
                   {data.pendingCount} séance{data.pendingCount > 1 ? "s" : ""} en attente de bilan
                 </span>
               </div>
