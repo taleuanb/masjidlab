@@ -38,6 +38,8 @@ interface ScheduledCourse {
   classInfo: ClassInfo;
   startTime: string;
   endTime: string;
+  profId: string | null;
+  profName: string | null;
 }
 
 interface StudentRow {
