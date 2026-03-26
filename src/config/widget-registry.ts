@@ -2,6 +2,7 @@ import { lazy, type ComponentType } from "react";
 
 export interface WidgetDef {
   id: string;
+  label: string;
   section: string;
   sectionEmoji: string;
   requiredPole: string | null;
@@ -35,11 +36,32 @@ const ADMIN_ROLES = ["super_admin", "admin", "responsable"];
 const EDUCATION_ROLES = ["super_admin", "admin", "responsable", "enseignant"];
 const PARENT_ROLES = ["parent"];
 
+// ─── Icon mapping for SaaS admin console ────────────────────────────
+// Keys = widget IDs, values = lucide icon names (kebab-case)
+export const WIDGET_ICON_MAP: Record<string, string> = {
+  "org-kpis": "bar-chart-3",
+  "edu-assiduité": "user-check",
+  "edu-effectifs": "users",
+  "edu-inscriptions": "user-plus",
+  "edu-finance": "wallet",
+  "edu-vigilance": "shield-alert",
+  "edu-recent-sessions": "activity",
+  "parent-recent-sessions": "book-open",
+  "parent-student-progress": "graduation-cap",
+  "parent-invoices": "receipt",
+  "school-agenda": "calendar-days",
+  "rooms-occupancy": "door-open",
+  "events-timeline": "calendar-clock",
+  "finance-overview": "landmark",
+  "assets-inventory": "package",
+};
+
 // ─── Registry ───────────────────────────────────────────────────────
 export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Vue d'ensemble KPIs (full width) ──
   {
     id: "org-kpis",
+    label: "KPIs Organisation",
     section: "Vue d'ensemble",
     sectionEmoji: "📊",
     requiredPole: null,
@@ -52,6 +74,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Ligne Macro : 3 × col-4 ──
   {
     id: "edu-assiduité",
+    label: "Assiduité Madrassa",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
@@ -62,6 +85,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   },
   {
     id: "edu-effectifs",
+    label: "Effectifs Madrassa",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
@@ -72,6 +96,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   },
   {
     id: "edu-inscriptions",
+    label: "Inscriptions Madrassa",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
@@ -84,6 +109,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Ligne Opérationnelle : Finance (col-8) + Vigilance (col-4) ──
   {
     id: "edu-finance",
+    label: "Finance Éducation",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
@@ -94,6 +120,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   },
   {
     id: "edu-vigilance",
+    label: "Points de Vigilance",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
@@ -106,6 +133,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Ligne Activité : full width ──
   {
     id: "edu-recent-sessions",
+    label: "Activité des Classes",
     section: "École Madrassa",
     sectionEmoji: "📚",
     requiredPole: "education",
@@ -116,9 +144,9 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   },
 
   // ── Parent widgets ──
-  // Top: Journal des cours (col-12) — freshest info
   {
-    id: "parent-sessions",
+    id: "parent-recent-sessions",
+    label: "Journal des Cours",
     section: "Suivi Famille",
     sectionEmoji: "👨‍👩‍👧‍👦",
     requiredPole: "education",
@@ -127,9 +155,9 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 12,
     component: RecentSessionsWidget,
   },
-  // Middle: Suivi long terme (col-8) + Paiements (col-4)
   {
-    id: "parent-progress",
+    id: "parent-student-progress",
+    label: "Suivi Scolaire (Enfants)",
     section: "Suivi Famille",
     sectionEmoji: "👨‍👩‍👧‍👦",
     requiredPole: "education",
@@ -140,6 +168,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   },
   {
     id: "parent-invoices",
+    label: "Mes Factures & Paiements",
     section: "Suivi Famille",
     sectionEmoji: "👨‍👩‍👧‍👦",
     requiredPole: "education",
@@ -148,9 +177,9 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 4,
     component: ParentInvoicesWidget,
   },
-  // Bottom: Calendrier (col-12)
   {
-    id: "parent-agenda",
+    id: "school-agenda",
+    label: "Agenda Scolaire",
     section: "Suivi Famille",
     sectionEmoji: "👨‍👩‍👧‍👦",
     requiredPole: "education",
@@ -163,6 +192,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Gestion des Espaces ──
   {
     id: "rooms-occupancy",
+    label: "Occupation des Salles",
     section: "Gestion des Espaces",
     sectionEmoji: "📍",
     requiredPole: "logistics",
@@ -173,6 +203,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   },
   {
     id: "events-timeline",
+    label: "Événements à venir",
     section: "Gestion des Espaces",
     sectionEmoji: "📍",
     requiredPole: "logistics",
@@ -185,6 +216,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Finance & Social ──
   {
     id: "finance-overview",
+    label: "Trésorerie",
     section: "Finance & Social",
     sectionEmoji: "💰",
     requiredPole: "finance",
@@ -195,6 +227,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   },
   {
     id: "assets-inventory",
+    label: "Inventaire Matériel",
     section: "Finance & Social",
     sectionEmoji: "💰",
     requiredPole: "logistics",
