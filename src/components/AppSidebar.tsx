@@ -280,13 +280,15 @@ export function AppSidebar() {
     [isModuleVisible]
   );
 
-  // ── GROUPE B: Pôles Métiers ──
+  // ── GROUPE B: Pôles Métiers — show block if parent OR any child is visible ──
   const visibleMetierBlocks = useMemo(
-    () => METIER_BLOCKS.filter((block) => isModuleVisible(block.id)),
+    () => METIER_BLOCKS.filter((block) =>
+      isModuleVisible(block.id) || block.items.some((item) => item.moduleKey && isModuleVisible(item.moduleKey))
+    ),
     [isModuleVisible]
   );
-  const showLogistique = isModuleVisible(LOGISTIQUE_BLOCK.id);
-  const showPersonnel = isModuleVisible(PERSONNEL_BLOCK.id);
+  const showLogistique = isModuleVisible(LOGISTIQUE_BLOCK.id) || LOGISTIQUE_BLOCK.items.some((i) => i.moduleKey && isModuleVisible(i.moduleKey));
+  const showPersonnel = isModuleVisible(PERSONNEL_BLOCK.id) || PERSONNEL_BLOCK.items.some((i) => i.moduleKey && isModuleVisible(i.moduleKey));
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => { window.location.href = getVitrineUrl(); };
