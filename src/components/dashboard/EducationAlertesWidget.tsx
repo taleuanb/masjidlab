@@ -3,15 +3,17 @@ import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
 export function EducationAlertesWidget() {
   const { orgId } = useOrganization();
+  const { isTeacher, teacherClassIds } = useTeacherScope();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["edu-alertes-presence", orgId],
-    enabled: !!orgId,
+    queryKey: ["edu-alertes-presence", orgId, isTeacher, teacherClassIds],
+    enabled: !!orgId && (!isTeacher || teacherClassIds.length > 0),
     queryFn: async () => {
       // Get settings threshold
       const { data: settings } = await supabase
@@ -22,12 +24,18 @@ export function EducationAlertesWidget() {
 
       const threshold = settings?.attendance_threshold ?? 3;
 
-      // Count absences per enrollment
-      const { data: absences } = await supabase
+      // Count absences per enrollment, filtered by teacher's classes if applicable
+      let absQuery = supabase
         .from("madrasa_attendance")
-        .select("enrollment_id")
+        .select("enrollment_id, class_id")
         .eq("org_id", orgId!)
         .eq("status", "absent");
+
+      if (isTeacher && teacherClassIds.length > 0) {
+        absQuery = absQuery.in("class_id", teacherClassIds);
+      }
+
+      const { data: absences } = await absQuery;
 
       const countByEnrollment: Record<string, number> = {};
       (absences ?? []).forEach((a) => {
@@ -68,7 +76,9 @@ export function EducationAlertesWidget() {
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-base font-semibold">Alertes Présence</h3>
+          <h3 className="text-base font-semibold">
+            {isTeacher ? "Absences à suivre (Mes classes)" : "Alertes Présence"}
+          </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Seuil : {data.threshold} absences
           </p>
