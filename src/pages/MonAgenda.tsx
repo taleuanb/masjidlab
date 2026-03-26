@@ -86,9 +86,25 @@ const POLE_COLORS: Record<string, string> = {
 export default function MonAgendaPage() {
   const { pole } = useRole();
   const { user } = useAuth();
+  const { orgId } = useOrganization();
   const { toast } = useToast();
   const { push: pushNotification } = useNotifications();
   const [currentDate, setCurrentDate] = useState(new Date(2026, 1, 17));
+
+  // Get teacher profile ID for Madrasa view
+  const { data: myProfile } = useQuery({
+    queryKey: ["my-profile-id", user?.id, orgId],
+    enabled: !!user?.id && !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("org_id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+  });
   const [reservations, setReservations] = useState(reservationsMock);
   const [indisponibilites, setIndisponibilites] = useState<Indisponibilite[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
