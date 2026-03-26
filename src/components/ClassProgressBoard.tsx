@@ -274,7 +274,7 @@ export function ClassProgressBoard({ classId, className, subjects }: ClassProgre
     const goal = goalsMap.get(student.student_id);
     const scores = scoresMap.get(student.student_id);
     const att = attendanceMap.get(student.student_id);
-    const attPct = att && att.total > 0 ? Math.round((att.present / att.total) * 100) : null;
+    const attPct = att ? Math.round(att.pct) : null;
 
     // Choose template: if low attendance or absent pattern → absence, otherwise session
     const isAbsenceContext = attPct != null && attPct < 60;
