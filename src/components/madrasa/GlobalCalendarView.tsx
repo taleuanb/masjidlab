@@ -464,6 +464,22 @@ function EventDetailPanel({
     isBefore(ev.end, new Date()) &&
     !ev.sessionId;
 
+  // Fetch session details (summary_note, average_rating, attendance_count)
+  const { data: sessionData } = useQuery({
+    queryKey: ["session-detail", ev.sessionId],
+    enabled: isSession && ev.status === "completed" && !!ev.sessionId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_sessions")
+        .select("summary_note, average_rating, attendance_count")
+        .eq("id", ev.sessionId!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Fetch attendance stats for completed sessions
   const { data: attendanceStats } = useQuery({
     queryKey: ["attendance-stats", ev.sessionId],
@@ -590,24 +606,52 @@ function EventDetailPanel({
         </div>
       )}
 
-      {/* Attendance stats (completed sessions only) */}
-      {isSession && ev.status === "completed" && attendanceStats && attendanceStats.total > 0 && (
+      {/* Bilan rapide (completed sessions only) */}
+      {isSession && ev.status === "completed" && (
         <>
           <Separator />
-          <div className="space-y-2">
+          <div className="space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Bilan rapide
             </p>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Présence</span>
-              <span className="font-medium tabular-nums">
-                {attendanceStats.present} / {attendanceStats.total} élèves
-              </span>
-            </div>
-            <Progress value={attendanceStats.percentage} className="h-2" />
-            <p className="text-[10px] text-muted-foreground text-right tabular-nums">
-              {attendanceStats.percentage}%
-            </p>
+
+            {/* Rating */}
+            {sessionData && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Moyenne</span>
+                <span className="font-medium tabular-nums">
+                  ⭐ {sessionData.average_rating ?? 0}/5
+                </span>
+              </div>
+            )}
+
+            {/* Attendance from session row */}
+            {attendanceStats && attendanceStats.total > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Présence</span>
+                  <span className="font-medium tabular-nums">
+                    👥 {attendanceStats.present} / {attendanceStats.total} élèves
+                  </span>
+                </div>
+                <Progress value={attendanceStats.percentage} className="h-2" />
+                <p className="text-[10px] text-muted-foreground text-right tabular-nums">
+                  {attendanceStats.percentage}%
+                </p>
+              </div>
+            )}
+
+            {/* Summary note */}
+            {sessionData?.summary_note && (
+              <div className="rounded-lg bg-muted/50 border border-border/50 p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  Résumé du Prof
+                </p>
+                <p className="text-sm italic text-muted-foreground leading-relaxed">
+                  {sessionData.summary_note}
+                </p>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -629,14 +673,13 @@ function EventDetailPanel({
 
       <Separator />
 
-      {/* Action */}
-      {isSession && ev.classId && (
+      {/* Action — completed: view bilan */}
+      {isSession && ev.classId && ev.status === "completed" && (
         <Button
           className="w-full"
           onClick={() => onNavigate(`/attendance?classId=${ev.classId}`)}
         >
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Accéder à la feuille d'appel
+          📊 Voir le Bilan de Séance
         </Button>
       )}
     </div>
