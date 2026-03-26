@@ -11,8 +11,8 @@ export interface WidgetDef {
   allowedRoles: string[];
   /** Higher = rendered first */
   defaultWeight: number;
-  /** Grid column span hint: 1 | 2 | 3 */
-  colSpan: 1 | 2 | 3;
+  /** Grid column span (out of 12) */
+  colSpan: 1 | 2 | 3 | 4 | 6 | 8 | 12;
   /** Lazy-loaded component */
   component: React.LazyExoticComponent<ComponentType<any>>;
   /** Plans required (from DB config) */

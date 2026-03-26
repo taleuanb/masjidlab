@@ -28,12 +28,16 @@ function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
 
 // ── Widget wrapper with Suspense ─────────────────────────────────────
 function WidgetSlot({ widget, index }: { widget: WidgetDef; index: number }) {
-  const colClass =
-    widget.colSpan === 3
-      ? "col-span-1 sm:col-span-2 lg:col-span-3"
-      : widget.colSpan === 2
-      ? "col-span-1 lg:col-span-2"
-      : "";
+  const spanMap: Record<number, string> = {
+    1: "col-span-12 sm:col-span-6 lg:col-span-4",
+    2: "col-span-12 lg:col-span-8",
+    3: "col-span-12",
+    4: "col-span-12 sm:col-span-6 lg:col-span-4",
+    6: "col-span-12 sm:col-span-6",
+    8: "col-span-12 lg:col-span-8",
+    12: "col-span-12",
+  };
+  const colClass = spanMap[widget.colSpan] ?? "col-span-12 sm:col-span-6 lg:col-span-4";
 
   return (
     <motion.div
@@ -163,7 +167,7 @@ export default function Dashboard() {
             {sectionName !== "Vue d'ensemble" && (
               <SectionHeader emoji={emoji} title={sectionName} />
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-12 gap-6">
               {widgets.map((w, i) => (
                 <WidgetSlot key={w.id} widget={w} index={i} />
               ))}
