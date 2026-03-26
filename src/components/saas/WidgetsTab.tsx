@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Loader2, RefreshCw, Check, Pencil, ArrowUp, ArrowDown,
-  LayoutGrid, Plus,
+  LayoutGrid, Plus, Search,
   GraduationCap, Receipt, CalendarDays, BookOpen, Activity,
   BarChart3, UserCheck, Users, UserPlus, Wallet, ShieldAlert,
   DoorOpen, CalendarClock, Landmark, Package,
@@ -101,6 +101,11 @@ export function WidgetsTab() {
   const [editWidget, setEditWidget] = useState<WidgetConfig | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // ─── Filter state ─────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterPole, setFilterPole] = useState("all");
+
   // Edit form state
   const [editLabel, setEditLabel] = useState("");
   const [editPlans, setEditPlans] = useState<string[]>([]);
@@ -117,14 +122,40 @@ export function WidgetsTab() {
         .order("priority", { ascending: false });
       if (error) throw error;
       setWidgets((data ?? []) as WidgetConfig[]);
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   }, [toast]);
 
   useEffect(() => { fetchWidgets(); }, [fetchWidgets]);
+
+  // ─── Filtered widgets ─────────────────────────────────────────────
+  const filteredWidgets = useMemo(() => {
+    return widgets.filter((w) => {
+      // Text search
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (!w.label.toLowerCase().includes(q) && !w.widget_key.toLowerCase().includes(q)) {
+          return false;
+        }
+      }
+      // Role filter
+      if (filterRole !== "all") {
+        if (!w.allowed_roles.includes(filterRole)) return false;
+      }
+      // Pole filter
+      if (filterPole !== "all") {
+        if (filterPole === "global") {
+          if (w.required_pole) return false;
+        } else {
+          if (w.required_pole !== filterPole) return false;
+        }
+      }
+      return true;
+    });
+  }, [widgets, searchQuery, filterRole, filterPole]);
 
   // ─── Sync missing registry widgets to DB ──────────────────────────
   const syncRegistryToDb = async () => {
@@ -157,8 +188,8 @@ export function WidgetsTab() {
         description: missing.map((m) => m.label).join(", "),
       });
       fetchWidgets();
-    } catch (err: any) {
-      toast({ title: "Erreur sync", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erreur sync", description: (err as Error).message, variant: "destructive" });
     } finally {
       setSyncing(false);
     }
@@ -207,8 +238,8 @@ export function WidgetsTab() {
       toast({ title: "Widget mis à jour" });
       setEditWidget(null);
       fetchWidgets();
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -224,8 +255,8 @@ export function WidgetsTab() {
       setWidgets((prev) =>
         prev.map((x) => (x.id === w.id ? { ...x, is_enabled: !x.is_enabled } : x))
       );
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
     }
   };
 
@@ -243,8 +274,8 @@ export function WidgetsTab() {
           .map((x) => (x.id === w.id ? { ...x, priority: newPriority } : x))
           .sort((a, b) => b.priority - a.priority)
       );
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erreur", description: (err as Error).message, variant: "destructive" });
     }
   };
 
@@ -287,6 +318,54 @@ export function WidgetsTab() {
               </Button>
             </div>
           </div>
+
+          {/* ─── Filter bar ──────────────────────────────────────── */}
+          <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border mt-3">
+            <div className="relative flex-1 min-w-[200px] max-w-xs">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un widget…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+            <Select value={filterRole} onValueChange={setFilterRole}>
+              <SelectTrigger className="w-[180px] h-8 text-sm">
+                <SelectValue placeholder="Filtrer par rôle" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les rôles</SelectItem>
+                {ALL_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {DB_ROLE_TO_UI[r] ?? r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterPole} onValueChange={setFilterPole}>
+              <SelectTrigger className="w-[170px] h-8 text-sm">
+                <SelectValue placeholder="Filtrer par pôle" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les pôles</SelectItem>
+                <SelectItem value="global">Global (aucun pôle)</SelectItem>
+                <SelectItem value="education">📚 Éducation</SelectItem>
+                <SelectItem value="logistics">📍 Logistique</SelectItem>
+                <SelectItem value="finance">💰 Finance</SelectItem>
+              </SelectContent>
+            </Select>
+            {(searchQuery || filterRole !== "all" || filterPole !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-muted-foreground"
+                onClick={() => { setSearchQuery(""); setFilterRole("all"); setFilterPole("all"); }}
+              >
+                Réinitialiser
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -302,94 +381,102 @@ export function WidgetsTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {widgets.map((w) => (
-                <TableRow key={w.id} className={!w.is_enabled ? "opacity-50" : ""}>
-                  <TableCell>
-                    <Switch
-                      checked={w.is_enabled}
-                      onCheckedChange={() => handleToggleEnabled(w)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      <WidgetIcon widgetKey={w.widget_key} />
-                      <div className="flex flex-col">
-                        <span className="font-medium text-sm">{w.label}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono">{w.widget_key}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {w.required_pole ? (
-                      <Badge variant="outline" className="text-[10px]">
-                        {POLE_LABEL[w.required_pole] ?? w.required_pole}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">Global</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {w.required_plans.map((p) => (
-                        <Badge
-                          key={p}
-                          variant="outline"
-                          className={`text-[10px] capitalize ${PLAN_BADGE[p] ?? ""}`}
-                        >
-                          {p}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[200px]">
-                      {w.allowed_roles.length === 0 ? (
-                        <span className="text-muted-foreground text-xs">Tous</span>
-                      ) : w.allowed_roles.slice(0, 3).map((r) => (
-                        <Badge
-                          key={r}
-                          variant="outline"
-                          className={`text-[10px] ${ROLE_BADGE[r] ?? ""}`}
-                        >
-                          {DB_ROLE_TO_UI[r] ?? r}
-                        </Badge>
-                      ))}
-                      {w.allowed_roles.length > 3 && (
-                        <Badge variant="outline" className="text-[10px]">
-                          +{w.allowed_roles.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleMovePriority(w, "up")}
-                      >
-                        <ArrowUp className="h-3 w-3" />
-                      </Button>
-                      <span className="text-xs font-mono w-8 text-center">{w.priority}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleMovePriority(w, "down")}
-                      >
-                        <ArrowDown className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => openEdit(w)}>
-                      <Pencil className="h-3.5 w-3.5 mr-1" />
-                      Éditer
-                    </Button>
+              {filteredWidgets.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-sm">
+                    Aucun widget ne correspond aux filtres sélectionnés
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredWidgets.map((w) => (
+                  <TableRow key={w.id} className={!w.is_enabled ? "opacity-50" : ""}>
+                    <TableCell>
+                      <Switch
+                        checked={w.is_enabled}
+                        onCheckedChange={() => handleToggleEnabled(w)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <WidgetIcon widgetKey={w.widget_key} />
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">{w.label}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{w.widget_key}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {w.required_pole ? (
+                        <Badge variant="outline" className="text-[10px]">
+                          {POLE_LABEL[w.required_pole] ?? w.required_pole}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Global</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {w.required_plans.map((p) => (
+                          <Badge
+                            key={p}
+                            variant="outline"
+                            className={`text-[10px] capitalize ${PLAN_BADGE[p] ?? ""}`}
+                          >
+                            {p}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1 max-w-[200px]">
+                        {w.allowed_roles.length === 0 ? (
+                          <span className="text-muted-foreground text-xs">Tous</span>
+                        ) : w.allowed_roles.slice(0, 3).map((r) => (
+                          <Badge
+                            key={r}
+                            variant="outline"
+                            className={`text-[10px] ${ROLE_BADGE[r] ?? ""}`}
+                          >
+                            {DB_ROLE_TO_UI[r] ?? r}
+                          </Badge>
+                        ))}
+                        {w.allowed_roles.length > 3 && (
+                          <Badge variant="outline" className="text-[10px]">
+                            +{w.allowed_roles.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleMovePriority(w, "up")}
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <span className="text-xs font-mono w-8 text-center">{w.priority}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleMovePriority(w, "down")}
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => openEdit(w)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" />
+                        Éditer
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
