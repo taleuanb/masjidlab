@@ -77,18 +77,24 @@ const Classes = () => {
 
       const classIds = (data ?? []).map((c: any) => c.id);
       let subjectMap: Record<string, { id: string; name: string }[]> = {};
+      let scheduleMap: Record<string, { day_of_week: number; start_time: string; end_time: string; subject_ids: string[] }[]> = {};
+
       if (classIds.length > 0) {
-        const { data: links } = await supabase
-          .from("madrasa_class_subjects")
-          .select("class_id, subject:madrasa_subjects(id, name)")
-          .in("class_id", classIds);
-        for (const link of links ?? []) {
+        const [linksRes, schedsRes] = await Promise.all([
+          supabase.from("madrasa_class_subjects").select("class_id, subject:madrasa_subjects(id, name)").in("class_id", classIds),
+          supabase.from("madrasa_schedules").select("class_id, day_of_week, start_time, end_time, subject_ids").in("class_id", classIds).order("day_of_week"),
+        ]);
+        for (const link of linksRes.data ?? []) {
           if (!subjectMap[link.class_id]) subjectMap[link.class_id] = [];
           if (link.subject) subjectMap[link.class_id].push(link.subject as any);
         }
+        for (const s of schedsRes.data ?? []) {
+          if (!scheduleMap[s.class_id]) scheduleMap[s.class_id] = [];
+          scheduleMap[s.class_id].push({ day_of_week: s.day_of_week, start_time: s.start_time, end_time: s.end_time, subject_ids: (s.subject_ids ?? []) as string[] });
+        }
       }
 
-      return (data ?? []).map((c: any) => ({ ...c, subjects: subjectMap[c.id] ?? [] })) as ClassRow[];
+      return (data ?? []).map((c: any) => ({ ...c, subjects: subjectMap[c.id] ?? [], scheduleSlots: scheduleMap[c.id] ?? [] })) as ClassRow[];
     },
   });
 
