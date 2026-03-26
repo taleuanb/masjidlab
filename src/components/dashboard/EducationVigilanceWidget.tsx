@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ShieldAlert, Clock, AlertTriangle, ClipboardEdit, Phone } from "lucide-react";
@@ -10,16 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { SessionSummarySheet } from "@/components/madrasa/SessionSummarySheet";
 
 export function EducationVigilanceWidget() {
   const { orgId } = useOrganization();
   const { isTeacher, profileId, teacherClassIds } = useTeacherScope();
   const navigate = useNavigate();
 
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [selectedMeta, setSelectedMeta] = useState<{ className?: string; date?: Date; teacherName?: string }>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ["edu-vigilance", orgId, isTeacher, profileId],
