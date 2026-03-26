@@ -7,6 +7,7 @@ import {
   PlusCircle, FileText, ArrowRight, LayoutGrid,
 } from "lucide-react";
 import { WidgetsTab } from "@/components/saas/WidgetsTab";
+import { AccessDiagnosticTab } from "@/components/saas/AccessDiagnosticTab";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
@@ -1985,6 +1986,10 @@ export default function SaasAdminPage() {
               <LayoutGrid className="h-3.5 w-3.5" />
               Widgets
             </TabsTrigger>
+            <TabsTrigger value="diagnostic" className="gap-1.5">
+              <SearchCheck className="h-3.5 w-3.5" />
+              Diagnostic
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -2034,6 +2039,10 @@ export default function SaasAdminPage() {
 
           <TabsContent value="widgets">
             <WidgetsTab />
+          </TabsContent>
+
+          <TabsContent value="diagnostic">
+            <AccessDiagnosticTab />
           </TabsContent>
         </Tabs>
       </div>
