@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardCheck, ClipboardList, Loader2, Check, ChevronLeft, Users, AlertTriangle,
   UserCheck, UserX, Clock, ArrowLeft, History, MessageCircle, CheckCircle2, CalendarClock, PlayCircle, Handshake,
+  Send, ExternalLink, CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,10 +20,13 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AttendanceHistory } from "@/components/AttendanceHistory";
 import { SessionReportDrawer } from "@/components/SessionReportDrawer";
-import { WA_DEFAULT_ABSENCE_TEMPLATE } from "@/components/madrasa/CommunicationsTab";
+import { WA_DEFAULT_ABSENCE_TEMPLATE, WA_DEFAULT_SESSION_REPORT } from "@/components/madrasa/CommunicationsTab";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -89,6 +93,9 @@ const Attendance = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [completedReports, setCompletedReports] = useState<Set<string>>(new Set());
   const [notifiedAbsences, setNotifiedAbsences] = useState<Set<string>>(new Set());
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [summaryNote, setSummaryNote] = useState("");
+  const [sessionCompleted, setSessionCompleted] = useState(false);
 
   const today = format(new Date(), "yyyy-MM-dd");
   const todayLabel = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
@@ -455,6 +462,59 @@ const Attendance = () => {
     }
   };
 
+  // ── Close session mutation ──
+  const generateSessionMessage = useCallback(() => {
+    const rawTpl = (madrasaSettings as Record<string, unknown> | null)?.["session_report_template"] as string | null;
+    const tpl = rawTpl || WA_DEFAULT_SESSION_REPORT;
+    const dateStr = format(new Date(), "d MMMM yyyy", { locale: fr });
+
+    // Find current course info
+    const currentCourse = allCourses.find((c) => c.classInfo.id === selectedClass?.id);
+    const profName = currentCourse?.profName ?? "—";
+
+    const message = tpl
+      .replace(/\{nom_classe\}/g, selectedClass?.nom ?? "—")
+      .replace(/\{date\}/g, dateStr)
+      .replace(/\{prof\}/g, profName)
+      .replace(/\{presents\}/g, `${summary.present + summary.late}/${summary.total} élèves`)
+      .replace(/\{bilan_collectif\}/g, summaryNote);
+
+    return message;
+  }, [madrasaSettings, selectedClass, allCourses, summary, summaryNote]);
+
+  const closeSession = useMutation({
+    mutationFn: async () => {
+      if (!activeSessionId || !orgId) throw new Error("Aucune session active");
+      if (!summaryNote.trim()) throw new Error("Le bilan est obligatoire");
+
+      const { error } = await (supabase.from("madrasa_sessions") as any)
+        .update({
+          summary_note: summaryNote.trim(),
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", activeSessionId)
+        .eq("org_id", orgId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      const message = generateSessionMessage();
+      try {
+        await navigator.clipboard.writeText(message);
+      } catch {
+        // clipboard might not be available
+      }
+      setSessionCompleted(true);
+      setCloseDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["today_sessions_check"] });
+      toast({
+        title: "Bilan enregistré et copié ! ✅",
+        description: "Le message a été copié dans le presse-papier.",
+      });
+    },
+    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
   // ── Class selection view ──
   if (!selectedClass) {
     return (
@@ -653,7 +713,7 @@ const Attendance = () => {
             variant="ghost"
             size="icon"
             className="h-9 w-9 shrink-0"
-            onClick={() => { setSelectedClass(null); setActiveSessionId(null); setSaved(false); }}
+            onClick={() => { setSelectedClass(null); setActiveSessionId(null); setSaved(false); setSessionCompleted(false); }}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -833,6 +893,28 @@ const Attendance = () => {
         )}
       </div>
 
+      {/* Session completed banner */}
+      {sessionCompleted && (
+        <div className="rounded-lg border border-brand-emerald/30 bg-brand-emerald/10 p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-brand-emerald">
+            <CheckCircle className="h-4 w-4" />
+            Séance terminée avec succès
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={() => {
+              const msg = generateSessionMessage();
+              window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+            }}
+          >
+            <ExternalLink className="h-3.5 w-3.5 mr-1" />
+            Ouvrir WhatsApp
+          </Button>
+        </div>
+      )}
+
       {/* Fixed bottom CTA */}
       {students.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 backdrop-blur-sm p-4 md:pl-[calc(var(--sidebar-width,280px)+1rem)]">
@@ -843,24 +925,94 @@ const Attendance = () => {
               <span className="text-destructive">{summary.absent}A</span> /{" "}
               <span className="text-amber-600">{summary.late}R</span>
             </div>
-            <Button
-              onClick={handleSave}
-              disabled={saving || saved}
-              size="lg"
-              className="min-w-[160px]"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-              ) : saved ? (
-                <Check className="h-4 w-4 mr-1.5" />
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleSave}
+                disabled={saving || saved}
+                size="lg"
+                className="min-w-[140px]"
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                ) : saved ? (
+                  <Check className="h-4 w-4 mr-1.5" />
+                ) : (
+                  <ClipboardCheck className="h-4 w-4 mr-1.5" />
+                )}
+                {saved ? "Enregistré ✓" : existingAttendance ? "Mettre à jour" : "Valider l'appel"}
+              </Button>
+              {sessionCompleted ? (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  disabled
+                  className="text-brand-emerald border-brand-emerald/30"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1.5" />
+                  Séance clôturée
+                </Button>
               ) : (
-                <ClipboardCheck className="h-4 w-4 mr-1.5" />
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  disabled={!activeSessionId}
+                  onClick={() => { setSummaryNote(""); setCloseDialogOpen(true); }}
+                >
+                  <Send className="h-4 w-4 mr-1.5" />
+                  Terminer & Partager
+                </Button>
               )}
-              {saved ? "Enregistré ✓" : existingAttendance ? "Mettre à jour" : "Valider l'appel"}
-            </Button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Close Session Dialog */}
+      <Dialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bilan de la séance</DialogTitle>
+            <DialogDescription>
+              Saisissez un résumé global pour les parents (objectifs atteints, comportement général...).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="summary-note">Note collective <span className="text-destructive">*</span></Label>
+            <Textarea
+              id="summary-note"
+              className="min-h-[140px]"
+              placeholder="Ex: Révision de la sourate Al-Mulk, versets 1 à 10. Bonne participation générale."
+              value={summaryNote}
+              onChange={(e) => setSummaryNote(e.target.value)}
+            />
+            <div className="rounded-lg bg-muted/50 border p-3 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Aperçu du message</p>
+              <p className="text-sm whitespace-pre-wrap text-foreground">
+                {generateSessionMessage()}
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setCloseDialogOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={() => closeSession.mutate()}
+              disabled={closeSession.isPending || !summaryNote.trim()}
+            >
+              {closeSession.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+              ) : (
+                <Send className="h-4 w-4 mr-1.5" />
+              )}
+              Valider et copier le bilan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Session Report Drawer */}
       <SessionReportDrawer
