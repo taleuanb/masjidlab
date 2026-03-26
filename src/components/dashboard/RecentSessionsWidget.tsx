@@ -285,11 +285,25 @@ export function RecentSessionsWidget() {
                   </div>
 
                   {/* Summary */}
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                    {session.summary_note || (
-                      <span className="italic opacity-50">Aucun résumé</span>
+                  <div className="min-w-0">
+                    {needsBilan && isTeacher ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px] gap-1 border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+                        onClick={(e) => { e.stopPropagation(); openSession(session); }}
+                      >
+                        <ClipboardEdit className="h-3 w-3" />
+                        Saisir le bilan maintenant
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {session.summary_note || (
+                          <span className="italic opacity-50">Aucun résumé</span>
+                        )}
+                      </p>
                     )}
-                  </p>
+                  </div>
 
                   {/* KPI badges */}
                   <div className="flex items-center gap-1.5 shrink-0">
