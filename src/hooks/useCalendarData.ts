@@ -105,7 +105,22 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("madrasa_classes")
-        .select("id, nom, prof_id")
+        .select("id, nom, niveau, prof_id")
+        .eq("org_id", orgId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // ── Profiles (teacher name resolution) ───────────────────────────────
+  const profilesQuery = useQuery({
+    queryKey: ["cal-profiles", orgId],
+    enabled: !!orgId,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, display_name")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
