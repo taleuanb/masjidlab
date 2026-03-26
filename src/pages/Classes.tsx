@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter, Pencil, TrendingUp, Clock } from "lucide-react";
+import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter, Pencil, TrendingUp, Clock, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ClassProgressBoard } from "@/components/ClassProgressBoard";
+import GlobalCalendarView from "@/components/madrasa/GlobalCalendarView";
 import type { Tables } from "@/integrations/supabase/types";
 
 type ClassRow = {
@@ -280,6 +281,10 @@ const Classes = () => {
               <TrendingUp className="h-3.5 w-3.5" />
               Vue Progrès
             </TabsTrigger>
+            <TabsTrigger value="planning" className="gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Planning Global
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="liste" className="mt-4 space-y-4">
@@ -456,6 +461,10 @@ const Classes = () => {
                 })()}
               </>
             )}
+          </TabsContent>
+
+          <TabsContent value="planning" className="mt-4">
+            <GlobalCalendarView filterNiveau={filterNiveau} filterSubjects={filterSubjects} />
           </TabsContent>
         </Tabs>
       </div>
