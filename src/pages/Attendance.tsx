@@ -380,6 +380,25 @@ const Attendance = () => {
     }
   }, [orgId, user, today, queryClient, toast, handleSelectClass]);
 
+  // ── Auto-select class from URL param (?class=ID) ──
+  useEffect(() => {
+    if (autoSelectDone.current || !autoSelectClassId || !allCourses.length || loadingSchedules) return;
+    const match = allCourses.find((c) => c.classInfo.id === autoSelectClassId);
+    if (match) {
+      autoSelectDone.current = true;
+      const existingSessionId = existingSessionsMap.get(match.classInfo.id);
+      if (existingSessionId) {
+        setActiveSessionId(existingSessionId);
+      }
+      handleSelectClass(match.classInfo);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("class");
+        return next;
+      }, { replace: true });
+    }
+  }, [autoSelectClassId, allCourses, loadingSchedules, existingSessionsMap, handleSelectClass, setSearchParams]);
+
 
   const studentIds = useMemo(() => students.map((s) => s.student_id), [students]);
   const { data: todayProgressIds = [] } = useQuery({
