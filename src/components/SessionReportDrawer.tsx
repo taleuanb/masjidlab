@@ -44,6 +44,8 @@ interface SessionReportDrawerProps {
   studentsList?: StudentEntry[];
   /** Called to switch to a different student without closing */
   onStudentChange?: (student: StudentEntry) => void;
+  /** Active session ID from JIT session creation */
+  activeSessionId?: string | null;
 }
 
 export function SessionReportDrawer({
@@ -56,6 +58,7 @@ export function SessionReportDrawer({
   forDate,
   studentsList,
   onStudentChange,
+  activeSessionId,
 }: SessionReportDrawerProps) {
   const { orgId } = useOrganization();
   const { toast } = useToast();
@@ -99,8 +102,24 @@ export function SessionReportDrawer({
     },
   });
 
+  // ── Fetch session's schedule subject_ids for filtering ──
+  const { data: sessionSubjectIds } = useQuery({
+    queryKey: ["session_schedule_subjects", activeSessionId],
+    enabled: open && !!activeSessionId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_sessions")
+        .select("schedule_id, madrasa_schedules(subject_ids)")
+        .eq("id", activeSessionId!)
+        .maybeSingle();
+      const schedule = (data as any)?.madrasa_schedules;
+      const ids: string[] = schedule?.subject_ids ?? [];
+      return ids.length > 0 ? ids : null; // null = no filter (fallback)
+    },
+  });
+
   // ── Fetch subjects for this class (fallback picker) ──
-  const { data: classSubjects = [] } = useQuery({
+  const { data: allClassSubjects = [] } = useQuery({
     queryKey: ["class_subjects_for_report", classId],
     enabled: open && !!classId && !subjectId,
     queryFn: async () => {
@@ -111,6 +130,12 @@ export function SessionReportDrawer({
       return (data ?? []).map((r: any) => r.subject).filter(Boolean) as { id: string; name: string }[];
     },
   });
+
+  // Filter subjects based on session's schedule
+  const classSubjects = useMemo(() => {
+    if (!sessionSubjectIds) return allClassSubjects; // fallback: show all
+    return allClassSubjects.filter((s) => sessionSubjectIds.includes(s.id));
+  }, [allClassSubjects, sessionSubjectIds]);
 
   const [pickedSubjectId, setPickedSubjectId] = useState<string>("");
 
@@ -262,8 +287,11 @@ export function SessionReportDrawer({
     if (!open) {
       setPickedSubjectId("");
       setShowCelebration(false);
+    } else if (!subjectId && !pickedSubjectId && classSubjects.length > 0) {
+      // Auto-select first available subject
+      setPickedSubjectId(classSubjects[0].id);
     }
-  }, [open]);
+  }, [open, subjectId, pickedSubjectId, classSubjects]);
 
   const updateField = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -366,6 +394,7 @@ export function SessionReportDrawer({
             config_id: activeConfig.id,
             data_json: dataToSave,
             org_id: orgId,
+            ...(activeSessionId ? { session_id: activeSessionId } : {}),
           });
         if (error) throw error;
       }
