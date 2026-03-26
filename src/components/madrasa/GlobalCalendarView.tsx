@@ -9,7 +9,6 @@ import {
   BookOpen,
   CalendarOff,
   Users,
-  ExternalLink,
   Calendar as CalendarIcon,
   LayoutGrid,
   AlertCircle,
