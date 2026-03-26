@@ -14,7 +14,7 @@ export function EducationAssiduiteWidget() {
   const { isTeacher, profileId, teacherClassIds } = useTeacherScope();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["edu-assiduite-radial", orgId, isTeacher, profileId],
+    queryKey: ["edu-assiduite-radial", orgId, isTeacher, teacherClassIds],
     enabled: !!orgId && (!isTeacher || teacherClassIds.length > 0),
     queryFn: async () => {
       let query = supabase
@@ -22,7 +22,7 @@ export function EducationAssiduiteWidget() {
         .select("status")
         .eq("org_id", orgId!);
 
-      if (isTeacher && teacherClassIds.length > 0) {
+      if (isTeacher) {
         query = query.in("class_id", teacherClassIds);
       }
 
@@ -39,9 +39,8 @@ export function EducationAssiduiteWidget() {
     },
   });
 
-  // Weekly completion rate
   const { data: weeklyCompletion } = useQuery({
-    queryKey: ["edu-weekly-completion", orgId, isTeacher, profileId],
+    queryKey: ["edu-weekly-completion", orgId, isTeacher, teacherClassIds],
     enabled: !!orgId && (!isTeacher || teacherClassIds.length > 0),
     queryFn: async () => {
       const now = new Date();
@@ -49,7 +48,7 @@ export function EducationAssiduiteWidget() {
       const weekEnd = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
 
       let classQuery = supabase.from("madrasa_classes").select("id").eq("org_id", orgId!);
-      if (isTeacher) classQuery = classQuery.eq("prof_id", profileId!);
+      if (isTeacher) classQuery = classQuery.in("id", teacherClassIds);
       const { data: classes } = await classQuery;
 
       const totalClasses = classes?.length ?? 0;
@@ -105,7 +104,9 @@ export function EducationAssiduiteWidget() {
           <h3 className="text-base font-semibold">
             {isTeacher ? "Assiduité de mes élèves" : "Assiduité"}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">{data.total} relevés enregistrés</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isTeacher ? "Moyenne de mes classes" : `${data.total} relevés enregistrés`}
+          </p>
         </div>
         <div className="flex items-center gap-1.5">
           <Activity className="h-4 w-4 text-primary" />
@@ -156,7 +157,7 @@ export function EducationAssiduiteWidget() {
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground flex items-center gap-1">
               <ClipboardCheck className="h-3 w-3" />
-              Appels cette semaine
+              {isTeacher ? "Mes appels cette semaine" : "Appels cette semaine"}
             </span>
             <span className="font-bold text-foreground">
               {weeklyCompletion.done}/{weeklyCompletion.total}
