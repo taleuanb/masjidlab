@@ -95,31 +95,33 @@ const METIER_BLOCKS: NavBlock[] = [
   },
 ];
 
-const LOGISTIQUE_BLOCK: NavBlock = {
-  id: "operations",
-  label: "Logistique",
-  icon: Truck,
-  items: [
-    { title: "Dashboard Logistique", url: "/", icon: LayoutDashboard },
-    { title: "Planning", url: "/planning", icon: CalendarDays, moduleKey: "operations.planning" },
-    { title: "Événements", url: "/evenements", icon: Calendar, moduleKey: "operations.evenements" },
-    { title: "Inventaire", url: "/inventaire", icon: Package, moduleKey: "operations.inventaire" },
-    { title: "Parking", url: "/parking", icon: Car, moduleKey: "operations.parking" },
-    { title: "Maintenance", url: "/maintenance", icon: Wrench, moduleKey: "operations.maintenance" },
-  ],
-};
-
-const PERSONNEL_BLOCK: NavBlock = {
-  id: "gestion-rh",
-  label: "Personnel",
-  icon: ShieldCheck,
-  items: [
-    { title: "Approbations", url: "/approbations", icon: UserCheck, moduleKey: "gestion-rh.approbations" },
-    { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, moduleKey: "gestion-rh.contrats" },
-    { title: "Documents", url: "/documents", icon: FileText, moduleKey: "gestion-rh.documents" },
-    { title: "Structure", url: "/organisation", icon: Users, moduleKey: "gestion-rh.structure" },
-  ],
-};
+// All business blocks in display order (métiers + logistique + personnel)
+const ALL_BUSINESS_BLOCKS: NavBlock[] = [
+  ...METIER_BLOCKS,
+  {
+    id: "operations",
+    label: "Logistique",
+    icon: Truck,
+    items: [
+      { title: "Planning", url: "/planning", icon: CalendarDays, moduleKey: "operations.planning" },
+      { title: "Événements", url: "/evenements", icon: Calendar, moduleKey: "operations.evenements" },
+      { title: "Inventaire", url: "/inventaire", icon: Package, moduleKey: "operations.inventaire" },
+      { title: "Parking", url: "/parking", icon: Car, moduleKey: "operations.parking" },
+      { title: "Maintenance", url: "/maintenance", icon: Wrench, moduleKey: "operations.maintenance" },
+    ],
+  },
+  {
+    id: "gestion-rh",
+    label: "Personnel",
+    icon: ShieldCheck,
+    items: [
+      { title: "Approbations", url: "/approbations", icon: UserCheck, moduleKey: "gestion-rh.approbations" },
+      { title: "Contrats Staff", url: "/contrats-staff", icon: ShieldCheck, moduleKey: "gestion-rh.contrats" },
+      { title: "Documents", url: "/documents", icon: FileText, moduleKey: "gestion-rh.documents" },
+      { title: "Structure", url: "/organisation", icon: Users, moduleKey: "gestion-rh.structure" },
+    ],
+  },
+];
 
 // ── GROUPE C: MON ESPACE ──
 const MON_ESPACE_ITEMS: NavItem[] = [
@@ -222,10 +224,6 @@ export function AppSidebar() {
   const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
   const { hasAccess, isBypassing } = useModuleAccess();
 
-  const isParentOnly = useMemo(() => {
-    return userDbRoles.length > 0 && userDbRoles.every((r) => r === "parent") && !isSuperAdmin;
-  }, [userDbRoles, isSuperAdmin]);
-
   const isGhostActive = !!impersonatedUser;
   const isPreviewingOtherRole = !isGhostActive && isSuperAdmin && role !== "Super Admin";
   const effectiveBypass = isBypassing && !isPreviewingOtherRole;
@@ -274,21 +272,22 @@ export function AppSidebar() {
     return true;
   }, [hasAccess, isPreviewingOtherRole, previewPermissions, role]);
 
-  // ── GROUPE A: Administration — visible for admin roles ──
+  // ── GROUPE A: Administration — visible if any admin item is accessible ──
   const visibleAdminItems = useMemo(
     () => ADMIN_ITEMS.filter((item) => isModuleVisible(item.moduleKey)),
     [isModuleVisible]
   );
 
-  // ── GROUPE B: Pôles Métiers — show block if parent OR any child is visible ──
-  const visibleMetierBlocks = useMemo(
-    () => METIER_BLOCKS.filter((block) =>
-      isModuleVisible(block.id) || block.items.some((item) => item.moduleKey && isModuleVisible(item.moduleKey))
+  // ── GROUPE B: All business blocks — show block if any child item is visible ──
+  const visibleBusinessBlocks = useMemo(
+    () => ALL_BUSINESS_BLOCKS.filter((block) =>
+      block.items.some((item) => item.moduleKey && isModuleVisible(item.moduleKey))
     ),
     [isModuleVisible]
   );
-  const showLogistique = isModuleVisible(LOGISTIQUE_BLOCK.id) || LOGISTIQUE_BLOCK.items.some((i) => i.moduleKey && isModuleVisible(i.moduleKey));
-  const showPersonnel = isModuleVisible(PERSONNEL_BLOCK.id) || PERSONNEL_BLOCK.items.some((i) => i.moduleKey && isModuleVisible(i.moduleKey));
+
+  // ── Detect "no business access" → show simplified parent-like nav ──
+  const hasNoBusinessAccess = visibleAdminItems.length === 0 && visibleBusinessBlocks.length === 0;
 
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
   const handleLogoClick = () => { window.location.href = getVitrineUrl(); };
@@ -337,7 +336,7 @@ export function AppSidebar() {
         )}
 
         {/* ══════════ PARENT SIMPLIFIED NAV ══════════ */}
-        {isParentOnly ? (
+        {hasNoBusinessAccess ? (
           <SidebarGroup className="py-1">
             <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
               <UserCircle className="h-3 w-3" />
@@ -394,7 +393,7 @@ export function AppSidebar() {
             )}
 
             {/* ══════════ GROUPE B : PÔLES MÉTIERS ══════════ */}
-            {(visibleMetierBlocks.length > 0 || showLogistique || showPersonnel) && (
+            {visibleBusinessBlocks.length > 0 && (
               <SidebarGroup className="py-1">
                 <SidebarGroupLabel className="text-sidebar-foreground/40 text-[10px] uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
                   <Building2 className="h-3 w-3" />
@@ -402,15 +401,9 @@ export function AppSidebar() {
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <div className="space-y-px">
-                    {visibleMetierBlocks.map((block) => (
+                    {visibleBusinessBlocks.map((block) => (
                       <SidebarBlock key={block.id} block={block} location={location} isModuleVisible={isModuleVisible} />
                     ))}
-                    {showLogistique && (
-                      <SidebarBlock block={LOGISTIQUE_BLOCK} location={location} isModuleVisible={isModuleVisible} />
-                    )}
-                    {showPersonnel && (
-                      <SidebarBlock block={PERSONNEL_BLOCK} location={location} isModuleVisible={isModuleVisible} />
-                    )}
                   </div>
                 </SidebarGroupContent>
               </SidebarGroup>
