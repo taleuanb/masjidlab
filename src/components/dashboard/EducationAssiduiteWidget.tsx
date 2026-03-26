@@ -4,22 +4,29 @@ import { Activity, ArrowRight, ClipboardCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 
 export function EducationAssiduiteWidget() {
   const { orgId } = useOrganization();
   const navigate = useNavigate();
+  const { isTeacher, profileId, teacherClassIds } = useTeacherScope();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["edu-assiduite-radial", orgId],
-    enabled: !!orgId,
+    queryKey: ["edu-assiduite-radial", orgId, isTeacher, profileId],
+    enabled: !!orgId && (!isTeacher || teacherClassIds.length > 0),
     queryFn: async () => {
-      const { data: records } = await supabase
+      let query = supabase
         .from("madrasa_attendance")
         .select("status")
         .eq("org_id", orgId!);
 
+      if (isTeacher && teacherClassIds.length > 0) {
+        query = query.in("class_id", teacherClassIds);
+      }
+
+      const { data: records } = await query;
       const total = records?.length ?? 0;
       if (total === 0) return { rate: 0, present: 0, absent: 0, late: 0, excused: 0, total: 0 };
 
@@ -34,23 +41,20 @@ export function EducationAssiduiteWidget() {
 
   // Weekly completion rate
   const { data: weeklyCompletion } = useQuery({
-    queryKey: ["edu-weekly-completion", orgId],
-    enabled: !!orgId,
+    queryKey: ["edu-weekly-completion", orgId, isTeacher, profileId],
+    enabled: !!orgId && (!isTeacher || teacherClassIds.length > 0),
     queryFn: async () => {
       const now = new Date();
       const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
       const weekEnd = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
 
-      // Get all classes
-      const { data: classes } = await supabase
-        .from("madrasa_classes")
-        .select("id")
-        .eq("org_id", orgId!);
+      let classQuery = supabase.from("madrasa_classes").select("id").eq("org_id", orgId!);
+      if (isTeacher) classQuery = classQuery.eq("prof_id", profileId!);
+      const { data: classes } = await classQuery;
 
       const totalClasses = classes?.length ?? 0;
       if (totalClasses === 0) return null;
 
-      // School days this week (Mon-Sat) up to today
       const schoolDays: string[] = [];
       const d = new Date(weekStart);
       const today = new Date();
@@ -62,7 +66,7 @@ export function EducationAssiduiteWidget() {
       const expectedCalls = totalClasses * schoolDays.length;
       if (expectedCalls === 0) return null;
 
-      // Count distinct class-days with at least 1 record
+      const targetClassIds = classes!.map((c) => c.id);
       const { data: records } = await supabase
         .from("madrasa_attendance")
         .select("enrollment_id, date, madrasa_enrollments!madrasa_attendance_enrollment_id_fkey(class_id)")
@@ -73,7 +77,7 @@ export function EducationAssiduiteWidget() {
       const uniqueClassDays = new Set<string>();
       for (const r of records ?? []) {
         const classId = (r as any).madrasa_enrollments?.class_id;
-        if (classId) uniqueClassDays.add(`${classId}-${r.date}`);
+        if (classId && targetClassIds.includes(classId)) uniqueClassDays.add(`${classId}-${r.date}`);
       }
 
       return { done: uniqueClassDays.size, total: expectedCalls };
@@ -98,7 +102,9 @@ export function EducationAssiduiteWidget() {
     >
       <div className="flex items-center justify-between w-full mb-4">
         <div>
-          <h3 className="text-base font-semibold">Assiduité</h3>
+          <h3 className="text-base font-semibold">
+            {isTeacher ? "Assiduité de mes élèves" : "Assiduité"}
+          </h3>
           <p className="text-xs text-muted-foreground mt-0.5">{data.total} relevés enregistrés</p>
         </div>
         <div className="flex items-center gap-1.5">
