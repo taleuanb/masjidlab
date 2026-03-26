@@ -62,9 +62,9 @@ const METIER_BLOCKS: NavBlock[] = [
       { title: "Élèves", url: "/eleves", icon: GraduationCap, moduleKey: "education.eleves" },
       { title: "Classes", url: "/classes", icon: BookOpen, moduleKey: "education.classes" },
       { title: "Inscriptions", url: "/inscriptions", icon: ClipboardList, moduleKey: "education.inscriptions" },
-      { title: "Session & Suivi", url: "/appel", icon: UserCheck, moduleKey: "education.classes" },
-      { title: "Évaluations", url: "/evaluations", icon: ClipboardCheck, moduleKey: "education.classes" },
-      { title: "Frais Scolarité", url: "/frais-scolarite", icon: CreditCard, moduleKey: "education.classes" },
+      { title: "Session & Suivi", url: "/appel", icon: ClipboardList, moduleKey: "education.sessions" },
+      { title: "Évaluations", url: "/evaluations", icon: ClipboardCheck, moduleKey: "education.evaluations" },
+      { title: "Frais Scolarité", url: "/frais-scolarite", icon: CreditCard, moduleKey: "education.frais" },
     ],
   },
   {
