@@ -6,28 +6,49 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Returns the current user's profile ID, whether they are a teacher,
  * and the class IDs they are assigned to (via madrasa_classes.prof_id).
+ *
+ * In ghost mode, uses the impersonated user's roles & profile so that
+ * the dashboard correctly reflects the teacher scope.
  */
 export function useTeacherScope() {
-  const { user, dbRoles } = useAuth();
+  const { user, dbRoles, impersonatedUser } = useAuth();
   const { orgId } = useOrganization();
 
+  // In ghost mode, use impersonated user's roles; otherwise use real roles
+  const effectiveRoles = impersonatedUser?.roles ?? dbRoles;
+
   const isTeacher =
-    dbRoles.includes("enseignant") &&
-    !dbRoles.includes("admin") &&
-    !dbRoles.includes("super_admin") &&
-    !dbRoles.includes("responsable");
+    effectiveRoles.includes("enseignant") &&
+    !effectiveRoles.includes("admin") &&
+    !effectiveRoles.includes("super_admin") &&
+    !effectiveRoles.includes("responsable");
+
+  // In ghost mode, look up the impersonated user's profile; otherwise use real user
+  const targetUserId = impersonatedUser?.id ?? user?.id;
 
   const { data: profileId } = useQuery({
-    queryKey: ["my-profile-id", user?.id],
-    enabled: !!user?.id,
+    queryKey: ["my-profile-id", targetUserId],
+    enabled: !!targetUserId,
     staleTime: Infinity,
     queryFn: async () => {
-      const { data } = await supabase
+      // If impersonating, targetUserId is a profile ID already — check both
+      // First try as user_id (normal case)
+      const { data: byUser } = await supabase
         .from("profiles")
         .select("id")
-        .eq("user_id", user!.id)
+        .eq("user_id", targetUserId!)
         .maybeSingle();
-      return data?.id ?? null;
+
+      if (byUser?.id) return byUser.id;
+
+      // If impersonated ID is a profile ID directly (common in ghost mode)
+      const { data: byId } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", targetUserId!)
+        .maybeSingle();
+
+      return byId?.id ?? null;
     },
   });
 
