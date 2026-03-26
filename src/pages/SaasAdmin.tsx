@@ -1312,8 +1312,12 @@ function PermissionsTab() {
     }
   };
 
+  const [savedSnapshot, setSavedSnapshot] = useState<PermMatrix | null>(null);
+
   const handleReset = () => {
     setResetting(true);
+    // Save current state for undo
+    setSavedSnapshot({ ...matrix });
     const m = buildEmptyMatrix();
     const allIds = getAllRbacModuleIds();
     for (const role of RBAC_ROLES) {
@@ -1329,7 +1333,17 @@ function PermissionsTab() {
     setResetting(false);
     toast({
       title: "Configuration d'usine chargée",
-      description: "Prévisualisation active. Cliquez « Sauvegarder » pour appliquer.",
+      description: "Prévisualisation active. Cliquez « Sauvegarder » pour appliquer ou « Annuler » pour restaurer.",
+    });
+  };
+
+  const handleUndoReset = () => {
+    if (!savedSnapshot) return;
+    setMatrix(savedSnapshot);
+    setSavedSnapshot(null);
+    toast({
+      title: "Restauration effectuée",
+      description: "La configuration précédente a été restaurée.",
     });
   };
 
@@ -1353,6 +1367,12 @@ function PermissionsTab() {
               </p>
             </div>
             <div className="flex gap-2">
+              {savedSnapshot && (
+                <Button variant="ghost" size="sm" onClick={handleUndoReset} className="gap-1 text-destructive hover:text-destructive">
+                  <RotateCcw className="h-4 w-4" />
+                  Annuler
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handleReset} disabled={resetting}>
                 {resetting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
                 Réinitialiser

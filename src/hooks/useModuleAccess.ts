@@ -201,20 +201,30 @@ export function useModuleAccess(): UseModuleAccessReturn {
       );
     }
 
-    // C) RBAC filter — resolve permission with parent inheritance
-    // Priority: explicit DB entry > parent DB entry > factory default > parent factory default
+    // C) RBAC filter — Permissive resolution with positive parent inheritance
+    // If child is explicitly false but parent is true → child inherits true.
     const resolveRbac = (key: string): boolean => {
       // 1. Check explicit DB entry for this key
-      if (globalPerms.has(key)) return !!globalPerms.get(key);
-      // 2. Check factory default for this key
-      const factoryAccess = effectiveRoles.some((r) => hasDefaultView(r, key));
-      if (factoryAccess) return true;
-      // 3. For sub-modules, inherit from parent
+      let childResult: boolean | null = null;
+      if (globalPerms.has(key)) {
+        childResult = !!globalPerms.get(key);
+      } else {
+        // 2. Check factory default for this key
+        const factoryAccess = effectiveRoles.some((r) => hasDefaultView(r, key));
+        childResult = factoryAccess;
+      }
+
+      // If child is already true, done
+      if (childResult) return true;
+
+      // 3. Positive parent inheritance: if child is false, check parent
+      // Parent true → child inherits true (permissive model)
       if (key.includes(".")) {
         const pKey = key.split(".")[0];
         if (globalPerms.has(pKey)) return !!globalPerms.get(pKey);
         return effectiveRoles.some((r) => hasDefaultView(r, pKey));
       }
+
       return false;
     };
 
