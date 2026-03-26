@@ -125,7 +125,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: PARENT_ROLES,
     defaultWeight: 950,
-    colSpan: 2,
+    colSpan: 8,
     component: StudentProgressWidget,
   },
   {
@@ -135,7 +135,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: PARENT_ROLES,
     defaultWeight: 940,
-    colSpan: 1,
+    colSpan: 4,
     component: ParentInvoicesWidget,
   },
   {
@@ -145,7 +145,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: PARENT_ROLES,
     defaultWeight: 930,
-    colSpan: 1,
+    colSpan: 4,
     component: SchoolAgendaWidget,
   },
   // ── Admin/Staff widgets ──
@@ -156,7 +156,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "logistics",
     allowedRoles: ADMIN_ROLES,
     defaultWeight: 700,
-    colSpan: 2,
+    colSpan: 8,
     component: RoomsOccupancyWidget,
   },
   {
@@ -166,7 +166,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "logistics",
     allowedRoles: [...ADMIN_ROLES, "enseignant"],
     defaultWeight: 690,
-    colSpan: 1,
+    colSpan: 4,
     component: EventsTimelineWidget,
   },
   {
@@ -176,7 +176,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "finance",
     allowedRoles: ADMIN_ROLES,
     defaultWeight: 500,
-    colSpan: 1,
+    colSpan: 6,
     component: FinanceWidget,
   },
   {
@@ -186,7 +186,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "logistics",
     allowedRoles: ADMIN_ROLES,
     defaultWeight: 490,
-    colSpan: 1,
+    colSpan: 6,
     component: AssetsWidget,
   },
 ];
