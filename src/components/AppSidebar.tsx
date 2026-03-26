@@ -245,7 +245,7 @@ export function AppSidebar() {
     if (error || !data) { setPreviewPermissions(null); return; }
     const allowed = new Set<string>();
     for (const row of data as any[]) {
-      if (row.enabled ?? row.can_view) allowed.add(row.module);
+      if (row.enabled || row.can_view) allowed.add(row.module);
     }
     setPreviewPermissions(allowed);
   }, [orgId, effectiveDbRole, effectiveBypass]);
