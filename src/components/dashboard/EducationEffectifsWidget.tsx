@@ -104,6 +104,7 @@ export function EducationEffectifsWidget() {
       animate={{ opacity: 1, y: 0 }}
       className="bento-card h-full"
     >
+      {/* ── Header ── */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-base font-semibold">
@@ -116,6 +117,7 @@ export function EducationEffectifsWidget() {
         <Users className="h-4 w-4 text-primary" />
       </div>
 
+      {/* ── Main figure ── */}
       <p className="text-3xl font-bold mb-3">
         {data.total}
         <span className="text-sm font-normal text-muted-foreground ml-1.5">
@@ -123,20 +125,27 @@ export function EducationEffectifsWidget() {
         </span>
       </p>
 
-      {/* ── Teacher KPI bar ── */}
-      {isTeacher && data.classCount != null && (
-        <div className="grid grid-cols-3 gap-2 mb-4 p-2.5 rounded-lg bg-muted/50">
-          {[
-            { icon: LayoutGrid, label: "Classes", value: data.classCount },
-            { icon: BookOpen, label: "Matières", value: data.subjectCount ?? 0 },
-            { icon: GraduationCap, label: "Niveaux", value: data.levelCount ?? 0 },
-          ].map((kpi) => (
-            <div key={kpi.label} className="flex flex-col items-center text-center gap-0.5">
-              <kpi.icon className="h-3.5 w-3.5 text-primary mb-0.5" />
-              <span className="text-lg font-bold leading-none">{kpi.value}</span>
-              <span className="text-[10px] text-muted-foreground">{kpi.label}</span>
-            </div>
-          ))}
+      {/* ── Teacher KPI strip (always rendered when teacher) ── */}
+      {isTeacher && (
+        <div className="grid grid-cols-3 gap-2 mb-5 py-3 border-y border-border/50">
+          <div className="text-center">
+            <p className="text-sm font-bold">{data.classCount ?? teacherClassIds.length}</p>
+            <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+              <LayoutGrid className="h-2.5 w-2.5" /> Classes
+            </p>
+          </div>
+          <div className="text-center border-x border-border/50">
+            <p className="text-sm font-bold">{data.levelCount ?? 0}</p>
+            <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+              <GraduationCap className="h-2.5 w-2.5" /> Niveaux
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-bold">{data.subjectCount ?? 0}</p>
+            <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+              <BookOpen className="h-2.5 w-2.5" /> Matières
+            </p>
+          </div>
         </div>
       )}
 
