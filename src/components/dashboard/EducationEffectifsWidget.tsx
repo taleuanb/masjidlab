@@ -127,8 +127,8 @@ export function EducationEffectifsWidget() {
       {isTeacher && data.classCount != null && (
         <div className="grid grid-cols-3 gap-2 mb-4 p-2.5 rounded-lg bg-muted/50">
           {[
-            { icon: BookOpen, label: "Classes", value: data.classCount },
-            { icon: Layers, label: "Matières", value: data.subjectCount ?? 0 },
+            { icon: LayoutGrid, label: "Classes", value: data.classCount },
+            { icon: BookOpen, label: "Matières", value: data.subjectCount ?? 0 },
             { icon: GraduationCap, label: "Niveaux", value: data.levelCount ?? 0 },
           ].map((kpi) => (
             <div key={kpi.label} className="flex flex-col items-center text-center gap-0.5">
