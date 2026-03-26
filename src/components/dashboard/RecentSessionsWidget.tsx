@@ -114,6 +114,12 @@ export function RecentSessionsWidget() {
   });
 
   const openSession = (session: SessionRow) => {
+    const needsBilan = session.status === "completed" && !session.summary_note;
+    if (isTeacher && needsBilan) {
+      // Navigate to attendance page with class pre-selected
+      navigate(`/appel?class=${session.class_id}`);
+      return;
+    }
     setSelectedSession(session);
     setSheetOpen(true);
   };
@@ -239,7 +245,7 @@ export function RecentSessionsWidget() {
                 <button
                   key={session.id}
                   onClick={() => openSession(session)}
-                  className={`w-full text-left grid grid-cols-[100px_1fr_minmax(0,2fr)_auto] gap-4 items-center px-3 py-3 transition-colors hover:bg-accent/50 rounded-md ${
+                  className={`w-full text-left grid grid-cols-[100px_1fr_minmax(0,2fr)_auto] gap-4 items-center px-3 py-3 transition-colors rounded-md cursor-pointer hover:bg-accent/50 ${
                     needsBilan && isTeacher
                       ? "bg-amber-50 dark:bg-amber-500/5 border border-amber-200/50 dark:border-amber-500/20"
                       : isAlert
@@ -290,8 +296,8 @@ export function RecentSessionsWidget() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 text-[11px] gap-1 border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10"
-                        onClick={(e) => { e.stopPropagation(); openSession(session); }}
+                        className="h-7 text-[11px] gap-1 border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/appel?class=${session.class_id}`); }}
                       >
                         <ClipboardEdit className="h-3 w-3" />
                         Saisir le bilan maintenant
