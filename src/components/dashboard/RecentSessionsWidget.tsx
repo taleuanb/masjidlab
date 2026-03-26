@@ -240,7 +240,11 @@ export function RecentSessionsWidget() {
                   key={session.id}
                   onClick={() => openSession(session)}
                   className={`w-full text-left grid grid-cols-[100px_1fr_minmax(0,2fr)_auto] gap-4 items-center px-3 py-3 transition-colors hover:bg-accent/50 rounded-md ${
-                    isAlert ? "bg-destructive/[0.04]" : ""
+                    needsBilan && isTeacher
+                      ? "bg-amber-50 dark:bg-amber-500/5 border border-amber-200/50 dark:border-amber-500/20"
+                      : isAlert
+                        ? "bg-destructive/[0.04]"
+                        : ""
                   }`}
                 >
                   {/* Date / Time */}

@@ -1,17 +1,50 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { GraduationCap, BookOpen, Users } from "lucide-react";
+import { GraduationCap, BookOpen, Users, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function EducationWidget() {
   const { orgId } = useOrganization();
+  const { isTeacher, profileId, teacherClassIds } = useTeacherScope();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["dashboard-education", orgId],
-    enabled: !!orgId,
+    queryKey: ["dashboard-education", orgId, isTeacher, profileId],
+    enabled: !!orgId && (!isTeacher || teacherClassIds.length > 0),
     queryFn: async () => {
+      if (isTeacher) {
+        // Teacher: count students in their classes
+        const { data: enrollments } = await supabase
+          .from("madrasa_enrollments")
+          .select("student_id")
+          .eq("org_id", orgId!)
+          .eq("statut", "Actif")
+          .in("class_id", teacherClassIds);
+
+        const uniqueStudents = new Set((enrollments ?? []).map((e) => e.student_id));
+
+        // Attendance rate for teacher's classes
+        const { data: attendance } = await supabase
+          .from("madrasa_attendance")
+          .select("status")
+          .eq("org_id", orgId!)
+          .in("class_id", teacherClassIds);
+
+        const total = attendance?.length ?? 0;
+        const present = (attendance ?? []).filter((a) => a.status === "present" || a.status === "late").length;
+        const attendanceRate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+        return {
+          students: uniqueStudents.size,
+          classes: teacherClassIds.length,
+          attendanceRate,
+          isTeacherView: true,
+        };
+      }
+
+      // Admin view
       const [
         { count: studentsCount },
         { count: classesCount },
@@ -21,19 +54,16 @@ export function EducationWidget() {
         supabase.from("madrasa_classes").select("*", { count: "exact", head: true }).eq("org_id", orgId!),
         supabase
           .from("madrasa_enrollments")
-          .select("id, annee_scolaire, statut, created_at")
+          .select("id, statut")
           .eq("org_id", orgId!)
-          .order("created_at", { ascending: false })
-          .limit(5),
+          .eq("statut", "Actif"),
       ]);
-
-      const activeEnrollments = (recentEnrollments ?? []).filter((e) => e.statut === "Actif").length;
 
       return {
         students: studentsCount ?? 0,
         classes: classesCount ?? 0,
-        recentEnrollments: recentEnrollments ?? [],
-        activeEnrollments,
+        activeEnrollments: recentEnrollments?.length ?? 0,
+        isTeacherView: false,
       };
     },
   });
@@ -41,18 +71,28 @@ export function EducationWidget() {
   if (isLoading) return <Skeleton className="h-48 rounded-xl" />;
   if (!data) return null;
 
-  const stats = [
-    { label: "Élèves", value: data.students, icon: Users, color: "text-primary" },
-    { label: "Classes", value: data.classes, icon: BookOpen, color: "text-amber-600" },
-    { label: "Inscrits actifs", value: data.activeEnrollments, icon: GraduationCap, color: "text-primary" },
-  ];
+  const stats = data.isTeacherView
+    ? [
+        { label: "Mes élèves", value: data.students, icon: Users, color: "text-primary" },
+        { label: "Mes classes", value: data.classes, icon: BookOpen, color: "text-amber-600" },
+        { label: "Taux présence", value: `${(data as any).attendanceRate}%`, icon: Activity, color: "text-secondary" },
+      ]
+    : [
+        { label: "Élèves", value: data.students, icon: Users, color: "text-primary" },
+        { label: "Classes", value: data.classes, icon: BookOpen, color: "text-amber-600" },
+        { label: "Inscrits actifs", value: (data as any).activeEnrollments, icon: GraduationCap, color: "text-primary" },
+      ];
 
   return (
     <div className="bento-card">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-base font-semibold">Éducation</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Programme Madrasa</p>
+          <h3 className="text-base font-semibold">
+            {data.isTeacherView ? "Mon enseignement" : "Éducation"}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {data.isTeacherView ? "Vue personnelle" : "Programme Madrasa"}
+          </p>
         </div>
         <GraduationCap className="h-4 w-4 text-primary" />
       </div>
