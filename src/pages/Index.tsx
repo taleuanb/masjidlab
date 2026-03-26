@@ -59,6 +59,7 @@ export default function Dashboard() {
   const { orgId, activePoles, loading: orgLoading, org } = useOrganization();
 
   const isChef = role === "Responsable";
+  const isParentRole = role === "Parent d'élève";
 
   // ── Resolve effective roles for widget filtering ──
   // Ghost mode: use impersonated user's roles
