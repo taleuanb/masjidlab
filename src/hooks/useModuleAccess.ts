@@ -201,56 +201,29 @@ export function useModuleAccess(): UseModuleAccessReturn {
       );
     }
 
-    // C) Global RBAC filter — check global permissions (org_id IS NULL)
-    // If an explicit entry exists, use it. Otherwise, fallback to DEFAULT_RBAC_MATRIX.
-    const hasExplicitEntry = globalPerms.has(moduleKey);
-    const explicitModuleAccess = hasExplicitEntry ? !!globalPerms.get(moduleKey) : null;
-    const fallbackModuleAccess = effectiveRoles.some((r) => hasDefaultView(r, moduleKey));
-    const inGlobalPerms = hasExplicitEntry ? !!explicitModuleAccess : fallbackModuleAccess;
-
-    if (hasExplicitEntry) {
-      if (!explicitModuleAccess) {
-        return finalize(
-          { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore },
-          { inPlan: true, inActivePoles: true, inGlobalPerms: false }
-        );
+    // C) RBAC filter — resolve permission with parent inheritance
+    // Priority: explicit DB entry > parent DB entry > factory default > parent factory default
+    const resolveRbac = (key: string): boolean => {
+      // 1. Check explicit DB entry for this key
+      if (globalPerms.has(key)) return !!globalPerms.get(key);
+      // 2. Check factory default for this key
+      const factoryAccess = effectiveRoles.some((r) => hasDefaultView(r, key));
+      if (factoryAccess) return true;
+      // 3. For sub-modules, inherit from parent
+      if (key.includes(".")) {
+        const pKey = key.split(".")[0];
+        if (globalPerms.has(pKey)) return !!globalPerms.get(pKey);
+        return effectiveRoles.some((r) => hasDefaultView(r, pKey));
       }
-    } else {
-      // No DB entry — use factory defaults as fallback
-      if (!fallbackModuleAccess) {
-        return finalize(
-          { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore },
-          { inPlan: true, inActivePoles: true, inGlobalPerms: false }
-        );
-      }
-    }
+      return false;
+    };
 
-    // Also check parent-level permission for sub-modules (e.g. "education" for "education.eleves")
-    // Exception: if the child has explicit access in DB, allow it even if parent has no/false permission.
-    if (moduleKey.includes(".")) {
-      const childHasExplicitAccess = hasExplicitEntry && !!explicitModuleAccess;
-
-      if (!childHasExplicitAccess) {
-        const parentKey = moduleKey.split(".")[0];
-        const parentExplicit = globalPerms.has(parentKey);
-
-        if (parentExplicit) {
-          if (!globalPerms.get(parentKey)) {
-            return finalize(
-              { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore },
-              { inPlan: true, inActivePoles: true, inGlobalPerms: false }
-            );
-          }
-        } else {
-          const anyRoleAllowedParent = effectiveRoles.some((r) => hasDefaultView(r, parentKey));
-          if (!anyRoleAllowedParent) {
-            return finalize(
-              { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore },
-              { inPlan: true, inActivePoles: true, inGlobalPerms: false }
-            );
-          }
-        }
-      }
+    const inGlobalPerms = resolveRbac(moduleKey);
+    if (!inGlobalPerms) {
+      return finalize(
+        { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore },
+        { inPlan: true, inActivePoles: true, inGlobalPerms: false }
+      );
     }
 
     return finalize(
