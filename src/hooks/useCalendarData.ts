@@ -17,11 +17,16 @@ export interface CalendarEvent {
   status: CalendarEventStatus;
   classId: string | null;
   className: string | null;
+  classNiveau: string | null;
   isReplacement: boolean;
   /** Profile ID of the teacher who actually taught (from madrasa_sessions) */
   actualTeacherId: string | null;
+  /** Display name of the actual teacher */
+  actualTeacherName: string | null;
   /** Profile ID of the assigned teacher (from madrasa_classes) */
   assignedTeacherId: string | null;
+  /** Display name of the assigned teacher */
+  assignedTeacherName: string | null;
   /** Original schedule ID */
   scheduleId: string | null;
   /** Session ID if completed */
