@@ -234,26 +234,6 @@ const Attendance = () => {
     if (madrasaSettings?.attendance_threshold) setThreshold(madrasaSettings.attendance_threshold);
   }, [madrasaSettings]);
 
-  // ── Auto-select class from URL param (?class=ID) ──
-  useEffect(() => {
-    if (autoSelectDone.current || !autoSelectClassId || !allCourses.length || loadingSchedules) return;
-    const match = allCourses.find((c) => c.classInfo.id === autoSelectClassId);
-    if (match) {
-      autoSelectDone.current = true;
-      // Check if session already exists for this class today
-      const existingSessionId = existingSessionsMap.get(match.classInfo.id);
-      if (existingSessionId) {
-        setActiveSessionId(existingSessionId);
-      }
-      handleSelectClass(match.classInfo);
-      // Clear the param to avoid re-triggering
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete("class");
-        return next;
-      }, { replace: true });
-    }
-  }, [autoSelectClassId, allCourses, loadingSchedules, existingSessionsMap, handleSelectClass, setSearchParams]);
 
   const generateAbsenceMessage = useCallback((studentPrenom: string) => {
     const rawTpl = (madrasaSettings as Record<string, unknown> | null)?.["whatsapp_absence_template"] as string | null;
