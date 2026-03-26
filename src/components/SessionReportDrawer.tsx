@@ -44,6 +44,8 @@ interface SessionReportDrawerProps {
   studentsList?: StudentEntry[];
   /** Called to switch to a different student without closing */
   onStudentChange?: (student: StudentEntry) => void;
+  /** Active session ID from JIT session creation */
+  activeSessionId?: string | null;
 }
 
 export function SessionReportDrawer({
@@ -56,6 +58,7 @@ export function SessionReportDrawer({
   forDate,
   studentsList,
   onStudentChange,
+  activeSessionId,
 }: SessionReportDrawerProps) {
   const { orgId } = useOrganization();
   const { toast } = useToast();
