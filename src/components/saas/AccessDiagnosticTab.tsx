@@ -154,14 +154,18 @@ export function AccessDiagnosticTab() {
         });
 
         for (const child of group.children) {
-          const childInPlan = isModuleInPlan(child.id, plan) && parentInPlan;
+          const childInPlan = isModuleInPlan(child.id, plan);
           const childInPole = parentInPole;
-          const childInRbac = permMap.has(child.id)
-            ? !!permMap.get(child.id)
-            : hasDefaultView(selectedRole, child.id);
-          // Child explicit access can bypass parent RBAC
-          const childHasExplicitAccess = permMap.has(child.id) && !!permMap.get(child.id);
-          const childFinal = childInPlan && childInPole && (childHasExplicitAccess || (parentInRbac && childInRbac));
+          // RBAC: check child explicitly, then fallback to parent permission
+          const resolveChildRbac = (): boolean => {
+            if (permMap.has(child.id)) return !!permMap.get(child.id);
+            if (hasDefaultView(selectedRole, child.id)) return true;
+            // Inherit from parent
+            if (permMap.has(group.id)) return !!permMap.get(group.id);
+            return hasDefaultView(selectedRole, group.id);
+          };
+          const childInRbac = resolveChildRbac();
+          const childFinal = childInPlan && childInPole && childInRbac;
 
           diagRows.push({
             moduleId: child.id,

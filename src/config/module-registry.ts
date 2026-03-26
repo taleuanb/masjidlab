@@ -99,7 +99,13 @@ export function isModuleInPlan(moduleId: string, plan: string | null | undefined
   if (!plan) return true;
   const allowed = PLAN_FEATURE_MAPPING[plan as PlanId];
   if (!allowed) return true;
-  return allowed.includes(moduleId);
+  if (allowed.includes(moduleId)) return true;
+  // For sub-modules (e.g. "education.eleves"), check if parent is in plan
+  if (moduleId.includes(".")) {
+    const parentId = moduleId.split(".")[0];
+    return allowed.includes(parentId);
+  }
+  return false;
 }
 
 /**
