@@ -308,7 +308,58 @@ const Attendance = () => {
     }
   }, [orgId, today, toast]);
 
-  // ── Fetch existing progress for today to show indicators ──
+  // ── JIT Session creation / retrieval ──
+  const handleOpenSession = useCallback(async (course: ScheduledCourse) => {
+    if (!orgId || !user) return;
+    setOpeningScheduleId(course.scheduleId);
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!profile) throw new Error("Profil introuvable");
+
+      const { data: existing } = await supabase
+        .from("madrasa_sessions")
+        .select("id")
+        .eq("class_id", course.classInfo.id)
+        .eq("date", today)
+        .eq("org_id", orgId)
+        .maybeSingle();
+
+      let sessionId: string;
+
+      if (existing) {
+        sessionId = existing.id;
+      } else {
+        const { data: newSession, error: insertErr } = await supabase
+          .from("madrasa_sessions")
+          .insert({
+            org_id: orgId,
+            class_id: course.classInfo.id,
+            schedule_id: course.scheduleId,
+            actual_teacher_id: profile.id,
+            date: today,
+            status: "completed",
+          })
+          .select("id")
+          .single();
+        if (insertErr) throw insertErr;
+        sessionId = newSession.id;
+      }
+
+      setActiveSessionId(sessionId);
+      queryClient.invalidateQueries({ queryKey: ["today_sessions_check"] });
+      handleSelectClass(course.classInfo);
+    } catch (err: any) {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setOpeningScheduleId(null);
+    }
+  }, [orgId, user, today, queryClient, toast, handleSelectClass]);
+
+
   const studentIds = useMemo(() => students.map((s) => s.student_id), [students]);
   const { data: todayProgressIds = [] } = useQuery({
     queryKey: ["today_progress_ids", orgId, selectedClass?.id, today],
