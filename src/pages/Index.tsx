@@ -137,7 +137,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {!isChef && (
+        {!isChef && !isParentRole && (
           <div className="px-6 pb-4 text-center space-y-1 mb-2">
             <p
               className="leading-relaxed"
