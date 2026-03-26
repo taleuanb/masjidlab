@@ -25,7 +25,7 @@ import {
   isBefore,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useNavigate } from "react-router-dom";
+import { SessionSummarySheet } from "@/components/madrasa/SessionSummarySheet";
 
 import { useCalendarData, type CalendarEvent } from "@/hooks/useCalendarData";
 import { Badge } from "@/components/ui/badge";
@@ -71,10 +71,10 @@ function groupByDay(events: CalendarEvent[], days: Date[]): Map<string, Calendar
 
 // ── Component ──────────────────────────────────────────────────────────
 export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Props) {
-  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [summarySessionEvent, setSummarySessionEvent] = useState<CalendarEvent | null>(null);
 
   // Week range
   const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
@@ -361,9 +361,28 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
       {/* ── Detail Sheet ───────────────────────────────────────────── */}
       <Sheet open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
         <SheetContent className="w-[380px] sm:w-[420px]">
-          {selectedEvent && <EventDetailPanel event={selectedEvent} onNavigate={navigate} />}
+          {selectedEvent && (
+            <EventDetailPanel
+              event={selectedEvent}
+              onViewBilan={(ev) => {
+                setSelectedEvent(null);
+                setSummarySessionEvent(ev);
+              }}
+            />
+          )}
         </SheetContent>
       </Sheet>
+
+      {/* ── Session Summary Sheet ────────────────────────────────── */}
+      <SessionSummarySheet
+        open={!!summarySessionEvent}
+        onOpenChange={(open) => !open && setSummarySessionEvent(null)}
+        sessionId={summarySessionEvent?.sessionId ?? null}
+        className={summarySessionEvent?.className}
+        classNiveau={summarySessionEvent?.classNiveau}
+        sessionDate={summarySessionEvent?.start}
+        teacherName={summarySessionEvent?.assignedTeacherName ?? summarySessionEvent?.actualTeacherName}
+      />
     </div>
   );
 }
@@ -450,10 +469,10 @@ function WeekEventBlock({ event: ev, onClick }: { event: CalendarEvent; onClick:
 // ── Detail Sheet panel ─────────────────────────────────────────────────
 function EventDetailPanel({
   event: ev,
-  onNavigate,
+  onViewBilan,
 }: {
   event: CalendarEvent;
-  onNavigate: (path: string) => void;
+  onViewBilan: (ev: CalendarEvent) => void;
 }) {
   const isSession = ev.type === "session";
   const isReplacement = ev.isReplacement;
@@ -673,13 +692,19 @@ function EventDetailPanel({
       <Separator />
 
       {/* Action — completed: view bilan */}
-      {isSession && ev.classId && ev.status === "completed" && (
+      {isSession && ev.sessionId && ev.status === "completed" && (
         <Button
           className="w-full"
-          onClick={() => onNavigate(`/attendance?classId=${ev.classId}`)}
+          onClick={() => onViewBilan(ev)}
         >
           📊 Voir le Bilan de Séance
         </Button>
+      )}
+      {/* Not completed hint */}
+      {isSession && ev.sessionId && ev.status !== "completed" && ev.status !== "cancelled" && (
+        <p className="text-xs text-muted-foreground italic text-center py-2">
+          Le bilan sera disponible après clôture de la séance.
+        </p>
       )}
     </div>
   );
