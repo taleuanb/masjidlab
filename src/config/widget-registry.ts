@@ -116,6 +116,18 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   },
 
   // ── Parent widgets ──
+  // Top: Journal des cours (col-12) — freshest info
+  {
+    id: "parent-sessions",
+    section: "Suivi Famille",
+    sectionEmoji: "👨‍👩‍👧‍👦",
+    requiredPole: "education",
+    allowedRoles: PARENT_ROLES,
+    defaultWeight: 960,
+    colSpan: 12,
+    component: RecentSessionsWidget,
+  },
+  // Middle: Suivi long terme (col-8) + Paiements (col-4)
   {
     id: "parent-progress",
     section: "Suivi Famille",
@@ -136,6 +148,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     colSpan: 4,
     component: ParentInvoicesWidget,
   },
+  // Bottom: Calendrier (col-12)
   {
     id: "parent-agenda",
     section: "Suivi Famille",
@@ -143,7 +156,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     requiredPole: "education",
     allowedRoles: PARENT_ROLES,
     defaultWeight: 930,
-    colSpan: 4,
+    colSpan: 12,
     component: SchoolAgendaWidget,
   },
 
