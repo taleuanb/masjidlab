@@ -281,6 +281,10 @@ const Classes = () => {
               <TrendingUp className="h-3.5 w-3.5" />
               Vue Progrès
             </TabsTrigger>
+            <TabsTrigger value="planning" className="gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Planning Global
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="liste" className="mt-4 space-y-4">
