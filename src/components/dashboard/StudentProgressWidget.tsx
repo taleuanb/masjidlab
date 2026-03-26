@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { GraduationCap, UserCheck, Target, Star, Lightbulb, Calendar, History, Award, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRole } from "@/contexts/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { ChildHistorySheet } from "./ChildHistorySheet";
@@ -221,6 +222,8 @@ function StudentCard({ s, onHistoryClick }: { s: StudentStats; onHistoryClick: (
 
 export function StudentProgressWidget() {
   const { orgId } = useOrganization();
+  const { role } = useRole();
+  const isParentRole = role === "Parent d'élève";
   const { data: students } = useParentData();
   const studentIds = (students ?? []).map((s) => s.id);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
@@ -341,7 +344,9 @@ export function StudentProgressWidget() {
     >
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-base font-semibold text-foreground">Suivi Scolaire</h3>
+          <h3 className="text-base font-semibold text-foreground">
+            {isParentRole ? "Suivi de mon enfant" : "Suivi Scolaire"}
+          </h3>
           <p className="text-xs text-muted-foreground mt-0.5">Progression, notes & dernière séance</p>
         </div>
         <GraduationCap className="h-4 w-4 text-accent" />
