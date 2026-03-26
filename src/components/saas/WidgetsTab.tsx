@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Loader2, RefreshCw, Check, Pencil, ArrowUp, ArrowDown,
-  LayoutGrid, ToggleLeft, ToggleRight,
+  LayoutGrid, Plus,
+  GraduationCap, Receipt, CalendarDays, BookOpen, Activity,
+  BarChart3, UserCheck, Users, UserPlus, Wallet, ShieldAlert,
+  DoorOpen, CalendarClock, Landmark, Package,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { WIDGET_REGISTRY, WIDGET_ICON_MAP } from "@/config/widget-registry";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,10 +67,37 @@ const POLE_LABEL: Record<string, string> = {
   finance: "💰 Finance",
 };
 
+// ─── Icon component map ─────────────────────────────────────────────
+const ICON_COMPONENTS: Record<string, React.ComponentType<any>> = {
+  "bar-chart-3": BarChart3,
+  "user-check": UserCheck,
+  "users": Users,
+  "user-plus": UserPlus,
+  "wallet": Wallet,
+  "shield-alert": ShieldAlert,
+  "activity": Activity,
+  "book-open": BookOpen,
+  "graduation-cap": GraduationCap,
+  "receipt": Receipt,
+  "calendar-days": CalendarDays,
+  "door-open": DoorOpen,
+  "calendar-clock": CalendarClock,
+  "landmark": Landmark,
+  "package": Package,
+};
+
+function WidgetIcon({ widgetKey }: { widgetKey: string }) {
+  const iconName = WIDGET_ICON_MAP[widgetKey];
+  const IconComp = iconName ? ICON_COMPONENTS[iconName] : null;
+  if (!IconComp) return <LayoutGrid className="h-4 w-4 text-muted-foreground" />;
+  return <IconComp className="h-4 w-4 text-primary" />;
+}
+
 export function WidgetsTab() {
   const { toast } = useToast();
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [editWidget, setEditWidget] = useState<WidgetConfig | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -94,6 +125,48 @@ export function WidgetsTab() {
   }, [toast]);
 
   useEffect(() => { fetchWidgets(); }, [fetchWidgets]);
+
+  // ─── Sync missing registry widgets to DB ──────────────────────────
+  const syncRegistryToDb = async () => {
+    setSyncing(true);
+    try {
+      const existingKeys = new Set(widgets.map((w) => w.widget_key));
+      const missing = WIDGET_REGISTRY.filter((w) => !existingKeys.has(w.id));
+
+      if (missing.length === 0) {
+        toast({ title: "Déjà synchronisé", description: "Tous les widgets sont déjà enregistrés." });
+        setSyncing(false);
+        return;
+      }
+
+      const rows = missing.map((w) => ({
+        widget_key: w.id,
+        label: w.label,
+        required_plans: ALL_PLANS,
+        allowed_roles: w.allowedRoles,
+        required_pole: w.requiredPole,
+        priority: w.defaultWeight,
+        is_enabled: true,
+      }));
+
+      const { error } = await supabase.from("saas_widget_configs").insert(rows);
+      if (error) throw error;
+
+      toast({
+        title: `${missing.length} widget${missing.length > 1 ? "s" : ""} ajouté${missing.length > 1 ? "s" : ""}`,
+        description: missing.map((m) => m.label).join(", "),
+      });
+      fetchWidgets();
+    } catch (err: any) {
+      toast({ title: "Erreur sync", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const missingCount = WIDGET_REGISTRY.filter(
+    (w) => !widgets.some((db) => db.widget_key === w.id)
+  ).length;
 
   const openEdit = (w: WidgetConfig) => {
     setEditWidget(w);
@@ -192,9 +265,27 @@ export function WidgetsTab() {
               <LayoutGrid className="h-4 w-4 text-primary" />
               {widgets.length} widget{widgets.length > 1 ? "s" : ""} configuré{widgets.length > 1 ? "s" : ""}
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={fetchWidgets}>
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {missingCount > 0 && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={syncRegistryToDb}
+                  disabled={syncing}
+                  className="gap-1.5"
+                >
+                  {syncing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  Synchroniser ({missingCount} nouveau{missingCount > 1 ? "x" : ""})
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={fetchWidgets}>
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -220,9 +311,12 @@ export function WidgetsTab() {
                     />
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-sm">{w.label}</span>
-                      <span className="text-[10px] text-muted-foreground font-mono">{w.widget_key}</span>
+                    <div className="flex items-center gap-2.5">
+                      <WidgetIcon widgetKey={w.widget_key} />
+                      <div className="flex flex-col">
+                        <span className="font-medium text-sm">{w.label}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{w.widget_key}</span>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -305,7 +399,10 @@ export function WidgetsTab() {
       <Dialog open={!!editWidget} onOpenChange={() => setEditWidget(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Configurer le widget</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {editWidget && <WidgetIcon widgetKey={editWidget.widget_key} />}
+              Configurer le widget
+            </DialogTitle>
             <DialogDescription>
               Modifiez la visibilité et l'ordre de <strong>{editWidget?.label}</strong>
             </DialogDescription>
