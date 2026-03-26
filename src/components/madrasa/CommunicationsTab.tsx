@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Loader2, MessageCircle, AlertTriangle } from "lucide-react";
+import { Loader2, MessageCircle, AlertTriangle, FileText } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,17 @@ S'il s'agit d'un oubli ou d'un retard, merci de nous en informer.
 
 La Direction.`;
 
+const DEFAULT_SESSION_REPORT = `📚 *BILAN DE SÉANCE - {nom_classe}*
+📅 Date : {date}
+👨‍🏫 Prof : {prof}
+✅ Présence : {presents}
+
+📝 *Résumé du jour :*
+{bilan_collectif}
+
+--------------------------
+🔗 Retrouvez le détail individuel sur votre espace parent.`;
+
 const VARIABLES = [
   { tag: "[PRENOM]", label: "Prénom", preview: "Samy" },
   { tag: "[MATIERE]", label: "Matière", preview: "Arabe" },
@@ -37,10 +48,18 @@ const ABSENCE_VARIABLES = [
   { tag: "[DATE]", label: "Date", preview: "24 mars 2026" },
 ] as const;
 
+const SESSION_REPORT_VARIABLES = [
+  { tag: "{nom_classe}", label: "Nom classe", preview: "CE1 - Coran" },
+  { tag: "{date}", label: "Date", preview: "26 mars 2026" },
+  { tag: "{prof}", label: "Professeur", preview: "Oustaz Karim" },
+  { tag: "{presents}", label: "Présents", preview: "12/14 élèves" },
+  { tag: "{bilan_collectif}", label: "Bilan collectif", preview: "Révision de la sourate Al-Mulk, versets 1 à 10. Bonne participation générale." },
+] as const;
+
 function buildPreview(tpl: string, vars: readonly { tag: string; preview: string }[]): string {
   let msg = tpl;
   for (const v of vars) {
-    msg = msg.replace(new RegExp(v.tag.replace(/[[\]]/g, "\\$&"), "g"), v.preview);
+    msg = msg.replace(new RegExp(v.tag.replace(/[[\]{}]/g, "\\$&"), "g"), v.preview);
   }
   return msg;
 }
@@ -146,12 +165,14 @@ export function CommunicationsTab() {
 
   const [template, setTemplate] = useState("");
   const [absenceTemplate, setAbsenceTemplate] = useState("");
+  const [sessionReportTemplate, setSessionReportTemplate] = useState("");
 
   useEffect(() => {
     if (settings) {
       const s = settings as Record<string, unknown>;
       setTemplate((s["whatsapp_session_template"] as string) ?? DEFAULT_TEMPLATE);
       setAbsenceTemplate((s["whatsapp_absence_template"] as string) ?? DEFAULT_ABSENCE_TEMPLATE);
+      setSessionReportTemplate((s["session_report_template"] as string) ?? DEFAULT_SESSION_REPORT);
     }
   }, [settings]);
 
@@ -161,6 +182,7 @@ export function CommunicationsTab() {
         org_id: orgId!,
         whatsapp_session_template: template,
         whatsapp_absence_template: absenceTemplate,
+        session_report_template: sessionReportTemplate,
       };
       const { error } = await (supabase.from("madrasa_settings") as any).upsert(payload, { onConflict: "org_id" });
       if (error) throw error;
@@ -185,15 +207,28 @@ export function CommunicationsTab() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Session report template */}
+        {/* Individual session report template */}
         <TemplateEditor
-          label="Modèle de compte-rendu"
+          label="Modèle de compte-rendu individuel"
           description="Message envoyé après une séance pour résumer la progression de l'élève."
           icon={<MessageCircle className="h-4 w-4 text-brand-emerald" />}
           variables={VARIABLES}
           value={template}
           onChange={setTemplate}
           defaultValue={DEFAULT_TEMPLATE}
+        />
+
+        <Separator className="my-6" />
+
+        {/* Collective session report template */}
+        <TemplateEditor
+          label="Modèle de bilan de séance (collectif)"
+          description="Message récapitulatif envoyé après chaque séance avec le bilan global de la classe."
+          icon={<FileText className="h-4 w-4 text-brand-cyan" />}
+          variables={SESSION_REPORT_VARIABLES}
+          value={sessionReportTemplate}
+          onChange={setSessionReportTemplate}
+          defaultValue={DEFAULT_SESSION_REPORT}
         />
 
         <Separator className="my-6" />
@@ -222,3 +257,4 @@ export function CommunicationsTab() {
 
 export const WA_DEFAULT_TEMPLATE = DEFAULT_TEMPLATE;
 export const WA_DEFAULT_ABSENCE_TEMPLATE = DEFAULT_ABSENCE_TEMPLATE;
+export const WA_DEFAULT_SESSION_REPORT = DEFAULT_SESSION_REPORT;

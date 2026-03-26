@@ -1,0 +1,1 @@
+ALTER TABLE public.madrasa_settings ADD COLUMN IF NOT EXISTS session_report_template text;
