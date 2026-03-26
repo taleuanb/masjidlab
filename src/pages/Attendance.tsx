@@ -549,7 +549,7 @@ const Attendance = () => {
             <SidebarTrigger />
             <ClipboardCheck className="h-6 w-6 text-primary" />
             <div>
-              <h1 className="text-xl font-bold text-foreground">Faire l'appel</h1>
+              <h1 className="text-xl font-bold text-foreground">Session & Suivi</h1>
               <p className="text-sm text-muted-foreground capitalize">{todayLabel}</p>
             </div>
           </div>

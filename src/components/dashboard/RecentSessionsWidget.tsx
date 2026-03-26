@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Activity, ChevronRight, ClipboardEdit, Phone, BookOpen } from "lucide-react";
+import { AlertTriangle, Activity, ChevronRight, ClipboardEdit, ClipboardCheck, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -322,8 +322,8 @@ export function RecentSessionsWidget() {
                 </p>
               </div>
               <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => navigate(`/appel?class=${activeSchedule.class_id}`)}>
-                <Phone className="h-3.5 w-3.5" />
-                Prendre l'appel
+                <ClipboardEdit className="h-3.5 w-3.5" />
+                Démarrer le suivi
               </Button>
             </div>
           )}
