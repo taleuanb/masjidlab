@@ -16,6 +16,7 @@ import {
   Loader2,
   RefreshCw,
   ShieldAlert,
+  BookOpen,
 } from "lucide-react";
 import {
   addDays,
@@ -27,12 +28,16 @@ import {
   isBefore,
 } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useQuery } from "@tanstack/react-query";
 import { reservationsMock, sallesMock } from "@/data/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MadrasaAgendaView from "@/components/madrasa/MadrasaAgendaView";
 import {
   Dialog,
   DialogContent,
@@ -81,9 +86,25 @@ const POLE_COLORS: Record<string, string> = {
 export default function MonAgendaPage() {
   const { pole } = useRole();
   const { user } = useAuth();
+  const { orgId } = useOrganization();
   const { toast } = useToast();
   const { push: pushNotification } = useNotifications();
   const [currentDate, setCurrentDate] = useState(new Date(2026, 1, 17));
+
+  // Get teacher profile ID for Madrasa view
+  const { data: myProfile } = useQuery({
+    queryKey: ["my-profile-id", user?.id, orgId],
+    enabled: !!user?.id && !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("org_id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+  });
   const [reservations, setReservations] = useState(reservationsMock);
   const [indisponibilites, setIndisponibilites] = useState<Indisponibilite[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -361,259 +382,281 @@ export default function MonAgendaPage() {
         <SidebarTrigger />
         <div className="flex-1">
           <h2 className="text-lg font-semibold tracking-tight">Mon Agenda</h2>
-          <p className="text-sm text-muted-foreground">
-            Pôle {pole} — Semaine du{" "}
-            {format(weekStart, "d MMM", { locale: fr })} au{" "}
-            {format(addDays(weekStart, 6), "d MMM yyyy", { locale: fr })}
-          </p>
+          <p className="text-sm text-muted-foreground">Planification & suivi pédagogique</p>
         </div>
-        <Button size="sm" onClick={() => openReservation()}>
-          <Plus className="h-4 w-4 mr-1" />
-          Réserver un créneau
-        </Button>
       </header>
 
       <main className="p-6 space-y-4">
-        {/* Week navigation */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => naviguer(-1)}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <h3 className="text-base font-semibold min-w-[260px] text-center">
-              Semaine du{" "}
-              {format(weekStart, "d MMMM", { locale: fr })} au{" "}
-              {format(addDays(weekStart, 6), "d MMMM yyyy", { locale: fr })}
-            </h3>
-            <Button variant="outline" size="icon" onClick={() => naviguer(1)}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-muted border" style={{
-                backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 2px, hsl(var(--muted-foreground) / 0.15) 2px, hsl(var(--muted-foreground) / 0.15) 4px)",
-              }} />
-              <span>Indisponible</span>
-            </div>
-            <span className="text-border">·</span>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-orange-500/20 border border-orange-500/30" />
-              <span>Remplacement en cours</span>
-            </div>
-            <span className="text-border">·</span>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-destructive/20 border border-destructive/30" />
-              <span>Absence non couverte</span>
-            </div>
-          </div>
-        </div>
+        <Tabs defaultValue="madrasa" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="madrasa" className="gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              Mes Cours
+            </TabsTrigger>
+            <TabsTrigger value="reservations" className="gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Réservations
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Weekly calendar grid */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bento-card !p-0 overflow-x-auto"
-        >
-          <div className="min-w-[900px]">
-            {/* Day headers */}
-            <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b bg-muted/30">
-              <div className="p-2" />
-              {weekDays.map((day) => (
-                <div
-                  key={day.toISOString()}
-                  className={`text-center py-3 border-l border-border/50 ${
-                    isToday(day) ? "bg-primary/5" : ""
-                  }`}
-                >
-                  <p className={`text-xs font-medium uppercase tracking-wider ${
-                    isToday(day) ? "text-primary" : "text-muted-foreground"
-                  }`}>
-                    {format(day, "EEE", { locale: fr })}
-                  </p>
-                  <p className={`text-lg font-bold mt-0.5 ${
-                    isToday(day)
-                      ? "bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center mx-auto"
-                      : "text-foreground"
-                  }`}>
-                    {format(day, "d")}
-                  </p>
+          {/* ── Madrasa agenda (new) ──────────────────────────────────── */}
+          <TabsContent value="madrasa">
+            <MadrasaAgendaView teacherId={myProfile?.id ?? null} />
+          </TabsContent>
+
+          {/* ── Existing reservations view ────────────────────────────── */}
+          <TabsContent value="reservations">
+            <div className="space-y-4">
+              {/* Week navigation */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" onClick={() => naviguer(-1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <h3 className="text-base font-semibold min-w-[260px] text-center">
+                    Semaine du{" "}
+                    {format(weekStart, "d MMMM", { locale: fr })} au{" "}
+                    {format(addDays(weekStart, 6), "d MMMM yyyy", { locale: fr })}
+                  </h3>
+                  <Button variant="outline" size="icon" onClick={() => naviguer(1)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-              ))}
-            </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={() => openReservation()}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Réserver
+                  </Button>
+                </div>
+              </div>
 
-            {/* Time slots */}
-            <div className="relative">
-              {HEURES.map((hour) => (
-                <div
-                  key={hour}
-                  className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/30 last:border-0"
-                >
-                  <div className="p-2 text-right pr-3 border-r border-border/50">
-                    <span className="text-[11px] text-muted-foreground tabular-nums font-medium">
-                      {hour.toString().padStart(2, "0")}:00
-                    </span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-muted border" style={{
+                    backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 2px, hsl(var(--muted-foreground) / 0.15) 2px, hsl(var(--muted-foreground) / 0.15) 4px)",
+                  }} />
+                  <span>Indisponible</span>
+                </div>
+                <span className="text-border">·</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-orange-500/20 border border-orange-500/30" />
+                  <span>Remplacement en cours</span>
+                </div>
+                <span className="text-border">·</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-destructive/20 border border-destructive/30" />
+                  <span>Absence non couverte</span>
+                </div>
+              </div>
+
+              {/* Weekly calendar grid */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bento-card !p-0 overflow-x-auto"
+              >
+                <div className="min-w-[900px]">
+                  {/* Day headers */}
+                  <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b bg-muted/30">
+                    <div className="p-2" />
+                    {weekDays.map((day) => (
+                      <div
+                        key={day.toISOString()}
+                        className={`text-center py-3 border-l border-border/50 ${
+                          isToday(day) ? "bg-primary/5" : ""
+                        }`}
+                      >
+                        <p className={`text-xs font-medium uppercase tracking-wider ${
+                          isToday(day) ? "text-primary" : "text-muted-foreground"
+                        }`}>
+                          {format(day, "EEE", { locale: fr })}
+                        </p>
+                        <p className={`text-lg font-bold mt-0.5 ${
+                          isToday(day)
+                            ? "bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center mx-auto"
+                            : "text-foreground"
+                        }`}>
+                          {format(day, "d")}
+                        </p>
+                      </div>
+                    ))}
                   </div>
 
-                  {weekDays.map((day) => {
-                    const cellRes = getResForDayHour(day, hour);
-                    const unavailable = isIndisponible(day, hour);
-                    const isPast = isBefore(
-                      new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour + 1),
-                      now
-                    );
-
-                    return (
+                  {/* Time slots */}
+                  <div className="relative">
+                    {HEURES.map((hour) => (
                       <div
-                        key={day.toISOString() + hour}
-                        className={`min-h-[56px] border-l border-border/50 p-1 transition-colors relative group ${
-                          isToday(day) ? "bg-primary/[0.02]" : ""
-                        } ${isPast ? "opacity-50" : ""} ${
-                          unavailable
-                            ? "cursor-pointer"
-                            : cellRes.length === 0
-                            ? "cursor-pointer hover:bg-muted/40"
-                            : ""
-                        }`}
-                        style={
-                          unavailable
-                            ? {
-                                backgroundImage:
-                                  "repeating-linear-gradient(45deg, transparent, transparent 3px, hsl(var(--muted-foreground) / 0.08) 3px, hsl(var(--muted-foreground) / 0.08) 6px)",
-                                backgroundColor: "hsl(var(--muted) / 0.6)",
-                              }
-                            : undefined
-                        }
-                        onClick={() => {
-                          if (cellRes.length === 0 && !isPast) {
-                            toggleIndisponibilite(day, hour);
-                          }
-                        }}
+                        key={hour}
+                        className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/30 last:border-0"
                       >
-                        {unavailable && cellRes.length === 0 && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Ban className="h-3.5 w-3.5 text-muted-foreground/40" />
-                              </TooltipTrigger>
-                              <TooltipContent>Créneau indisponible — cliquer pour débloquer</TooltipContent>
-                            </Tooltip>
-                          </div>
-                        )}
+                        <div className="p-2 text-right pr-3 border-r border-border/50">
+                          <span className="text-[11px] text-muted-foreground tabular-nums font-medium">
+                            {hour.toString().padStart(2, "0")}:00
+                          </span>
+                        </div>
 
-                        {cellRes.map((r) => {
-                          const salle = sallesMock.find((s) => s.id === r.salleId);
-                          const hasMateriel = r.materiel && r.materiel.length > 0;
-                          const absenceStatus = absenceMarked.get(r.id);
-                          const isReplacing = absenceStatus === "replacement";
-                          const isUncovered = absenceStatus === "uncovered";
-                          const colorClass = isUncovered
-                            ? "bg-destructive/10 border-destructive/30 text-destructive"
-                            : isReplacing
-                            ? "bg-orange-500/15 border-orange-500/30 text-orange-700"
-                            : POLE_COLORS[r.pole] || "bg-muted border-border text-foreground";
+                        {weekDays.map((day) => {
+                          const cellRes = getResForDayHour(day, hour);
+                          const unavailable = isIndisponible(day, hour);
+                          const isPast = isBefore(
+                            new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour + 1),
+                            now
+                          );
 
                           return (
-                            <motion.div
-                              key={r.id}
-                              initial={{ scale: 0.95, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className={`rounded-md border px-2 py-1.5 text-left ${colorClass} mb-1`}
+                            <div
+                              key={day.toISOString() + hour}
+                              className={`min-h-[56px] border-l border-border/50 p-1 transition-colors relative group ${
+                                isToday(day) ? "bg-primary/[0.02]" : ""
+                              } ${isPast ? "opacity-50" : ""} ${
+                                unavailable
+                                  ? "cursor-pointer"
+                                  : cellRes.length === 0
+                                  ? "cursor-pointer hover:bg-muted/40"
+                                  : ""
+                              }`}
+                              style={
+                                unavailable
+                                  ? {
+                                      backgroundImage:
+                                        "repeating-linear-gradient(45deg, transparent, transparent 3px, hsl(var(--muted-foreground) / 0.08) 3px, hsl(var(--muted-foreground) / 0.08) 6px)",
+                                      backgroundColor: "hsl(var(--muted) / 0.6)",
+                                    }
+                                  : undefined
+                              }
+                              onClick={() => {
+                                if (cellRes.length === 0 && !isPast) {
+                                  toggleIndisponibilite(day, hour);
+                                }
+                              }}
                             >
-                              <p className="text-[11px] font-semibold truncate leading-tight">
-                                {r.titre}
-                              </p>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <Clock className="h-2.5 w-2.5 opacity-60" />
-                                <span className="text-[10px] opacity-70">
-                                  {format(parseISO(r.debut), "HH:mm")}–
-                                  {format(parseISO(r.fin), "HH:mm")}
-                                </span>
-                              </div>
-                              {salle && (
-                                <div className="flex items-center gap-1 mt-0.5">
-                                  <MapPin className="h-2.5 w-2.5 opacity-60" />
-                                  <span className="text-[10px] opacity-70 truncate">
-                                    {salle.nom}
-                                  </span>
+                              {unavailable && cellRes.length === 0 && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Ban className="h-3.5 w-3.5 text-muted-foreground/40" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Créneau indisponible — cliquer pour débloquer</TooltipContent>
+                                  </Tooltip>
                                 </div>
                               )}
-                              <div className="mt-1 flex items-center gap-1 flex-wrap">
-                                {isUncovered ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] h-4 px-1.5 bg-destructive/10 border-destructive/20 text-destructive"
+
+                              {cellRes.map((r) => {
+                                const salle = sallesMock.find((s) => s.id === r.salleId);
+                                const hasMateriel = r.materiel && r.materiel.length > 0;
+                                const absenceStatus = absenceMarked.get(r.id);
+                                const isReplacing = absenceStatus === "replacement";
+                                const isUncovered = absenceStatus === "uncovered";
+                                const colorClass = isUncovered
+                                  ? "bg-destructive/10 border-destructive/30 text-destructive"
+                                  : isReplacing
+                                  ? "bg-orange-500/15 border-orange-500/30 text-orange-700"
+                                  : POLE_COLORS[r.pole] || "bg-muted border-border text-foreground";
+
+                                return (
+                                  <motion.div
+                                    key={r.id}
+                                    initial={{ scale: 0.95, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className={`rounded-md border px-2 py-1.5 text-left ${colorClass} mb-1`}
                                   >
-                                    <ShieldAlert className="h-2 w-2 mr-0.5" />
-                                    ⚠️ ABSENCE NON COUVERTE
-                                  </Badge>
-                                ) : isReplacing ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] h-4 px-1.5 bg-orange-500/10 border-orange-500/20 text-orange-600"
-                                  >
-                                    <RefreshCw className="h-2 w-2 mr-0.5" />
-                                    🔄 Remplacement en cours
-                                  </Badge>
-                                ) : (
-                                  <>
-                                    {hasMateriel ? (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-[9px] h-4 px-1.5 bg-primary/10 border-primary/20 text-primary"
-                                      >
-                                        <Package className="h-2 w-2 mr-0.5" />
-                                        Confirmé
-                                      </Badge>
-                                    ) : (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-[9px] h-4 px-1.5 bg-amber-500/10 border-amber-500/20 text-amber-600"
-                                      >
-                                        <Package className="h-2 w-2 mr-0.5" />
-                                        En attente
-                                      </Badge>
+                                    <p className="text-[11px] font-semibold truncate leading-tight">
+                                      {r.titre}
+                                    </p>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <Clock className="h-2.5 w-2.5 opacity-60" />
+                                      <span className="text-[10px] opacity-70">
+                                        {format(parseISO(r.debut), "HH:mm")}–
+                                        {format(parseISO(r.fin), "HH:mm")}
+                                      </span>
+                                    </div>
+                                    {salle && (
+                                      <div className="flex items-center gap-1 mt-0.5">
+                                        <MapPin className="h-2.5 w-2.5 opacity-60" />
+                                        <span className="text-[10px] opacity-70 truncate">
+                                          {salle.nom}
+                                        </span>
+                                      </div>
                                     )}
-                                    {!isPast && r.pole === pole && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openAbsenceDialog(r);
-                                        }}
-                                        className="inline-flex items-center gap-0.5 text-[9px] h-4 px-1.5 rounded-full border border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors"
-                                      >
-                                        <UserX className="h-2 w-2" />
-                                        Absence
-                                      </button>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </motion.div>
+                                    <div className="mt-1 flex items-center gap-1 flex-wrap">
+                                      {isUncovered ? (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[9px] h-4 px-1.5 bg-destructive/10 border-destructive/20 text-destructive"
+                                        >
+                                          <ShieldAlert className="h-2 w-2 mr-0.5" />
+                                          ⚠️ ABSENCE NON COUVERTE
+                                        </Badge>
+                                      ) : isReplacing ? (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[9px] h-4 px-1.5 bg-orange-500/10 border-orange-500/20 text-orange-600"
+                                        >
+                                          <RefreshCw className="h-2 w-2 mr-0.5" />
+                                          🔄 Remplacement en cours
+                                        </Badge>
+                                      ) : (
+                                        <>
+                                          {hasMateriel ? (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-[9px] h-4 px-1.5 bg-primary/10 border-primary/20 text-primary"
+                                            >
+                                              <Package className="h-2 w-2 mr-0.5" />
+                                              Confirmé
+                                            </Badge>
+                                          ) : (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-[9px] h-4 px-1.5 bg-amber-500/10 border-amber-500/20 text-amber-600"
+                                            >
+                                              <Package className="h-2 w-2 mr-0.5" />
+                                              En attente
+                                            </Badge>
+                                          )}
+                                          {!isPast && r.pole === pole && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openAbsenceDialog(r);
+                                              }}
+                                              className="inline-flex items-center gap-0.5 text-[9px] h-4 px-1.5 rounded-full border border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors"
+                                            >
+                                              <UserX className="h-2 w-2" />
+                                              Absence
+                                            </button>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
+
+                              {cellRes.length === 0 && !unavailable && !isPast && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openReservation(day);
+                                  }}
+                                  className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <div className="rounded-full bg-primary/10 p-1">
+                                    <Plus className="h-3 w-3 text-primary" />
+                                  </div>
+                                </button>
+                              )}
+                            </div>
                           );
                         })}
-
-                        {cellRes.length === 0 && !unavailable && !isPast && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openReservation(day);
-                            }}
-                            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <div className="rounded-full bg-primary/10 p-1">
-                              <Plus className="h-3 w-3 text-primary" />
-                            </div>
-                          </button>
-                        )}
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              ))}
+              </motion.div>
             </div>
-          </div>
-        </motion.div>
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Reservation Dialog */}
