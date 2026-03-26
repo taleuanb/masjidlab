@@ -344,6 +344,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     schedulesQuery.data,
     classesQuery.data,
     subjectsQuery.data,
+    profilesQuery.data,
     calendarQuery.data,
     sessionsQuery.data,
     globalEventsQuery.data,
@@ -358,6 +359,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     schedulesQuery.isLoading ||
     classesQuery.isLoading ||
     subjectsQuery.isLoading ||
+    profilesQuery.isLoading ||
     calendarQuery.isLoading ||
     sessionsQuery.isLoading ||
     (includeGlobalEvents && globalEventsQuery.isLoading);
