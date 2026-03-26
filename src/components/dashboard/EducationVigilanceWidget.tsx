@@ -221,15 +221,5 @@ export function EducationVigilanceWidget() {
           </div>
         )}
       </motion.div>
-
-      <SessionSummarySheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        sessionId={selectedSessionId}
-        className={selectedMeta.className}
-        sessionDate={selectedMeta.date}
-        teacherName={selectedMeta.teacherName}
-      />
-    </>
-  );
+    );
 }
