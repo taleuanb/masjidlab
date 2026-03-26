@@ -8,6 +8,7 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -28,20 +29,20 @@ type StudentRow = {
   nom: string;
 };
 
-/** Color for a score dot */
+/** Color for a score dot (w-3 h-3) */
 function dotColor(score: number, max: number): string {
   const ratio = score / max;
-  if (ratio >= 1) return "bg-secondary"; // emerald
-  if (ratio >= 0.8) return "bg-emerald-400";
-  if (ratio >= 0.6) return "bg-amber-warm";
-  return "bg-destructive";
+  if (ratio >= 1) return "bg-emerald-500";
+  if (ratio >= 0.8) return "bg-emerald-300";
+  if (ratio >= 0.6) return "bg-amber-400";
+  return "bg-red-500";
 }
 
-/** Attendance text color */
-function attendanceColor(pct: number): string {
-  if (pct >= 85) return "text-secondary";
-  if (pct >= 60) return "text-amber-600";
-  return "text-destructive";
+/** Attendance badge variant */
+function attendanceBadge(pct: number): { variant: "default" | "secondary" | "destructive" | "outline"; className: string } {
+  if (pct >= 80) return { variant: "default", className: "bg-emerald-500 hover:bg-emerald-500 text-white border-0" };
+  if (pct >= 50) return { variant: "secondary", className: "bg-amber-400 hover:bg-amber-400 text-amber-900 border-0" };
+  return { variant: "destructive", className: "" };
 }
 
 /** Academic year bounds (Sept 1 → June 30) */
