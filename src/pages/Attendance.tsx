@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -77,6 +78,10 @@ const Attendance = () => {
   const { orgId } = useOrganization();
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoSelectClassId = searchParams.get("class");
+  const autoSelectDone = useRef(false);
 
   const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -229,6 +234,7 @@ const Attendance = () => {
     if (madrasaSettings?.attendance_threshold) setThreshold(madrasaSettings.attendance_threshold);
   }, [madrasaSettings]);
 
+
   const generateAbsenceMessage = useCallback((studentPrenom: string) => {
     const rawTpl = (madrasaSettings as Record<string, unknown> | null)?.["whatsapp_absence_template"] as string | null;
     const tpl = rawTpl || WA_DEFAULT_ABSENCE_TEMPLATE;
@@ -373,6 +379,25 @@ const Attendance = () => {
       setOpeningScheduleId(null);
     }
   }, [orgId, user, today, queryClient, toast, handleSelectClass]);
+
+  // ── Auto-select class from URL param (?class=ID) ──
+  useEffect(() => {
+    if (autoSelectDone.current || !autoSelectClassId || !allCourses.length || loadingSchedules) return;
+    const match = allCourses.find((c) => c.classInfo.id === autoSelectClassId);
+    if (match) {
+      autoSelectDone.current = true;
+      const existingSessionId = existingSessionsMap.get(match.classInfo.id);
+      if (existingSessionId) {
+        setActiveSessionId(existingSessionId);
+      }
+      handleSelectClass(match.classInfo);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("class");
+        return next;
+      }, { replace: true });
+    }
+  }, [autoSelectClassId, allCourses, loadingSchedules, existingSessionsMap, handleSelectClass, setSearchParams]);
 
 
   const studentIds = useMemo(() => students.map((s) => s.student_id), [students]);

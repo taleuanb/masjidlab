@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ShieldAlert, Clock, AlertTriangle, ClipboardEdit, Phone } from "lucide-react";
@@ -10,16 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { SessionSummarySheet } from "@/components/madrasa/SessionSummarySheet";
 
 export function EducationVigilanceWidget() {
   const { orgId } = useOrganization();
   const { isTeacher, profileId, teacherClassIds } = useTeacherScope();
   const navigate = useNavigate();
 
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [selectedMeta, setSelectedMeta] = useState<{ className?: string; date?: Date; teacherName?: string }>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ["edu-vigilance", orgId, isTeacher, profileId],
@@ -91,9 +86,8 @@ export function EducationVigilanceWidget() {
 
   const openBilan = (s: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedSessionId(s.id);
-    setSelectedMeta({ className: s.madrasa_classes?.nom, date: new Date(s.date) });
-    setSheetOpen(true);
+    // Navigate directly to attendance page with the class pre-selected
+    navigate(`/appel?class=${s.class_id}`);
   };
 
   const goToAttendance = (classId: string, e: React.MouseEvent) => {
@@ -102,7 +96,6 @@ export function EducationVigilanceWidget() {
   };
 
   return (
-    <>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -147,14 +140,14 @@ export function EducationVigilanceWidget() {
                 </div>
                 <div className="space-y-1.5">
                   {data.pendingSessions.map((s: any) => (
-                    <div key={s.id} className="flex items-center justify-between pl-5">
+                    <div key={s.id} className="flex items-center justify-between pl-5 py-0.5 rounded hover:bg-accent/30 transition-colors cursor-pointer" onClick={(e) => goToAttendance(s.class_id, e)}>
                       <p className="text-xs text-muted-foreground truncate">
                         • {s.madrasa_classes?.nom ?? "Classe"}
                       </p>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-[10px] text-primary gap-1"
+                        className="h-6 px-2 text-[10px] text-primary gap-1 cursor-pointer"
                         onClick={(e) => goToAttendance(s.class_id, e)}
                       >
                         <Phone className="h-3 w-3" />
@@ -182,14 +175,14 @@ export function EducationVigilanceWidget() {
                 </div>
                 <div className="space-y-1.5">
                   {data.missingBilanSessions.map((s: any) => (
-                    <div key={s.id} className="flex items-center justify-between pl-5">
+                    <div key={s.id} className="flex items-center justify-between pl-5 py-0.5 rounded hover:bg-amber-500/10 transition-colors cursor-pointer" onClick={(e) => openBilan(s, e)}>
                       <p className="text-xs text-muted-foreground truncate">
                         {s.madrasa_classes?.nom ?? "Classe"} — {format(new Date(s.date), "dd/MM")}
                       </p>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-[10px] text-amber-700 gap-1 hover:bg-amber-500/10"
+                        className="h-6 px-2 text-[10px] text-amber-700 gap-1 hover:bg-amber-500/10 cursor-pointer"
                         onClick={(e) => openBilan(s, e)}
                       >
                         <ClipboardEdit className="h-3 w-3" />
@@ -227,15 +220,5 @@ export function EducationVigilanceWidget() {
           </div>
         )}
       </motion.div>
-
-      <SessionSummarySheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        sessionId={selectedSessionId}
-        className={selectedMeta.className}
-        sessionDate={selectedMeta.date}
-        teacherName={selectedMeta.teacherName}
-      />
-    </>
-  );
+    );
 }
