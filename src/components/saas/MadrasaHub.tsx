@@ -2421,16 +2421,70 @@ export function MadrasaHub() {
         </TabsContent>
 
         {/* 1. Pilotage */}
-        <TabsContent value="pilotage" className="space-y-6">
-          <AcademicYearsSection />
-          <CyclesSection />
-          <CalendarSection />
+        <TabsContent value="pilotage">
+          <Accordion type="multiple" defaultValue={["academic-years"]} className="space-y-2">
+            <AccordionItem value="academic-years" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Calendrier Académique</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <AcademicYearsSection />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="cycles" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Gestion des Cycles</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <CyclesSection />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="calendar" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Calendrier Scolaire</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <CalendarSection />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
 
         {/* 2. Cursus */}
-        <TabsContent value="cursus" className="space-y-6">
-          <SubjectsSection />
-          <LevelsSection />
+        <TabsContent value="cursus">
+          <Accordion type="multiple" defaultValue={["subjects"]} className="space-y-2">
+            <AccordionItem value="subjects" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Matières par Catégorie</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <SubjectsSection />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="levels" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Niveaux par Cycle</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <LevelsSection />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
 
         {/* 3. Classes */}
