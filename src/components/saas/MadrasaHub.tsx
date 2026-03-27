@@ -2208,6 +2208,93 @@ function StudioSection() {
                     </div>
                   ))}
                 </div>
+
+                {/* ── Student Management ── */}
+                {!isNewClass && selectedClassId && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <Label className="text-base font-semibold">Gestion des élèves</Label>
+                          <Badge variant="outline" className="text-xs">
+                            {classEnrollments.length} / {parseInt(classForm.capacityMax) || 15} élèves
+                          </Badge>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowStudentSearch(!showStudentSearch)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Inscrire un élève
+                        </Button>
+                      </div>
+
+                      {showStudentSearch && (
+                        <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
+                          <Input
+                            placeholder="Rechercher un élève par nom ou prénom…"
+                            value={studentSearch}
+                            onChange={(e) => setStudentSearch(e.target.value)}
+                            autoFocus
+                            className="h-9"
+                          />
+                          {filteredStudents.length > 0 && (
+                            <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
+                              {filteredStudents.map((s: any) => (
+                                <button
+                                  key={s.id}
+                                  onClick={() => enrollStudent.mutate(s.id)}
+                                  disabled={enrollStudent.isPending}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
+                                >
+                                  <span>{s.prenom} {s.nom}</span>
+                                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {studentSearch.trim() && filteredStudents.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">Aucun élève trouvé.</p>
+                          )}
+                        </div>
+                      )}
+
+                      {classEnrollments.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
+                          Aucun élève inscrit dans cette classe.
+                        </p>
+                      ) : (
+                        <div className="border rounded-md divide-y">
+                          {classEnrollments.map((enrollment: any) => {
+                            const student = enrollment.madrasa_students;
+                            return (
+                              <div key={enrollment.id} className="flex items-center justify-between px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                                    {student?.prenom?.[0]}{student?.nom?.[0]}
+                                  </div>
+                                  <span className="text-sm">{student?.prenom} {student?.nom}</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => removeEnrollment.mutate(enrollment.id)}
+                                  disabled={removeEnrollment.isPending}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
