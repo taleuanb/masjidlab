@@ -33,6 +33,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { CommunicationsTab } from "@/components/madrasa/CommunicationsTab";
+import { LaunchpadWizard } from "@/components/madrasa/LaunchpadWizard";
 
 /* ── Tracking types ── */
 interface FormField {
