@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Loader2, MessageCircle, AlertTriangle, FileText } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -64,7 +64,7 @@ function buildPreview(tpl: string, vars: readonly { tag: string; preview: string
   return msg;
 }
 
-function TemplateEditor({
+function TemplateCard({
   label,
   description,
   icon,
@@ -102,45 +102,53 @@ function TemplateEditor({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-base font-semibold text-foreground">
-        {icon}
-        {label}
-      </div>
-      <p className="text-sm text-muted-foreground">{description}</p>
-
-      <div className="flex flex-wrap gap-2">
-        {variables.map((v) => (
-          <Badge
-            key={v.tag}
-            variant="outline"
-            className="cursor-pointer hover:bg-accent transition-colors font-mono text-xs"
-            onClick={() => insertTag(v.tag)}
-          >
-            {v.tag}
-          </Badge>
-        ))}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Template du message</Label>
-          <Textarea
-            ref={textareaRef}
-            className="min-h-[220px] font-mono text-sm"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={defaultValue}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Aperçu live</Label>
-          <div className="rounded-r-xl rounded-bl-xl bg-[#DCF8C6] p-4 text-sm whitespace-pre-wrap shadow-sm border border-[#b5e2a0] min-h-[220px]">
-            {preview}
+    <Card className="border rounded-lg shadow-sm overflow-hidden">
+      <CardHeader className="bg-muted/40 py-3 px-4">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          {icon}
+          {label}
+        </CardTitle>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      </CardHeader>
+      <CardContent className="p-4 space-y-4">
+        {/* Variable chips */}
+        <div>
+          <Label className="text-xs text-muted-foreground mb-2 block">Variables disponibles — cliquez pour insérer</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {variables.map((v) => (
+              <Badge
+                key={v.tag}
+                variant="outline"
+                className="cursor-pointer hover:bg-accent transition-colors font-mono text-[11px] px-2 py-0.5"
+                onClick={() => insertTag(v.tag)}
+              >
+                {v.tag}
+              </Badge>
+            ))}
           </div>
         </div>
-      </div>
-    </div>
+
+        {/* Editor + Preview */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Éditeur</Label>
+            <Textarea
+              ref={textareaRef}
+              className="min-h-[200px] font-mono text-xs bg-background"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={defaultValue}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Aperçu live</Label>
+            <div className="rounded-r-xl rounded-bl-xl bg-[#DCF8C6] p-4 text-xs whitespace-pre-wrap shadow-sm border border-[#b5e2a0] min-h-[200px]">
+              {preview}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -194,64 +202,47 @@ export function CommunicationsTab() {
     onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
-  if (isLoading) return <Loader2 className="h-5 w-5 animate-spin mx-auto mt-8 text-muted-foreground" />;
+  if (isLoading) return <Skeleton className="h-60 w-full" />;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <MessageCircle className="h-5 w-5" /> Communications WhatsApp
-        </CardTitle>
-        <CardDescription>
-          Configurez les modèles de messages envoyés aux parents. Cliquez sur une variable pour l'insérer à la position du curseur.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Individual session report template */}
-        <TemplateEditor
-          label="Modèle de compte-rendu individuel"
-          description="Message envoyé après une séance pour résumer la progression de l'élève."
-          icon={<MessageCircle className="h-4 w-4 text-brand-emerald" />}
-          variables={VARIABLES}
-          value={template}
-          onChange={setTemplate}
-          defaultValue={DEFAULT_TEMPLATE}
-        />
+    <div className="space-y-6">
+      <TemplateCard
+        label="Compte-rendu individuel"
+        description="Message envoyé après une séance pour résumer la progression de l'élève."
+        icon={<MessageCircle className="h-4 w-4 text-emerald-600" />}
+        variables={VARIABLES}
+        value={template}
+        onChange={setTemplate}
+        defaultValue={DEFAULT_TEMPLATE}
+      />
 
-        <Separator className="my-6" />
+      <TemplateCard
+        label="Bilan de séance (collectif)"
+        description="Message récapitulatif envoyé après chaque séance avec le bilan global de la classe."
+        icon={<FileText className="h-4 w-4 text-cyan-600" />}
+        variables={SESSION_REPORT_VARIABLES}
+        value={sessionReportTemplate}
+        onChange={setSessionReportTemplate}
+        defaultValue={DEFAULT_SESSION_REPORT}
+      />
 
-        {/* Collective session report template */}
-        <TemplateEditor
-          label="Modèle de bilan de séance (collectif)"
-          description="Message récapitulatif envoyé après chaque séance avec le bilan global de la classe."
-          icon={<FileText className="h-4 w-4 text-brand-cyan" />}
-          variables={SESSION_REPORT_VARIABLES}
-          value={sessionReportTemplate}
-          onChange={setSessionReportTemplate}
-          defaultValue={DEFAULT_SESSION_REPORT}
-        />
+      <TemplateCard
+        label="Notification d'absence"
+        description="Message envoyé aux parents lorsqu'un élève est absent."
+        icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+        variables={ABSENCE_VARIABLES}
+        value={absenceTemplate}
+        onChange={setAbsenceTemplate}
+        defaultValue={DEFAULT_ABSENCE_TEMPLATE}
+      />
 
-        <Separator className="my-6" />
-
-        {/* Absence template */}
-        <TemplateEditor
-          label="Modèle pour les absences"
-          description="Message envoyé aux parents lorsqu'un élève est absent."
-          icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
-          variables={ABSENCE_VARIABLES}
-          value={absenceTemplate}
-          onChange={setAbsenceTemplate}
-          defaultValue={DEFAULT_ABSENCE_TEMPLATE}
-        />
-
-        <div className="flex justify-end pt-2">
-          <Button onClick={() => upsert.mutate()} disabled={upsert.isPending}>
-            {upsert.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Enregistrer
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      <div className="flex justify-end">
+        <Button onClick={() => upsert.mutate()} disabled={upsert.isPending} className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+          {upsert.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          Enregistrer les modèles
+        </Button>
+      </div>
+    </div>
   );
 }
 
