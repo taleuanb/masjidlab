@@ -7,8 +7,9 @@ import {
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
   AlertTriangle, Users, Pencil, MessageCircle, FileText,
   Clock, LayoutGrid, ChevronRight, FolderOpen, Folder,
-  Sparkles,
+  Sparkles, RefreshCw, Tag, Inbox,
 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,9 +56,26 @@ const SUBJECT_CATEGORIES = [
   { value: "other", label: "Autre" },
 ] as const;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Shared helpers
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ── Shared helpers ── */
+
+const CATEGORY_COLORS: Record<string, string> = {
+  quran: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  arabic: "bg-cyan-100 text-cyan-800 border-cyan-300",
+  fiqh: "bg-amber-100 text-amber-800 border-amber-300",
+  sira: "bg-violet-100 text-violet-800 border-violet-300",
+  aqida: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  other: "bg-muted text-muted-foreground border-border",
+};
+
+function EmptyState({ icon: Icon, message, hint }: { icon: React.ElementType; message: string; hint?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed rounded-lg bg-muted/10">
+      <Icon className="h-8 w-8 text-muted-foreground/40 mb-3" />
+      <p className="text-sm font-medium text-muted-foreground">{message}</p>
+      {hint && <p className="text-xs text-muted-foreground/70 mt-1 max-w-sm">{hint}</p>}
+    </div>
+  );
+}
 
 function DatePickerField({ label, date, onSelect }: { label: string; date: Date | undefined; onSelect: (d: Date | undefined) => void }) {
   return (
@@ -160,75 +178,67 @@ function AcademicYearsSection() {
   const fmtDate = (d: string | null) => d ? format(new Date(d), "d MMM yyyy", { locale: fr }) : "—";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <CalendarDays className="h-5 w-5" /> Années Scolaires
-        </CardTitle>
-        <CardDescription>Définissez les sessions scolaires et activez l'année en cours.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-4 items-end">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Label *</Label>
-            <Input placeholder="Ex: 2025-2026" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
-          </div>
-          <DatePickerField label="Début" date={startDate} onSelect={setStartDate} />
-          <DatePickerField label="Fin" date={endDate} onSelect={setEndDate} />
-          <Button onClick={() => addYear.mutate()} disabled={addYear.isPending} size="sm" className="h-9">
-            {addYear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
-            Ajouter
-          </Button>
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-4 items-end">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Label *</Label>
+          <Input placeholder="Ex: 2025-2026" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
         </div>
+        <DatePickerField label="Début" date={startDate} onSelect={setStartDate} />
+        <DatePickerField label="Fin" date={endDate} onSelect={setEndDate} />
+        <Button onClick={() => addYear.mutate()} disabled={addYear.isPending} size="sm" className="h-9 bg-brand-navy hover:bg-brand-navy/90 text-white">
+          {addYear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+          Ajouter
+        </Button>
+      </div>
 
-        {isLoading ? (
-          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : years.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">Aucune année scolaire configurée.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Label</TableHead>
-                <TableHead>Période</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead className="text-center">Courante</TableHead>
-                <TableHead className="w-16" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {years.map((y) => (
-                <TableRow key={y.id}>
-                  <TableCell className="font-medium">{y.label}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {fmtDate(y.start_date)} → {fmtDate(y.end_date)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={y.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}>
-                      {y.status === "open" ? "Ouverte" : y.status === "closed" ? "Clôturée" : y.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {y.is_current ? (
-                      <Star className="h-4 w-4 text-amber-500 mx-auto fill-amber-500" />
-                    ) : (
-                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => setCurrent.mutate(y.id)}>
-                        Activer
-                      </Button>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => deleteYear.mutate(y.id)} disabled={!!y.is_current}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
+      {isLoading ? (
+        <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+      ) : years.length === 0 ? (
+        <EmptyState icon={CalendarDays} message="Aucune année scolaire configurée." hint="Créez votre première année scolaire pour commencer à planifier." />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40">
+              <TableHead>Label</TableHead>
+              <TableHead>Période</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead className="text-center">Courante</TableHead>
+              <TableHead className="w-16" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {years.map((y) => (
+              <TableRow key={y.id} className="hover:bg-muted/30">
+                <TableCell className="font-medium">{y.label}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {fmtDate(y.start_date)} → {fmtDate(y.end_date)}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={y.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}>
+                    {y.status === "open" ? "Ouverte" : y.status === "closed" ? "Clôturée" : y.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-center">
+                  {y.is_current ? (
+                    <Star className="h-4 w-4 text-amber-500 mx-auto fill-amber-500" />
+                  ) : (
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => setCurrent.mutate(y.id)}>
+                      Activer
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="icon" onClick={() => deleteYear.mutate(y.id)} disabled={!!y.is_current}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 }
 
@@ -288,53 +298,45 @@ function CyclesSection() {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Layers className="h-5 w-5" /> Cycles
-        </CardTitle>
-        <CardDescription>Regroupez vos niveaux par type d'école (ex: Enfants, Adultes, Intensif).</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Input placeholder="Nom du cycle" value={nom} onChange={(e) => setNom(e.target.value)} className="h-9" />
-          <Input placeholder="Description (optionnel)" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
-          <Button onClick={() => addCycle.mutate()} disabled={addCycle.isPending} size="sm" className="h-9">
-            {addCycle.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
-            Ajouter
-          </Button>
-        </div>
+    <div className="space-y-4">
+      <div className="grid gap-2 sm:grid-cols-3">
+        <Input placeholder="Nom du cycle" value={nom} onChange={(e) => setNom(e.target.value)} className="h-9" />
+        <Input placeholder="Description (optionnel)" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
+        <Button onClick={() => addCycle.mutate()} disabled={addCycle.isPending} size="sm" className="h-9 bg-brand-navy hover:bg-brand-navy/90 text-white">
+          {addCycle.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+          Ajouter
+        </Button>
+      </div>
 
-        {isLoading ? (
-          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : cycles.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">Aucun cycle configuré. Créez vos types d'écoles pour structurer le cursus.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-16" />
+      {isLoading ? (
+        <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+      ) : cycles.length === 0 ? (
+        <EmptyState icon={RefreshCw} message="Aucun cycle configuré." hint="Utilisez le Launchpad ou cliquez sur 'Ajouter' pour créer vos types d'écoles." />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40">
+              <TableHead>Nom</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="w-16" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cycles.map((c) => (
+              <TableRow key={c.id} className="hover:bg-muted/30">
+                <TableCell className="font-medium">{c.nom}</TableCell>
+                <TableCell className="text-muted-foreground">{c.description ?? "—"}</TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="icon" onClick={() => deleteCycle.mutate(c.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cycles.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.nom}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.description ?? "—"}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => deleteCycle.mutate(c.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 }
 
@@ -422,75 +424,65 @@ function CalendarSection() {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CalendarDays className="h-5 w-5" /> Calendrier Scolaire
-            </CardTitle>
-            <CardDescription>Fermetures, vacances et jalons qui impactent l'assiduité.</CardDescription>
-          </div>
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Ajouter
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setOpen(true)} className="bg-brand-navy hover:bg-brand-navy/90 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Ajouter une période
           </Button>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Aucune période configurée. Ajoutez vos vacances et jalons pour protéger l'assiduité.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Titre</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-center">Cours suspendus</TableHead>
-                  <TableHead className="w-16" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((e) => {
-                  const badge = calendarTypeBadge(e.type);
-                  return (
-                    <TableRow key={e.id}>
-                      <TableCell className="font-medium">{e.title}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {fmtDate(e.start_date)} → {fmtDate(e.end_date)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={badge.color}>{badge.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {e.affects_classes ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <ShieldCheck className="h-4 w-4 text-emerald-500 mx-auto" />
-                              </TooltipTrigger>
-                              <TooltipContent>L'assiduité est protégée pendant cette période</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Non</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => deleteEntry.mutate(e.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : entries.length === 0 ? (
+          <EmptyState icon={CalendarDays} message="Aucune période configurée." hint="Ajoutez vos vacances et jalons pour protéger l'assiduité des élèves." />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40">
+                <TableHead>Titre</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-center">Cours suspendus</TableHead>
+                <TableHead className="w-16" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((e) => {
+                const badge = calendarTypeBadge(e.type);
+                return (
+                  <TableRow key={e.id} className="hover:bg-muted/30">
+                    <TableCell className="font-medium">{e.title}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {fmtDate(e.start_date)} → {fmtDate(e.end_date)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={badge.color}>{badge.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {e.affects_classes ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <ShieldCheck className="h-4 w-4 text-emerald-500 mx-auto" />
+                            </TooltipTrigger>
+                            <TooltipContent>L'assiduité est protégée pendant cette période</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Non</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => deleteEntry.mutate(e.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
 
       {/* Dialog ajout période */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -704,69 +696,90 @@ function SubjectsSection() {
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
-  const catLabel = (cat: string | null) => SUBJECT_CATEGORIES.find(c => c.value === cat)?.label ?? cat ?? "—";
+  const catLabel = (cat: string | null) => SUBJECT_CATEGORIES.find(c => c.value === cat)?.label ?? cat ?? "Sans catégorie";
+
+  // Group subjects by category
+  const groupedSubjects = React.useMemo(() => {
+    const map = new Map<string, Tables<"madrasa_subjects">[]>();
+    for (const s of subjects) {
+      const cat = s.category || "other";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(s);
+    }
+    return Array.from(map.entries()).sort((a, b) => {
+      const order: string[] = SUBJECT_CATEGORIES.map(c => c.value);
+      return order.indexOf(a[0]) - order.indexOf(b[0]);
+    });
+  }, [subjects]);
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2"><BookOpen className="h-5 w-5" /> Matières & Suivi</CardTitle>
-          <CardDescription>Catalogue de matières enseignées et configuration des formulaires de suivi par matière.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-3">
-            <Input placeholder="Nom de la matière…" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSubject.mutate()} className="h-9" />
-            <Select value={newCategory} onValueChange={setNewCategory}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="Catégorie…" /></SelectTrigger>
-              <SelectContent>
-                {SUBJECT_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button onClick={() => addSubject.mutate()} disabled={addSubject.isPending} size="sm" className="h-9">
-              <Plus className="h-4 w-4 mr-1" /> Ajouter
-            </Button>
-          </div>
-          {isLoading ? (
-            <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : subjects.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Aucune matière configurée.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Catégorie</TableHead>
-                  <TableHead>Suivi</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subjects.map((s) => {
-                  const configured = configuredSet.has(s.id);
-                  const fieldCount = configured ? ((configs.find((c) => c.subject_id === s.id)?.form_schema_json as unknown as FormField[])?.length ?? 0) : 0;
-                  return (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell>
-                        {s.category ? <Badge variant="outline">{catLabel(s.category)}</Badge> : <span className="text-xs text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell>
-                        <Button size="sm" variant={configured ? "outline" : "secondary"} className="text-xs h-7" onClick={() => setSelectedSubject(s)}>
-                          <Settings2 className="h-3.5 w-3.5 mr-1" />
-                          {configured ? `${fieldCount} champ(s)` : "Configurer"}
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => deleteSubject.mutate(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Input placeholder="Nom de la matière…" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSubject.mutate()} className="h-9" />
+          <Select value={newCategory} onValueChange={setNewCategory}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="Catégorie…" /></SelectTrigger>
+            <SelectContent>
+              {SUBJECT_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => addSubject.mutate()} disabled={addSubject.isPending} size="sm" className="h-9 bg-brand-navy hover:bg-brand-navy/90 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Ajouter
+          </Button>
+        </div>
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : subjects.length === 0 ? (
+          <EmptyState icon={BookOpen} message="Aucune matière configurée." hint="Ajoutez vos matières (Coran, Arabe, Fiqh…) pour commencer." />
+        ) : (
+          <Accordion type="multiple" defaultValue={groupedSubjects.length > 0 ? [groupedSubjects[0][0]] : []}>
+            {groupedSubjects.map(([cat, items]) => (
+              <AccordionItem key={cat} value={cat} className="border rounded-lg mb-2 shadow-sm overflow-hidden">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    <Badge variant="outline" className={cn("text-xs", CATEGORY_COLORS[cat] || CATEGORY_COLORS.other)}>
+                      {catLabel(cat)}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{items.length} matière(s)</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
+                        <TableHead>Nom</TableHead>
+                        <TableHead>Suivi</TableHead>
+                        <TableHead className="w-16" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((s) => {
+                        const configured = configuredSet.has(s.id);
+                        const fieldCount = configured ? ((configs.find((c) => c.subject_id === s.id)?.form_schema_json as unknown as FormField[])?.length ?? 0) : 0;
+                        return (
+                          <TableRow key={s.id} className="hover:bg-muted/30">
+                            <TableCell className="font-medium">{s.name}</TableCell>
+                            <TableCell>
+                              <Button size="sm" variant={configured ? "outline" : "secondary"} className="text-xs h-7" onClick={() => setSelectedSubject(s)}>
+                                <Settings2 className="h-3.5 w-3.5 mr-1" />
+                                {configured ? `${fieldCount} champ(s)` : "Configurer"}
+                              </Button>
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" onClick={() => deleteSubject.mutate(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
+      </div>
       {selectedSubject && orgId && (
         <FormBuilderDialog open={!!selectedSubject} onOpenChange={(v) => !v && setSelectedSubject(null)} subject={selectedSubject} orgId={orgId} />
       )}
@@ -854,48 +867,45 @@ function LevelsSection() {
   }, [levels]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2"><Layers className="h-5 w-5" /> Niveaux</CardTitle>
-        <CardDescription>Définissez les niveaux scolaires, rattachez-les à un cycle et fixez le tarif.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {cycles.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Créez d'abord un <strong>Cycle</strong> dans l'onglet Pilotage avant d'ajouter des niveaux.
-          </p>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-5">
-            <Input placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
-            <Input placeholder="Description" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
-            <Select value={cycleId} onValueChange={setCycleId}>
-              <SelectTrigger className={cn("h-9", !cycleId && "text-muted-foreground")}><SelectValue placeholder="Cycle *" /></SelectTrigger>
-              <SelectContent>
-                {cycles.map(c => <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Input type="number" min={0} placeholder="Tarif (€)" value={tarif} onChange={(e) => setTarif(e.target.value)} className="h-9" />
-            <Button onClick={() => addLevel.mutate()} disabled={addLevel.isPending || !cycleId} size="sm" className="h-9">
-              <Plus className="h-4 w-4 mr-1" /> Ajouter
-            </Button>
-          </div>
-        )}
+    <div className="space-y-4">
+      {cycles.length === 0 ? (
+        <EmptyState icon={Layers} message="Aucun cycle disponible." hint="Créez d'abord un Cycle dans l'onglet Pilotage avant d'ajouter des niveaux." />
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-5">
+          <Input placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
+          <Input placeholder="Description" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
+          <Select value={cycleId} onValueChange={setCycleId}>
+            <SelectTrigger className={cn("h-9", !cycleId && "text-muted-foreground")}><SelectValue placeholder="Cycle *" /></SelectTrigger>
+            <SelectContent>
+              {cycles.map(c => <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="number" min={0} placeholder="Tarif (€)" value={tarif} onChange={(e) => setTarif(e.target.value)} className="h-9" />
+          <Button onClick={() => addLevel.mutate()} disabled={addLevel.isPending || !cycleId} size="sm" className="h-9 bg-brand-navy hover:bg-brand-navy/90 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Ajouter
+          </Button>
+        </div>
+      )}
 
-        {isLoading ? (
-          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : levels.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Aucun niveau configuré.</p>
-        ) : (
-          <div className="space-y-6">
-            {grouped.groups.map(([cId, { cycleName, items }]) => (
-              <div key={cId}>
-                <div className="flex items-center gap-2 mb-2">
+      {isLoading ? (
+        <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+      ) : levels.length === 0 ? (
+        cycles.length > 0 ? <EmptyState icon={Layers} message="Aucun niveau configuré." hint="Ajoutez des niveaux pour structurer votre cursus." /> : null
+      ) : (
+        <Accordion type="multiple" defaultValue={grouped.groups.length > 0 ? [grouped.groups[0][0]] : []}>
+          {grouped.groups.map(([cId, { cycleName, items }]) => (
+            <AccordionItem key={cId} value={cId} className="border rounded-lg mb-2 shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-muted-foreground" />
                   <Badge variant="secondary" className="text-xs">{cycleName}</Badge>
                   <span className="text-xs text-muted-foreground">{items.length} niveau(x)</span>
                 </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-3">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-muted/40">
                       <TableHead>Label</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Tarif</TableHead>
@@ -904,7 +914,7 @@ function LevelsSection() {
                   </TableHeader>
                   <TableBody>
                     {items.map((l: any) => (
-                      <TableRow key={l.id}>
+                      <TableRow key={l.id} className="hover:bg-muted/30">
                         <TableCell className="font-medium">{l.label}</TableCell>
                         <TableCell className="text-muted-foreground">{l.description ?? "—"}</TableCell>
                         <TableCell className="text-right">{fmt(l.tarif_mensuel)}</TableCell>
@@ -915,18 +925,24 @@ function LevelsSection() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            ))}
-            {grouped.orphans.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+          {grouped.orphans.length > 0 && (
+            <AccordionItem value="orphans" className="border rounded-lg mb-2 shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
                   <Badge variant="outline" className="text-xs text-muted-foreground">Sans cycle</Badge>
+                  <span className="text-xs text-muted-foreground">{grouped.orphans.length} niveau(x)</span>
                 </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-3">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Label</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Tarif</TableHead><TableHead className="w-16" /></TableRow></TableHeader>
+                  <TableHeader><TableRow className="bg-muted/40"><TableHead>Label</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Tarif</TableHead><TableHead className="w-16" /></TableRow></TableHeader>
                   <TableBody>
                     {grouped.orphans.map((l: any) => (
-                      <TableRow key={l.id}>
+                      <TableRow key={l.id} className="hover:bg-muted/30">
                         <TableCell className="font-medium">{l.label}</TableCell>
                         <TableCell className="text-muted-foreground">{l.description ?? "—"}</TableCell>
                         <TableCell className="text-right">{fmt(l.tarif_mensuel)}</TableCell>
@@ -935,12 +951,12 @@ function LevelsSection() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              </AccordionContent>
+            </AccordionItem>
+          )}
+        </Accordion>
+      )}
+    </div>
   );
 }
 
@@ -1198,7 +1214,7 @@ function ClassesSection() {
 
   return (
     <>
-      <Card>
+      <Card className="border rounded-lg shadow-sm">
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
             <CardTitle className="text-lg flex items-center gap-2"><GraduationCap className="h-5 w-5" /> Classes</CardTitle>
@@ -1206,7 +1222,9 @@ function ClassesSection() {
               Gestion des classes rattachées à l'année {currentYear?.label ?? "—"}.
             </CardDescription>
           </div>
-          <Button size="sm" onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> Nouvelle classe</Button>
+          <Button size="sm" onClick={openAdd} className="bg-brand-navy hover:bg-brand-navy/90 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Nouvelle classe
+          </Button>
         </CardHeader>
         <CardContent>
           {!currentYear && (
@@ -1218,11 +1236,11 @@ function ClassesSection() {
           {isLoading ? (
             <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : classes.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Aucune classe configurée pour cette année.</p>
+            <EmptyState icon={GraduationCap} message="Aucune classe configurée pour cette année." hint="Créez votre première classe ou utilisez le Studio pour une vue arborescente." />
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40">
                   <TableHead>Nom</TableHead>
                   <TableHead>Niveau</TableHead>
                   <TableHead>Enseignant</TableHead>
@@ -1242,7 +1260,7 @@ function ClassesSection() {
                   const schedText = scheduleSummary.get(c.id);
 
                   return (
-                    <TableRow key={c.id}>
+                    <TableRow key={c.id} className="hover:bg-muted/30">
                       <TableCell className="font-medium">{c.nom}</TableCell>
                       <TableCell>
                         {level?.label ? (
@@ -2403,16 +2421,70 @@ export function MadrasaHub() {
         </TabsContent>
 
         {/* 1. Pilotage */}
-        <TabsContent value="pilotage" className="space-y-6">
-          <AcademicYearsSection />
-          <CyclesSection />
-          <CalendarSection />
+        <TabsContent value="pilotage">
+          <Accordion type="multiple" defaultValue={["academic-years"]} className="space-y-2">
+            <AccordionItem value="academic-years" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Calendrier Académique</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <AcademicYearsSection />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="cycles" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Gestion des Cycles</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <CyclesSection />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="calendar" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Calendrier Scolaire</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <CalendarSection />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
 
         {/* 2. Cursus */}
-        <TabsContent value="cursus" className="space-y-6">
-          <SubjectsSection />
-          <LevelsSection />
+        <TabsContent value="cursus">
+          <Accordion type="multiple" defaultValue={["subjects"]} className="space-y-2">
+            <AccordionItem value="subjects" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Matières par Catégorie</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <SubjectsSection />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="levels" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Niveaux par Cycle</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <LevelsSection />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
 
         {/* 3. Classes */}
