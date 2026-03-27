@@ -1832,6 +1832,7 @@ function StudioSection() {
   }, [classes, allSchedules]);
 
   return (
+    <>
     <div className="border rounded-lg overflow-hidden flex" style={{ minHeight: 600 }}>
       {/* ── Sidebar Left: Tree ── */}
       <div className="w-[250px] shrink-0 border-r bg-muted/20 flex flex-col">
