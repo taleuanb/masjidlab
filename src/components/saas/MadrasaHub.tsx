@@ -1214,7 +1214,7 @@ function ClassesSection() {
 
   return (
     <>
-      <Card>
+      <Card className="border rounded-lg shadow-sm">
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
             <CardTitle className="text-lg flex items-center gap-2"><GraduationCap className="h-5 w-5" /> Classes</CardTitle>
@@ -1222,7 +1222,9 @@ function ClassesSection() {
               Gestion des classes rattachées à l'année {currentYear?.label ?? "—"}.
             </CardDescription>
           </div>
-          <Button size="sm" onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> Nouvelle classe</Button>
+          <Button size="sm" onClick={openAdd} className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Nouvelle classe
+          </Button>
         </CardHeader>
         <CardContent>
           {!currentYear && (
@@ -1234,11 +1236,11 @@ function ClassesSection() {
           {isLoading ? (
             <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : classes.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Aucune classe configurée pour cette année.</p>
+            <EmptyState icon={GraduationCap} message="Aucune classe configurée pour cette année." hint="Créez votre première classe ou utilisez le Studio pour une vue arborescente." />
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40">
                   <TableHead>Nom</TableHead>
                   <TableHead>Niveau</TableHead>
                   <TableHead>Enseignant</TableHead>
@@ -1258,7 +1260,7 @@ function ClassesSection() {
                   const schedText = scheduleSummary.get(c.id);
 
                   return (
-                    <TableRow key={c.id}>
+                    <TableRow key={c.id} className="hover:bg-muted/30">
                       <TableCell className="font-medium">{c.nom}</TableCell>
                       <TableCell>
                         {level?.label ? (
