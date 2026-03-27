@@ -7,6 +7,7 @@ import {
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
   AlertTriangle, Users, Pencil, MessageCircle, FileText,
   Clock, LayoutGrid, ChevronRight, FolderOpen, Folder,
+  Sparkles,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
@@ -33,6 +34,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { CommunicationsTab } from "@/components/madrasa/CommunicationsTab";
+import { LaunchpadWizard } from "@/components/madrasa/LaunchpadWizard";
 
 /* ── Tracking types ── */
 interface FormField {
@@ -1572,6 +1574,7 @@ function StudioSection() {
   const [selection, setSelection] = useState<StudioSelection>({ type: "none" });
   const [expandedCycles, setExpandedCycles] = useState<Set<string>>(new Set());
   const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
+  const [launchpadOpen, setLaunchpadOpen] = useState(false);
 
   // Class form state (reused from ClassesSection pattern)
   const [classForm, setClassForm] = useState({ nom: "", levelId: "", salleId: "", capacityMax: "15", profId: "" });
@@ -1829,6 +1832,7 @@ function StudioSection() {
   }, [classes, allSchedules]);
 
   return (
+    <>
     <div className="border rounded-lg overflow-hidden flex" style={{ minHeight: 600 }}>
       {/* ── Sidebar Left: Tree ── */}
       <div className="w-[250px] shrink-0 border-r bg-muted/20 flex flex-col">
@@ -1844,6 +1848,16 @@ function StudioSection() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="px-3 pb-2">
+          <Button
+            onClick={() => setLaunchpadOpen(true)}
+            className="w-full h-9 text-xs gap-1.5 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+            size="sm"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Lancer un cursus
+          </Button>
         </div>
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-0.5">
@@ -2157,6 +2171,9 @@ function StudioSection() {
         </ScrollArea>
       </div>
     </div>
+
+    <LaunchpadWizard open={launchpadOpen} onOpenChange={setLaunchpadOpen} />
+    </>
   );
 }
 

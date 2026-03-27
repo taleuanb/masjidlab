@@ -1393,6 +1393,71 @@ export type Database = {
           },
         ]
       }
+      madrasa_template_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          level_label: string
+          pack_id: string | null
+          rank: number | null
+          suggested_subjects: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          level_label: string
+          pack_id?: string | null
+          rank?: number | null
+          suggested_subjects?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          level_label?: string
+          pack_id?: string | null
+          rank?: number | null
+          suggested_subjects?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_template_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_template_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_template_packs: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon_name: string | null
+          id: string
+          nom: string
+          public_cible: string | null
+          tag_label: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon_name?: string | null
+          id?: string
+          nom: string
+          public_cible?: string | null
+          tag_label?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon_name?: string | null
+          id?: string
+          nom?: string
+          public_cible?: string | null
+          tag_label?: string | null
+        }
+        Relationships: []
+      }
       organizations: {
         Row: {
           active_poles: string[] | null
