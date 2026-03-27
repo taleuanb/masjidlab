@@ -6,6 +6,7 @@ import {
   GraduationCap, Layers, BookOpen, Settings2, Star,
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
   AlertTriangle, Users, Pencil, MessageCircle, FileText,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
