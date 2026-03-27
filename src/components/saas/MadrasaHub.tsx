@@ -707,7 +707,7 @@ function SubjectsSection() {
       map.get(cat)!.push(s);
     }
     return Array.from(map.entries()).sort((a, b) => {
-      const order = SUBJECT_CATEGORIES.map(c => c.value);
+      const order: string[] = SUBJECT_CATEGORIES.map(c => c.value);
       return order.indexOf(a[0]) - order.indexOf(b[0]);
     });
   }, [subjects]);
