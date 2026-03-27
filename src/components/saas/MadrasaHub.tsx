@@ -2170,6 +2170,9 @@ function StudioSection() {
         </ScrollArea>
       </div>
     </div>
+
+    <LaunchpadWizard open={launchpadOpen} onOpenChange={setLaunchpadOpen} />
+    </>
   );
 }
 
