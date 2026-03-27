@@ -1749,7 +1749,7 @@ function StudioSection() {
       if (!selectedYearId) throw new Error("Aucune année sélectionnée");
       if (classSchedules.length === 0) throw new Error("Ajoutez au moins un créneau");
 
-      const classId = selection.type === "class" ? selection.id : null;
+      const classId = selection.type === "class" && selection.id !== "__new__" ? selection.id : null;
       const payload: any = {
         nom: classForm.nom.trim(),
         level_id: classForm.levelId || null,
@@ -1769,6 +1769,7 @@ function StudioSection() {
         const { data, error } = await supabase.from("madrasa_classes").insert(payload).select("id").single();
         if (error) throw error;
         finalId = data.id;
+        setSelection({ type: "class", id: finalId });
       }
 
       const { error: delErr } = await supabase.from("madrasa_schedules").delete().eq("class_id", finalId).eq("org_id", orgId!);
