@@ -4,7 +4,7 @@ import { fr } from "date-fns/locale";
 import {
   Plus, Trash2, Loader2, CalendarDays, ShieldCheck,
   GraduationCap, Layers, BookOpen, Settings2, Star,
-  BarChart3,
+  BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -25,9 +27,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import type { Tables } from "@/integrations/supabase/types";
-import { TrackingConfigTab } from "@/components/madrasa/TrackingConfigTab";
+import type { Json, Tables } from "@/integrations/supabase/types";
 import { CommunicationsTab } from "@/components/madrasa/CommunicationsTab";
+
+/* ── Tracking types ── */
+interface FormField {
+  key: string;
+  label: string;
+  type: "text" | "number" | "rating5" | "rating10" | "checkbox";
+  required: boolean;
+}
+const FIELD_TYPE_LABELS: Record<FormField["type"], string> = {
+  text: "Texte", number: "Nombre", rating5: "Note sur 5", rating10: "Note sur 10", checkbox: "Case à cocher",
+};
+const SUBJECT_CATEGORIES = [
+  { value: "quran", label: "Coran" },
+  { value: "arabic", label: "Arabe" },
+  { value: "fiqh", label: "Fiqh" },
+  { value: "sira", label: "Sîra / Histoire" },
+  { value: "aqida", label: "'Aqîda" },
+  { value: "other", label: "Autre" },
+] as const;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Shared helpers
@@ -515,7 +535,118 @@ function CalendarSection() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   2. CURSUS — Matières (from MadrasaSettingsPanel)
+   Tracking — Form Preview & Builder (inlined from TrackingConfigTab)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function FormPreview({ fields }: { fields: FormField[] }) {
+  if (fields.length === 0) return <div className="flex items-center justify-center h-full text-muted-foreground text-sm py-12">Ajoutez des champs pour voir la prévisualisation.</div>;
+  return (
+    <div className="space-y-4">
+      {fields.map((f) => (
+        <div key={f.key} className="space-y-1.5">
+          <Label className="text-sm">{f.label}{f.required && <span className="text-destructive ml-0.5">*</span>}</Label>
+          {f.type === "text" && <Input disabled placeholder={`Saisir ${f.label.toLowerCase()}…`} className="bg-muted/30" />}
+          {f.type === "number" && <Input type="number" disabled placeholder="0" className="bg-muted/30 w-32" />}
+          {(f.type === "rating5" || f.type === "rating10") && <Select disabled><SelectTrigger className="w-32 bg-muted/30"><SelectValue placeholder={`/ ${f.type === "rating5" ? 5 : 10}`} /></SelectTrigger></Select>}
+          {f.type === "checkbox" && <div className="flex items-center gap-2"><Checkbox disabled /><span className="text-sm text-muted-foreground">{f.label}</span></div>}
+        </div>
+      ))}
+      <Separator className="my-3" />
+      <div className="space-y-1.5"><Label className="text-sm">À faire (prochaine séance)</Label><Input disabled placeholder="Devoirs / objectifs…" className="bg-muted/30" /></div>
+    </div>
+  );
+}
+
+function FormBuilderDialog({ open, onOpenChange, subject, orgId }: { open: boolean; onOpenChange: (v: boolean) => void; subject: Tables<"madrasa_subjects">; orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: existingConfig, isLoading } = useQuery({
+    queryKey: ["session_config", subject.id, orgId], enabled: open && !!orgId,
+    queryFn: async () => { const { data, error } = await supabase.from("madrasa_session_configs").select("*").eq("subject_id", subject.id).eq("org_id", orgId).maybeSingle(); if (error) throw error; return data; },
+  });
+  const [fields, setFields] = React.useState<FormField[]>([]);
+  const [initialized, setInitialized] = React.useState(false);
+  React.useEffect(() => { if (!open) { setInitialized(false); return; } if (isLoading || initialized) return; if (existingConfig?.form_schema_json) { try { const parsed = existingConfig.form_schema_json as unknown as FormField[]; setFields(Array.isArray(parsed) ? parsed : []); } catch { setFields([]); } } else { setFields([]); } setInitialized(true); }, [open, isLoading, existingConfig, initialized]);
+  const addField = () => setFields((p) => [...p, { key: `field_${Date.now()}`, label: "", type: "text", required: false }]);
+  const updateField = (idx: number, patch: Partial<FormField>) => setFields((p) => p.map((f, i) => i === idx ? { ...f, ...patch } : f));
+  const removeField = (idx: number) => setFields((p) => p.filter((_, i) => i !== idx));
+  const moveField = (idx: number, dir: -1 | 1) => { const t = idx + dir; if (t < 0 || t >= fields.length) return; setFields((p) => { const c = [...p]; [c[idx], c[t]] = [c[t], c[idx]]; return c; }); };
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const clean = fields.filter((f) => f.label.trim());
+      if (clean.length === 0) throw new Error("Ajoutez au moins un champ.");
+      const final = clean.map((f, i) => ({ ...f, key: f.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || `champ_${i}` }));
+      const schemaJson = final as unknown as Json;
+      if (existingConfig?.id) { const { error } = await supabase.from("madrasa_session_configs").update({ form_schema_json: schemaJson }).eq("id", existingConfig.id); if (error) throw error; }
+      else { const { error } = await supabase.from("madrasa_session_configs").insert({ subject_id: subject.id, org_id: orgId, form_schema_json: schemaJson }); if (error) throw error; }
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["session_config", subject.id, orgId] }); queryClient.invalidateQueries({ queryKey: ["session_configs_all", orgId] }); toast({ title: `Configuration enregistrée pour ${subject.name} ✓` }); onOpenChange(false); },
+    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 flex flex-col gap-0 overflow-hidden">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
+          <DialogTitle className="flex items-center gap-2 text-lg"><Settings2 className="h-5 w-5 text-primary" /> Formulaire de suivi — {subject.name}</DialogTitle>
+          <DialogDescription>Configurez les champs que l'Oustaz devra remplir après chaque séance.</DialogDescription>
+        </DialogHeader>
+        {isLoading ? <Loader2 className="h-6 w-6 animate-spin mx-auto my-12 text-muted-foreground" /> : (
+          <div className="flex-1 min-h-0 overflow-y-auto px-6">
+            <div className="grid md:grid-cols-2 gap-6 pb-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-sm">Champs du formulaire</h4>
+                  <Button size="sm" variant="outline" onClick={addField}><Plus className="h-4 w-4" /> Ajouter un champ</Button>
+                </div>
+                {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Aucun champ configuré.</p>}
+                <div className="space-y-2">
+                  {fields.map((field, idx) => (
+                    <Card key={field.key} className="rounded-lg border bg-card">
+                      <CardContent className="p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <Input placeholder="Label du champ…" value={field.label} onChange={(e) => updateField(idx, { label: e.target.value })} className="flex-1 h-8 text-sm" />
+                          <div className="flex gap-0.5">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(idx, -1)} disabled={idx === 0}><ChevronUp className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(idx, 1)} disabled={idx === fields.length - 1}><ChevronDown className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeField(idx)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Select value={field.type} onValueChange={(v) => updateField(idx, { type: v as FormField["type"] })}>
+                            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+                            <SelectContent>{Object.entries(FIELD_TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <div className="flex items-center gap-1.5 ml-auto"><Switch checked={field.required} onCheckedChange={(v) => updateField(idx, { required: v })} className="scale-75" /><span className="text-xs text-muted-foreground">Requis</span></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-3"><Eye className="h-4 w-4 text-muted-foreground" /><h4 className="font-semibold text-sm">Prévisualisation Oustaz</h4></div>
+                <Card className="rounded-lg border-dashed bg-muted/20"><CardContent className="p-4"><FormPreview fields={fields} /></CardContent></Card>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="shrink-0 border-t bg-background px-6 py-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || fields.length === 0}>
+              {saveMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement...</> : "Enregistrer la configuration"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. CURSUS — Matières + Suivi intégré
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function SubjectsSection() {
@@ -523,25 +654,41 @@ function SubjectsSection() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [newName, setNewName] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState<Tables<"madrasa_subjects"> | null>(null);
 
   const { data: subjects = [], isLoading } = useQuery({
     queryKey: ["madrasa_subjects", orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("madrasa_subjects").select("*").eq("org_id", orgId!).order("name");
+      const { data, error } = await supabase.from("madrasa_subjects").select("*").eq("org_id", orgId!).order("category").order("name");
       if (error) throw error;
       return data as Tables<"madrasa_subjects">[];
     },
   });
 
+  const { data: configs = [] } = useQuery({
+    queryKey: ["session_configs_all", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_session_configs").select("subject_id, form_schema_json").eq("org_id", orgId!);
+      if (error) throw error;
+      return data;
+    },
+  });
+  const configuredSet = new Set(configs.map((c) => c.subject_id));
+
   const addSubject = useMutation({
     mutationFn: async () => {
       if (!newName.trim()) throw new Error("Nom requis");
-      const { error } = await supabase.from("madrasa_subjects").insert({ name: newName.trim(), org_id: orgId! });
+      const { error } = await supabase.from("madrasa_subjects").insert({
+        name: newName.trim(),
+        category: newCategory || null,
+        org_id: orgId!,
+      });
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["madrasa_subjects", orgId] }); setNewName(""); toast({ title: "Matière ajoutée" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["madrasa_subjects", orgId] }); setNewName(""); setNewCategory(""); toast({ title: "Matière ajoutée" }); },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
@@ -551,41 +698,78 @@ function SubjectsSection() {
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
+  const catLabel = (cat: string | null) => SUBJECT_CATEGORIES.find(c => c.value === cat)?.label ?? cat ?? "—";
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2"><BookOpen className="h-5 w-5" /> Matières</CardTitle>
-        <CardDescription>Catalogue de matières enseignées.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          <Input placeholder="Nom de la matière…" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSubject.mutate()} />
-          <Button onClick={() => addSubject.mutate()} disabled={addSubject.isPending} size="sm"><Plus className="h-4 w-4" /> Ajouter</Button>
-        </div>
-        {isLoading ? (
-          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : subjects.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Aucune matière configurée.</p>
-        ) : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Nom</TableHead><TableHead className="w-16" /></TableRow></TableHeader>
-            <TableBody>
-              {subjects.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell><Button variant="ghost" size="icon" onClick={() => deleteSubject.mutate(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2"><BookOpen className="h-5 w-5" /> Matières & Suivi</CardTitle>
+          <CardDescription>Catalogue de matières enseignées et configuration des formulaires de suivi par matière.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Input placeholder="Nom de la matière…" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSubject.mutate()} className="h-9" />
+            <Select value={newCategory} onValueChange={setNewCategory}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Catégorie…" /></SelectTrigger>
+              <SelectContent>
+                {SUBJECT_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button onClick={() => addSubject.mutate()} disabled={addSubject.isPending} size="sm" className="h-9">
+              <Plus className="h-4 w-4 mr-1" /> Ajouter
+            </Button>
+          </div>
+          {isLoading ? (
+            <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          ) : subjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Aucune matière configurée.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Catégorie</TableHead>
+                  <TableHead>Suivi</TableHead>
+                  <TableHead className="w-24" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {subjects.map((s) => {
+                  const configured = configuredSet.has(s.id);
+                  const fieldCount = configured ? ((configs.find((c) => c.subject_id === s.id)?.form_schema_json as unknown as FormField[])?.length ?? 0) : 0;
+                  return (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell>
+                        {s.category ? <Badge variant="outline">{catLabel(s.category)}</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Button size="sm" variant={configured ? "outline" : "secondary"} className="text-xs h-7" onClick={() => setSelectedSubject(s)}>
+                          <Settings2 className="h-3.5 w-3.5 mr-1" />
+                          {configured ? `${fieldCount} champ(s)` : "Configurer"}
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => deleteSubject.mutate(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+      {selectedSubject && orgId && (
+        <FormBuilderDialog open={!!selectedSubject} onOpenChange={(v) => !v && setSelectedSubject(null)} subject={selectedSubject} orgId={orgId} />
+      )}
+    </>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   2. CURSUS — Niveaux (from MadrasaSettingsPanel)
+   2. CURSUS — Niveaux groupés par Cycle
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function LevelsSection() {
@@ -620,11 +804,12 @@ function LevelsSection() {
   const addLevel = useMutation({
     mutationFn: async () => {
       if (!label.trim()) throw new Error("Label requis");
+      if (!cycleId) throw new Error("Le cycle est obligatoire");
       const { error } = await supabase.from("madrasa_levels").insert({
         label: label.trim(),
         description: desc.trim() || null,
         tarif_mensuel: tarif ? Number(tarif) : 0,
-        cycle_id: cycleId || null,
+        cycle_id: cycleId,
         org_id: orgId!,
       });
       if (error) throw error;
@@ -645,6 +830,23 @@ function LevelsSection() {
 
   const fmt = (n: number | null) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n ?? 0);
 
+  // Group levels by cycle
+  const grouped = React.useMemo(() => {
+    const map = new Map<string, { cycleName: string; items: any[] }>();
+    const orphans: any[] = [];
+    for (const l of levels as any[]) {
+      const cId = l.cycle_id as string | null;
+      const cName = l.madrasa_cycles?.nom as string | undefined;
+      if (cId && cName) {
+        if (!map.has(cId)) map.set(cId, { cycleName: cName, items: [] });
+        map.get(cId)!.items.push(l);
+      } else {
+        orphans.push(l);
+      }
+    }
+    return { groups: Array.from(map.entries()), orphans };
+  }, [levels]);
+
   return (
     <Card>
       <CardHeader>
@@ -652,58 +854,84 @@ function LevelsSection() {
         <CardDescription>Définissez les niveaux scolaires, rattachez-les à un cycle et fixez le tarif.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-2 sm:grid-cols-5">
-          <Input placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
-          <Input placeholder="Description" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
-          <Select value={cycleId} onValueChange={setCycleId}>
-            <SelectTrigger className="h-9"><SelectValue placeholder="Cycle…" /></SelectTrigger>
-            <SelectContent>
-              {cycles.map(c => <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input type="number" min={0} placeholder="Tarif (€)" value={tarif} onChange={(e) => setTarif(e.target.value)} className="h-9" />
-          <Button onClick={() => addLevel.mutate()} disabled={addLevel.isPending} size="sm" className="h-9">
-            <Plus className="h-4 w-4 mr-1" /> Ajouter
-          </Button>
-        </div>
+        {cycles.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Créez d'abord un <strong>Cycle</strong> dans l'onglet Pilotage avant d'ajouter des niveaux.
+          </p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-5">
+            <Input placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
+            <Input placeholder="Description" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
+            <Select value={cycleId} onValueChange={setCycleId}>
+              <SelectTrigger className={cn("h-9", !cycleId && "text-muted-foreground")}><SelectValue placeholder="Cycle *" /></SelectTrigger>
+              <SelectContent>
+                {cycles.map(c => <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Input type="number" min={0} placeholder="Tarif (€)" value={tarif} onChange={(e) => setTarif(e.target.value)} className="h-9" />
+            <Button onClick={() => addLevel.mutate()} disabled={addLevel.isPending || !cycleId} size="sm" className="h-9">
+              <Plus className="h-4 w-4 mr-1" /> Ajouter
+            </Button>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
         ) : levels.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Aucun niveau configuré.</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Label</TableHead>
-                <TableHead>Cycle</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Tarif</TableHead>
-                <TableHead className="w-16" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {levels.map((l: any) => (
-                <TableRow key={l.id}>
-                  <TableCell className="font-medium">{l.label}</TableCell>
-                  <TableCell>
-                    {l.madrasa_cycles?.nom ? (
-                      <Badge variant="outline">{l.madrasa_cycles.nom}</Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{l.description ?? "—"}</TableCell>
-                  <TableCell className="text-right">{fmt(l.tarif_mensuel)}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => deleteLevel.mutate(l.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-6">
+            {grouped.groups.map(([cId, { cycleName, items }]) => (
+              <div key={cId}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="secondary" className="text-xs">{cycleName}</Badge>
+                  <span className="text-xs text-muted-foreground">{items.length} niveau(x)</span>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Label</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Tarif</TableHead>
+                      <TableHead className="w-16" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((l: any) => (
+                      <TableRow key={l.id}>
+                        <TableCell className="font-medium">{l.label}</TableCell>
+                        <TableCell className="text-muted-foreground">{l.description ?? "—"}</TableCell>
+                        <TableCell className="text-right">{fmt(l.tarif_mensuel)}</TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" onClick={() => deleteLevel.mutate(l.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ))}
+            {grouped.orphans.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline" className="text-xs text-muted-foreground">Sans cycle</Badge>
+                </div>
+                <Table>
+                  <TableHeader><TableRow><TableHead>Label</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Tarif</TableHead><TableHead className="w-16" /></TableRow></TableHeader>
+                  <TableBody>
+                    {grouped.orphans.map((l: any) => (
+                      <TableRow key={l.id}>
+                        <TableCell className="font-medium">{l.label}</TableCell>
+                        <TableCell className="text-muted-foreground">{l.description ?? "—"}</TableCell>
+                        <TableCell className="text-right">{fmt(l.tarif_mensuel)}</TableCell>
+                        <TableCell><Button variant="ghost" size="icon" onClick={() => deleteLevel.mutate(l.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
