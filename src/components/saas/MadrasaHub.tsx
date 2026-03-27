@@ -1931,7 +1931,7 @@ function StudioSection() {
             )}
 
             {/* ── Level selected: compact subjects & tarif ── */}
-            {selection.type === "level" && selectedLevel && (
+             {selection.type === "level" && selectedLevel && (
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -1943,8 +1943,28 @@ function StudioSection() {
                   </p>
                 </div>
                 <Separator />
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium">Classes de ce niveau</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1 text-xs"
+                    onClick={() => {
+                      setSelection({ type: "class", id: "__new__" });
+                      setClassForm({
+                        nom: "",
+                        levelId: selectedLevel.id,
+                        salleId: "",
+                        capacityMax: "15",
+                        profId: "",
+                      });
+                      setClassSchedules([]);
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Nouvelle classe
+                  </Button>
+                </div>
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Classes de ce niveau</h4>
                   {inspectorClasses.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Aucune classe rattachée.</p>
                   ) : (
