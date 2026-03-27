@@ -867,48 +867,45 @@ function LevelsSection() {
   }, [levels]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2"><Layers className="h-5 w-5" /> Niveaux</CardTitle>
-        <CardDescription>Définissez les niveaux scolaires, rattachez-les à un cycle et fixez le tarif.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {cycles.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Créez d'abord un <strong>Cycle</strong> dans l'onglet Pilotage avant d'ajouter des niveaux.
-          </p>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-5">
-            <Input placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
-            <Input placeholder="Description" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
-            <Select value={cycleId} onValueChange={setCycleId}>
-              <SelectTrigger className={cn("h-9", !cycleId && "text-muted-foreground")}><SelectValue placeholder="Cycle *" /></SelectTrigger>
-              <SelectContent>
-                {cycles.map(c => <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Input type="number" min={0} placeholder="Tarif (€)" value={tarif} onChange={(e) => setTarif(e.target.value)} className="h-9" />
-            <Button onClick={() => addLevel.mutate()} disabled={addLevel.isPending || !cycleId} size="sm" className="h-9">
-              <Plus className="h-4 w-4 mr-1" /> Ajouter
-            </Button>
-          </div>
-        )}
+    <div className="space-y-4">
+      {cycles.length === 0 ? (
+        <EmptyState icon={Layers} message="Aucun cycle disponible." hint="Créez d'abord un Cycle dans l'onglet Pilotage avant d'ajouter des niveaux." />
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-5">
+          <Input placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
+          <Input placeholder="Description" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
+          <Select value={cycleId} onValueChange={setCycleId}>
+            <SelectTrigger className={cn("h-9", !cycleId && "text-muted-foreground")}><SelectValue placeholder="Cycle *" /></SelectTrigger>
+            <SelectContent>
+              {cycles.map(c => <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="number" min={0} placeholder="Tarif (€)" value={tarif} onChange={(e) => setTarif(e.target.value)} className="h-9" />
+          <Button onClick={() => addLevel.mutate()} disabled={addLevel.isPending || !cycleId} size="sm" className="h-9 bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Ajouter
+          </Button>
+        </div>
+      )}
 
-        {isLoading ? (
-          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : levels.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Aucun niveau configuré.</p>
-        ) : (
-          <div className="space-y-6">
-            {grouped.groups.map(([cId, { cycleName, items }]) => (
-              <div key={cId}>
-                <div className="flex items-center gap-2 mb-2">
+      {isLoading ? (
+        <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+      ) : levels.length === 0 ? (
+        cycles.length > 0 ? <EmptyState icon={Layers} message="Aucun niveau configuré." hint="Ajoutez des niveaux pour structurer votre cursus." /> : null
+      ) : (
+        <Accordion type="multiple" defaultValue={grouped.groups.length > 0 ? [grouped.groups[0][0]] : []}>
+          {grouped.groups.map(([cId, { cycleName, items }]) => (
+            <AccordionItem key={cId} value={cId} className="border rounded-lg mb-2 shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-muted-foreground" />
                   <Badge variant="secondary" className="text-xs">{cycleName}</Badge>
                   <span className="text-xs text-muted-foreground">{items.length} niveau(x)</span>
                 </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-3">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-muted/40">
                       <TableHead>Label</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Tarif</TableHead>
@@ -917,7 +914,7 @@ function LevelsSection() {
                   </TableHeader>
                   <TableBody>
                     {items.map((l: any) => (
-                      <TableRow key={l.id}>
+                      <TableRow key={l.id} className="hover:bg-muted/30">
                         <TableCell className="font-medium">{l.label}</TableCell>
                         <TableCell className="text-muted-foreground">{l.description ?? "—"}</TableCell>
                         <TableCell className="text-right">{fmt(l.tarif_mensuel)}</TableCell>
@@ -928,18 +925,24 @@ function LevelsSection() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            ))}
-            {grouped.orphans.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+          {grouped.orphans.length > 0 && (
+            <AccordionItem value="orphans" className="border rounded-lg mb-2 shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
                   <Badge variant="outline" className="text-xs text-muted-foreground">Sans cycle</Badge>
+                  <span className="text-xs text-muted-foreground">{grouped.orphans.length} niveau(x)</span>
                 </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-3">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Label</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Tarif</TableHead><TableHead className="w-16" /></TableRow></TableHeader>
+                  <TableHeader><TableRow className="bg-muted/40"><TableHead>Label</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Tarif</TableHead><TableHead className="w-16" /></TableRow></TableHeader>
                   <TableBody>
                     {grouped.orphans.map((l: any) => (
-                      <TableRow key={l.id}>
+                      <TableRow key={l.id} className="hover:bg-muted/30">
                         <TableCell className="font-medium">{l.label}</TableCell>
                         <TableCell className="text-muted-foreground">{l.description ?? "—"}</TableCell>
                         <TableCell className="text-right">{fmt(l.tarif_mensuel)}</TableCell>
@@ -948,12 +951,12 @@ function LevelsSection() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              </AccordionContent>
+            </AccordionItem>
+          )}
+        </Accordion>
+      )}
+    </div>
   );
 }
 
