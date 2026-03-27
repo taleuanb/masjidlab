@@ -273,7 +273,7 @@ export function LaunchpadWizard({ open, onOpenChange, orgId, onSuccess }: Launch
   }, 0);
 
   const goToStep = async (target: number) => {
-    if (target === 3 && step === 2) {
+    if (target === 3) {
       await loadTemplateItems();
     }
     setStep(target);

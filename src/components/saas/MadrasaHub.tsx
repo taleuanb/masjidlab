@@ -1749,7 +1749,7 @@ function StudioSection() {
       if (!selectedYearId) throw new Error("Aucune année sélectionnée");
       if (classSchedules.length === 0) throw new Error("Ajoutez au moins un créneau");
 
-      const classId = selection.type === "class" ? selection.id : null;
+      const classId = selection.type === "class" && selection.id !== "__new__" ? selection.id : null;
       const payload: any = {
         nom: classForm.nom.trim(),
         level_id: classForm.levelId || null,
@@ -1769,6 +1769,7 @@ function StudioSection() {
         const { data, error } = await supabase.from("madrasa_classes").insert(payload).select("id").single();
         if (error) throw error;
         finalId = data.id;
+        setSelection({ type: "class", id: finalId });
       }
 
       const { error: delErr } = await supabase.from("madrasa_schedules").delete().eq("class_id", finalId).eq("org_id", orgId!);
@@ -1790,13 +1791,95 @@ function StudioSection() {
 
   // Inspector data
   const selectedLevel = selection.type === "level" ? (levels as any[]).find((l: any) => l.id === selection.id) : null;
-  const selectedClass = selection.type === "class" ? (classes as any[]).find((c: any) => c.id === selection.id) : null;
+  const isNewClass = selection.type === "class" && selection.id === "__new__";
+  const selectedClass = selection.type === "class" && !isNewClass ? (classes as any[]).find((c: any) => c.id === selection.id) : null;
+
+  // Student management for selected class
+  const selectedClassId = selection.type === "class" && selection.id !== "__new__" ? selection.id : null;
+
+  const { data: classEnrollments = [], refetch: refetchEnrollments } = useQuery({
+    queryKey: ["class_enrollments", selectedClassId, orgId],
+    enabled: !!selectedClassId && !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_enrollments")
+        .select("id, student_id, madrasa_students(id, nom, prenom)")
+        .eq("class_id", selectedClassId!)
+        .eq("org_id", orgId!)
+        .eq("statut", "Actif");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: allStudents = [] } = useQuery({
+    queryKey: ["madrasa_students_all", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_students")
+        .select("id, nom, prenom")
+        .eq("org_id", orgId!)
+        .order("nom");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const [studentSearch, setStudentSearch] = useState("");
+  const [showStudentSearch, setShowStudentSearch] = useState(false);
+
+  const enrolledStudentIds = React.useMemo(() => new Set(classEnrollments.map((e: any) => e.student_id)), [classEnrollments]);
+
+  const filteredStudents = React.useMemo(() => {
+    if (!studentSearch.trim()) return [];
+    const q = studentSearch.toLowerCase();
+    return allStudents.filter((s: any) => !enrolledStudentIds.has(s.id) && (`${s.prenom} ${s.nom}`.toLowerCase().includes(q) || `${s.nom} ${s.prenom}`.toLowerCase().includes(q))).slice(0, 10);
+  }, [allStudents, studentSearch, enrolledStudentIds]);
+
+  const enrollStudent = useMutation({
+    mutationFn: async (studentId: string) => {
+      if (!selectedClassId || !orgId || !selectedYearId) throw new Error("Données manquantes");
+      const currentYear = years.find(y => y.id === selectedYearId);
+      const { error } = await supabase.from("madrasa_enrollments").insert({
+        student_id: studentId,
+        class_id: selectedClassId,
+        org_id: orgId,
+        annee_scolaire: currentYear?.label ?? "2025/2026",
+        academic_year_id: selectedYearId,
+        statut: "Actif",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchEnrollments();
+      qc.invalidateQueries({ queryKey: ["enrollment_counts", orgId] });
+      setStudentSearch("");
+      setShowStudentSearch(false);
+      toast({ title: "Élève inscrit" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  const removeEnrollment = useMutation({
+    mutationFn: async (enrollmentId: string) => {
+      const { error } = await supabase.from("madrasa_enrollments").update({ statut: "Retiré" }).eq("id", enrollmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchEnrollments();
+      qc.invalidateQueries({ queryKey: ["enrollment_counts", orgId] });
+      toast({ title: "Élève retiré de la classe" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
 
   const inspectorClasses = React.useMemo(() => {
     if (selection.type === "level") return (classes as any[]).filter((c: any) => c.level_id === selection.id);
     if (selection.type === "class" && selectedClass) return (classes as any[]).filter((c: any) => c.level_id === selectedClass.level_id);
+    if (isNewClass && classForm.levelId) return (classes as any[]).filter((c: any) => c.level_id === classForm.levelId);
     return [];
-  }, [selection, classes, selectedClass]);
+  }, [selection, classes, selectedClass, isNewClass, classForm.levelId]);
 
   const alerts = React.useMemo(() => {
     const items: { msg: string; severity: "warning" | "error" }[] = [];
@@ -1931,7 +2014,7 @@ function StudioSection() {
             )}
 
             {/* ── Level selected: compact subjects & tarif ── */}
-            {selection.type === "level" && selectedLevel && (
+             {selection.type === "level" && selectedLevel && (
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -1943,8 +2026,28 @@ function StudioSection() {
                   </p>
                 </div>
                 <Separator />
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium">Classes de ce niveau</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1 text-xs"
+                    onClick={() => {
+                      setSelection({ type: "class", id: "__new__" });
+                      setClassForm({
+                        nom: "",
+                        levelId: selectedLevel.id,
+                        salleId: "",
+                        capacityMax: "15",
+                        profId: "",
+                      });
+                      setClassSchedules([]);
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Nouvelle classe
+                  </Button>
+                </div>
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Classes de ce niveau</h4>
                   {inspectorClasses.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Aucune classe rattachée.</p>
                   ) : (
@@ -1973,17 +2076,17 @@ function StudioSection() {
               </div>
             )}
 
-            {/* ── Class selected: full edit form with planning ── */}
-            {selection.type === "class" && selectedClass && (
+             {/* ── Class selected: full edit form with planning ── */}
+            {selection.type === "class" && (selectedClass || isNewClass) && (
               <div className="space-y-4 max-w-2xl">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
                     <GraduationCap className="h-5 w-5" />
-                    {selectedClass.nom}
+                    {isNewClass ? "Nouvelle classe" : selectedClass?.nom}
                   </h3>
                   <Button size="sm" onClick={() => saveClass.mutate()} disabled={saveClass.isPending}>
                     {saveClass.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-                    Enregistrer
+                    {isNewClass ? "Créer" : "Enregistrer"}
                   </Button>
                 </div>
                 <Separator />
@@ -2105,6 +2208,93 @@ function StudioSection() {
                     </div>
                   ))}
                 </div>
+
+                {/* ── Student Management ── */}
+                {!isNewClass && selectedClassId && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <Label className="text-base font-semibold">Gestion des élèves</Label>
+                          <Badge variant="outline" className="text-xs">
+                            {classEnrollments.length} / {parseInt(classForm.capacityMax) || 15} élèves
+                          </Badge>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowStudentSearch(!showStudentSearch)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Inscrire un élève
+                        </Button>
+                      </div>
+
+                      {showStudentSearch && (
+                        <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
+                          <Input
+                            placeholder="Rechercher un élève par nom ou prénom…"
+                            value={studentSearch}
+                            onChange={(e) => setStudentSearch(e.target.value)}
+                            autoFocus
+                            className="h-9"
+                          />
+                          {filteredStudents.length > 0 && (
+                            <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
+                              {filteredStudents.map((s: any) => (
+                                <button
+                                  key={s.id}
+                                  onClick={() => enrollStudent.mutate(s.id)}
+                                  disabled={enrollStudent.isPending}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
+                                >
+                                  <span>{s.prenom} {s.nom}</span>
+                                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {studentSearch.trim() && filteredStudents.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">Aucun élève trouvé.</p>
+                          )}
+                        </div>
+                      )}
+
+                      {classEnrollments.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
+                          Aucun élève inscrit dans cette classe.
+                        </p>
+                      ) : (
+                        <div className="border rounded-md divide-y">
+                          {classEnrollments.map((enrollment: any) => {
+                            const student = enrollment.madrasa_students;
+                            return (
+                              <div key={enrollment.id} className="flex items-center justify-between px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                                    {student?.prenom?.[0]}{student?.nom?.[0]}
+                                  </div>
+                                  <span className="text-sm">{student?.prenom} {student?.nom}</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => removeEnrollment.mutate(enrollment.id)}
+                                  disabled={removeEnrollment.isPending}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
