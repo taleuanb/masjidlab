@@ -7,8 +7,9 @@ import {
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
   AlertTriangle, Users, Pencil, MessageCircle, FileText,
   Clock, LayoutGrid, ChevronRight, FolderOpen, Folder,
-  Sparkles,
+  Sparkles, RefreshCw, Tag, Inbox,
 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -160,75 +161,67 @@ function AcademicYearsSection() {
   const fmtDate = (d: string | null) => d ? format(new Date(d), "d MMM yyyy", { locale: fr }) : "—";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <CalendarDays className="h-5 w-5" /> Années Scolaires
-        </CardTitle>
-        <CardDescription>Définissez les sessions scolaires et activez l'année en cours.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-4 items-end">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Label *</Label>
-            <Input placeholder="Ex: 2025-2026" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
-          </div>
-          <DatePickerField label="Début" date={startDate} onSelect={setStartDate} />
-          <DatePickerField label="Fin" date={endDate} onSelect={setEndDate} />
-          <Button onClick={() => addYear.mutate()} disabled={addYear.isPending} size="sm" className="h-9">
-            {addYear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
-            Ajouter
-          </Button>
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-4 items-end">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Label *</Label>
+          <Input placeholder="Ex: 2025-2026" value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
         </div>
+        <DatePickerField label="Début" date={startDate} onSelect={setStartDate} />
+        <DatePickerField label="Fin" date={endDate} onSelect={setEndDate} />
+        <Button onClick={() => addYear.mutate()} disabled={addYear.isPending} size="sm" className="h-9 bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+          {addYear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+          Ajouter
+        </Button>
+      </div>
 
-        {isLoading ? (
-          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : years.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">Aucune année scolaire configurée.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Label</TableHead>
-                <TableHead>Période</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead className="text-center">Courante</TableHead>
-                <TableHead className="w-16" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {years.map((y) => (
-                <TableRow key={y.id}>
-                  <TableCell className="font-medium">{y.label}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {fmtDate(y.start_date)} → {fmtDate(y.end_date)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={y.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}>
-                      {y.status === "open" ? "Ouverte" : y.status === "closed" ? "Clôturée" : y.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {y.is_current ? (
-                      <Star className="h-4 w-4 text-amber-500 mx-auto fill-amber-500" />
-                    ) : (
-                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => setCurrent.mutate(y.id)}>
-                        Activer
-                      </Button>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => deleteYear.mutate(y.id)} disabled={!!y.is_current}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
+      {isLoading ? (
+        <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+      ) : years.length === 0 ? (
+        <EmptyState icon={CalendarDays} message="Aucune année scolaire configurée." hint="Créez votre première année scolaire pour commencer à planifier." />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40">
+              <TableHead>Label</TableHead>
+              <TableHead>Période</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead className="text-center">Courante</TableHead>
+              <TableHead className="w-16" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {years.map((y) => (
+              <TableRow key={y.id} className="hover:bg-muted/30">
+                <TableCell className="font-medium">{y.label}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {fmtDate(y.start_date)} → {fmtDate(y.end_date)}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={y.status === "open" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}>
+                    {y.status === "open" ? "Ouverte" : y.status === "closed" ? "Clôturée" : y.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-center">
+                  {y.is_current ? (
+                    <Star className="h-4 w-4 text-amber-500 mx-auto fill-amber-500" />
+                  ) : (
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => setCurrent.mutate(y.id)}>
+                      Activer
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="icon" onClick={() => deleteYear.mutate(y.id)} disabled={!!y.is_current}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 }
 
@@ -288,53 +281,45 @@ function CyclesSection() {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Layers className="h-5 w-5" /> Cycles
-        </CardTitle>
-        <CardDescription>Regroupez vos niveaux par type d'école (ex: Enfants, Adultes, Intensif).</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Input placeholder="Nom du cycle" value={nom} onChange={(e) => setNom(e.target.value)} className="h-9" />
-          <Input placeholder="Description (optionnel)" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
-          <Button onClick={() => addCycle.mutate()} disabled={addCycle.isPending} size="sm" className="h-9">
-            {addCycle.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
-            Ajouter
-          </Button>
-        </div>
+    <div className="space-y-4">
+      <div className="grid gap-2 sm:grid-cols-3">
+        <Input placeholder="Nom du cycle" value={nom} onChange={(e) => setNom(e.target.value)} className="h-9" />
+        <Input placeholder="Description (optionnel)" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
+        <Button onClick={() => addCycle.mutate()} disabled={addCycle.isPending} size="sm" className="h-9 bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+          {addCycle.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+          Ajouter
+        </Button>
+      </div>
 
-        {isLoading ? (
-          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : cycles.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">Aucun cycle configuré. Créez vos types d'écoles pour structurer le cursus.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-16" />
+      {isLoading ? (
+        <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+      ) : cycles.length === 0 ? (
+        <EmptyState icon={RefreshCw} message="Aucun cycle configuré." hint="Utilisez le Launchpad ou cliquez sur 'Ajouter' pour créer vos types d'écoles." />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40">
+              <TableHead>Nom</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="w-16" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cycles.map((c) => (
+              <TableRow key={c.id} className="hover:bg-muted/30">
+                <TableCell className="font-medium">{c.nom}</TableCell>
+                <TableCell className="text-muted-foreground">{c.description ?? "—"}</TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="icon" onClick={() => deleteCycle.mutate(c.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cycles.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.nom}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.description ?? "—"}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => deleteCycle.mutate(c.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 }
 
