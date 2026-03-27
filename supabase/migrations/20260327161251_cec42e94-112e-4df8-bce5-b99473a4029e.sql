@@ -1,0 +1,2 @@
+ALTER TABLE public.madrasa_schedules DROP CONSTRAINT IF EXISTS madrasa_schedules_day_of_week_check;
+ALTER TABLE public.madrasa_schedules ADD CONSTRAINT madrasa_schedules_day_of_week_check CHECK (day_of_week >= 0 AND day_of_week <= 6);
