@@ -2076,17 +2076,17 @@ function StudioSection() {
               </div>
             )}
 
-            {/* ── Class selected: full edit form with planning ── */}
-            {selection.type === "class" && selectedClass && (
+             {/* ── Class selected: full edit form with planning ── */}
+            {selection.type === "class" && (selectedClass || isNewClass) && (
               <div className="space-y-4 max-w-2xl">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
                     <GraduationCap className="h-5 w-5" />
-                    {selectedClass.nom}
+                    {isNewClass ? "Nouvelle classe" : selectedClass?.nom}
                   </h3>
                   <Button size="sm" onClick={() => saveClass.mutate()} disabled={saveClass.isPending}>
                     {saveClass.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-                    Enregistrer
+                    {isNewClass ? "Créer" : "Enregistrer"}
                   </Button>
                 </div>
                 <Separator />
