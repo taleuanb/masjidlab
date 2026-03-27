@@ -255,7 +255,7 @@ export default function SettingsPage() {
       features: roomForm.features,
       statut: roomForm.statut,
       pole: roomForm.pole.trim() || null,
-      ...(orgId ? { org_id: orgId } : {}),
+      org_id: orgId!,
     };
     try {
       if (editingRoom) {
