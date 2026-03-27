@@ -156,17 +156,15 @@ export function AccessDiagnosticTab() {
         for (const child of group.children) {
           const childInPlan = isModuleInPlan(child.id, plan);
           const childInPole = parentInPole;
-          // RBAC: Permissive — child false + parent true → child true
+          // RBAC: Strict — explicit entry wins, parent only as last resort
           const resolveChildRbac = (): boolean => {
-            // Check child explicitly
-            let childResult = false;
+            // 1. Explicit DB entry for this child → use it directly
             if (permMap.has(child.id)) {
-              childResult = !!permMap.get(child.id);
-            } else {
-              childResult = hasDefaultView(selectedRole, child.id);
+              return !!permMap.get(child.id);
             }
-            if (childResult) return true;
-            // Positive parent inheritance: parent true → child true
+            // 2. Factory default for this child
+            if (hasDefaultView(selectedRole, child.id)) return true;
+            // 3. No entry found → inherit from parent
             if (permMap.has(group.id)) return !!permMap.get(group.id);
             return hasDefaultView(selectedRole, group.id);
           };
