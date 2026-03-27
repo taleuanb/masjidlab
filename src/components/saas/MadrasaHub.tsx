@@ -56,9 +56,26 @@ const SUBJECT_CATEGORIES = [
   { value: "other", label: "Autre" },
 ] as const;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Shared helpers
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ── Shared helpers ── */
+
+const CATEGORY_COLORS: Record<string, string> = {
+  quran: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  arabic: "bg-cyan-100 text-cyan-800 border-cyan-300",
+  fiqh: "bg-amber-100 text-amber-800 border-amber-300",
+  sira: "bg-violet-100 text-violet-800 border-violet-300",
+  aqida: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  other: "bg-muted text-muted-foreground border-border",
+};
+
+function EmptyState({ icon: Icon, message, hint }: { icon: React.ElementType; message: string; hint?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed rounded-lg bg-muted/10">
+      <Icon className="h-8 w-8 text-muted-foreground/40 mb-3" />
+      <p className="text-sm font-medium text-muted-foreground">{message}</p>
+      {hint && <p className="text-xs text-muted-foreground/70 mt-1 max-w-sm">{hint}</p>}
+    </div>
+  );
+}
 
 function DatePickerField({ label, date, onSelect }: { label: string; date: Date | undefined; onSelect: (d: Date | undefined) => void }) {
   return (
