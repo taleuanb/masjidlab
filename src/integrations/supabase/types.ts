@@ -336,6 +336,47 @@ export type Database = {
           },
         ]
       }
+      madrasa_academic_years: {
+        Row: {
+          created_at: string | null
+          end_date: string | null
+          id: string
+          is_current: boolean | null
+          label: string
+          org_id: string | null
+          start_date: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          label: string
+          org_id?: string | null
+          start_date?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          label?: string
+          org_id?: string | null
+          start_date?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_academic_years_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       madrasa_attendance: {
         Row: {
           class_id: string | null
@@ -498,8 +539,11 @@ export type Database = {
       }
       madrasa_classes: {
         Row: {
+          academic_year_id: string | null
+          capacity_max: number | null
           created_at: string | null
           id: string
+          level_id: string | null
           niveau: string | null
           nom: string
           org_id: string
@@ -508,8 +552,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          academic_year_id?: string | null
+          capacity_max?: number | null
           created_at?: string | null
           id?: string
+          level_id?: string | null
           niveau?: string | null
           nom: string
           org_id: string
@@ -518,8 +565,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          academic_year_id?: string | null
+          capacity_max?: number | null
           created_at?: string | null
           id?: string
+          level_id?: string | null
           niveau?: string | null
           nom?: string
           org_id?: string
@@ -528,6 +578,20 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "madrasa_classes_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_classes_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_levels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "madrasa_classes_org_id_fkey"
             columns: ["org_id"]
@@ -551,8 +615,41 @@ export type Database = {
           },
         ]
       }
+      madrasa_cycles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          nom: string
+          org_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          nom: string
+          org_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          nom?: string
+          org_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_cycles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       madrasa_enrollments: {
         Row: {
+          academic_year_id: string | null
           annee_scolaire: string
           class_id: string
           created_at: string | null
@@ -563,6 +660,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          academic_year_id?: string | null
           annee_scolaire: string
           class_id: string
           created_at?: string | null
@@ -573,6 +671,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          academic_year_id?: string | null
           annee_scolaire?: string
           class_id?: string
           created_at?: string | null
@@ -583,6 +682,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "madrasa_enrollments_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_academic_years"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "madrasa_enrollments_class_id_fkey"
             columns: ["class_id"]
@@ -791,6 +897,8 @@ export type Database = {
       madrasa_levels: {
         Row: {
           created_at: string | null
+          cycle_id: string | null
+          cycle_type: string | null
           description: string | null
           id: string
           label: string
@@ -799,6 +907,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          cycle_id?: string | null
+          cycle_type?: string | null
           description?: string | null
           id?: string
           label: string
@@ -807,6 +917,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          cycle_id?: string | null
+          cycle_type?: string | null
           description?: string | null
           id?: string
           label?: string
@@ -814,6 +926,13 @@ export type Database = {
           tarif_mensuel?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "madrasa_levels_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_cycles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "madrasa_levels_org_id_fkey"
             columns: ["org_id"]
@@ -1241,6 +1360,7 @@ export type Database = {
       }
       madrasa_subjects: {
         Row: {
+          category: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -1248,6 +1368,7 @@ export type Database = {
           org_id: string
         }
         Insert: {
+          category?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1255,6 +1376,7 @@ export type Database = {
           org_id: string
         }
         Update: {
+          category?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
