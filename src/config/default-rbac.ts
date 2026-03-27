@@ -87,10 +87,10 @@ export const DEFAULT_RBAC_MATRIX: Record<string, Record<string, DefaultPermissio
     map["education"] = VIEW_ONLY;
     map["education.eleves"] = VIEW_ONLY;
     map["education.classes"] = VIEW_ONLY;
-    map["education.inscriptions"] = VIEW_ONLY;
+    map["education.inscriptions"] = NONE;
     map["education.sessions"] = VIEW_EDIT;
     map["education.evaluations"] = VIEW_EDIT;
-    map["education.frais"] = VIEW_ONLY;
+    map["education.frais"] = NONE;
     return map;
   })(),
 

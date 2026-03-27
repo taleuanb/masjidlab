@@ -20,7 +20,7 @@ import {
 import {
   isModuleInPlan, type PlanId,
 } from "@/config/module-registry";
-import { hasDefaultView } from "@/config/default-rbac";
+import { hasDefaultView, getDefaultPermission } from "@/config/default-rbac";
 
 const ROLES = [
   { id: "admin", label: "Admin Mosquée" },
@@ -138,9 +138,7 @@ export function AccessDiagnosticTab() {
       for (const group of RBAC_MODULE_HIERARCHY) {
         const parentInPlan = isModuleInPlan(group.id, plan);
         const parentInPole = activePoles.size === 0 || activePoles.has(group.id);
-        const parentInRbac = permMap.has(group.id)
-          ? !!permMap.get(group.id)
-          : hasDefaultView(selectedRole, group.id);
+        const parentInRbac = resolveRbacStrict(permMap, selectedRole, group.id);
         const parentFinal = parentInPlan && parentInPole && parentInRbac;
 
         diagRows.push({
@@ -156,19 +154,7 @@ export function AccessDiagnosticTab() {
         for (const child of group.children) {
           const childInPlan = isModuleInPlan(child.id, plan);
           const childInPole = parentInPole;
-          // RBAC: Strict — explicit entry wins, parent only as last resort
-          const resolveChildRbac = (): boolean => {
-            // 1. Explicit DB entry for this child → use it directly
-            if (permMap.has(child.id)) {
-              return !!permMap.get(child.id);
-            }
-            // 2. Factory default for this child
-            if (hasDefaultView(selectedRole, child.id)) return true;
-            // 3. No entry found → inherit from parent
-            if (permMap.has(group.id)) return !!permMap.get(group.id);
-            return hasDefaultView(selectedRole, group.id);
-          };
-          const childInRbac = resolveChildRbac();
+          const childInRbac = resolveRbacStrict(permMap, selectedRole, child.id);
           const childFinal = childInPlan && childInPole && childInRbac;
 
           diagRows.push({

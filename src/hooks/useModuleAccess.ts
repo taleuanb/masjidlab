@@ -22,7 +22,7 @@ import {
   type PlanId,
   MODULE_MAP,
 } from "@/config/module-registry";
-import { hasDefaultView } from "@/config/default-rbac";
+import { hasDefaultView, getDefaultPermission } from "@/config/default-rbac";
 
 export interface ModuleAccessResult {
   allowed: boolean;
@@ -123,33 +123,8 @@ export function useModuleAccess(previewRole?: string): UseModuleAccessReturn {
   // Build activation set from org's active_poles
   const activePoleSet = useMemo<Set<string>>(() => new Set(activePoles), [activePoles]);
 
-  const logRbacDecision = useCallback((
-    moduleKey: string,
-    allowed: boolean,
-    details: {
-      inPlan: boolean | null;
-      inActivePoles: boolean | null;
-      inGlobalPerms: boolean | null;
-    }
-  ) => {
-    if (!import.meta.env.DEV) return;
-    console.groupCollapsed(`🔐 RBAC Debug - ${moduleKey}`);
-    console.log("allowed:", allowed);
-    console.log("InPlan:", details.inPlan);
-    console.log("InActivePoles:", details.inActivePoles);
-    console.log("InGlobalPerms:", details.inGlobalPerms);
-    console.groupEnd();
-  }, []);
 
   const checkAccess = useCallback((moduleKey: string): ModuleAccessResult => {
-    const finalize = (
-      result: ModuleAccessResult,
-      details: { inPlan: boolean | null; inActivePoles: boolean | null; inGlobalPerms: boolean | null }
-    ): ModuleAccessResult => {
-      logRbacDecision(moduleKey, result.allowed, details);
-      return result;
-    };
-
     const meta = MODULE_MAP.get(moduleKey);
     const isCore = CORE_MODULE_IDS.has(moduleKey);
 
@@ -158,29 +133,17 @@ export function useModuleAccess(previewRole?: string): UseModuleAccessReturn {
       const defaultRoles = meta.defaultRoles ?? [];
       const hasWildcard = defaultRoles.includes("*");
       const allowed = hasWildcard || effectiveRoles.some((r) => defaultRoles.includes(r));
-      if (!allowed) {
-        console.debug(`[useModuleAccess] CORE "${moduleKey}" blocked — effectiveRoles:`, effectiveRoles, "defaultRoles:", defaultRoles);
-      }
-      return finalize(
-        { allowed, blockedByPlan: false, blockedByRbac: !allowed, isCore },
-        { inPlan: null, inActivePoles: null, inGlobalPerms: allowed }
-      );
+      return { allowed, blockedByPlan: false, blockedByRbac: !allowed, isCore };
     }
 
     // ── Priority 2: super_admin bypass (non-ghost) ──
     if (isBypassing) {
-      return finalize(
-        { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore },
-        { inPlan: true, inActivePoles: true, inGlobalPerms: true }
-      );
+      return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
     }
 
     // ── Priority 3: Org status filter — pending orgs only get CORE ──
     if (orgStatus === "pending" || orgStatus === "suspended") {
-      return finalize(
-        { allowed: false, blockedByPlan: false, blockedByRbac: false, isCore },
-        { inPlan: null, inActivePoles: null, inGlobalPerms: null }
-      );
+      return { allowed: false, blockedByPlan: false, blockedByRbac: false, isCore };
     }
 
     // ── Priority 4: Triple filter (Plan + Activation + Global RBAC) ──
@@ -188,35 +151,37 @@ export function useModuleAccess(previewRole?: string): UseModuleAccessReturn {
     // A) Plan filter
     const inPlan = isModuleInPlan(moduleKey, currentPlan);
     if (!inPlan) {
-      return finalize(
-        { allowed: false, blockedByPlan: true, blockedByRbac: false, isCore },
-        { inPlan: false, inActivePoles: null, inGlobalPerms: null }
-      );
+      return { allowed: false, blockedByPlan: true, blockedByRbac: false, isCore };
     }
 
     // B) Activation filter — module's parent must be in org's active_poles
     const parentKey = moduleKey.includes(".") ? moduleKey.split(".")[0] : moduleKey;
     const inActivePoles = activePoleSet.size === 0 || activePoleSet.has(parentKey);
     if (!inActivePoles) {
-      return finalize(
-        { allowed: false, blockedByPlan: false, blockedByRbac: false, isCore },
-        { inPlan: true, inActivePoles: false, inGlobalPerms: null }
-      );
+      return { allowed: false, blockedByPlan: false, blockedByRbac: false, isCore };
     }
 
-    // C) RBAC filter — Strict resolution: explicit entry wins, parent is last resort
+    // C) RBAC filter — Strict resolution with NO inheritance leak
     const resolveRbac = (key: string): boolean => {
-      // 1. Priority: explicit DB entry for this exact module
+      // 1. Explicit DB entry for this exact module → definitive
       if (globalPerms.has(key)) {
         return !!globalPerms.get(key);
       }
 
-      // 2. Fallback: factory default for this exact module
-      const factoryHit = effectiveRoles.some((r) => hasDefaultView(r, key));
-      if (factoryHit) return true;
+      // 2. Factory default for this exact module → definitive if entry exists
+      const hasFactoryEntry = effectiveRoles.some((r) => {
+        const perm = getDefaultPermission(r, key);
+        // An entry "exists" if it's not the implicit NONE fallback
+        // We check if ANY permission bit is set, or if the key is explicitly listed
+        return perm.can_view || perm.can_edit || perm.can_delete;
+      });
+      // If factory has an explicit entry (even if all false), it's definitive
+      // We detect "explicitly listed" by checking if hasDefaultView returns differently
+      // from the NONE fallback — but we need to know if the key IS in the matrix
+      const factoryCanView = effectiveRoles.some((r) => hasDefaultView(r, key));
+      if (hasFactoryEntry || factoryCanView) return factoryCanView;
 
-      // 3. Conditional inheritance: only if NO entry was found for the child
-      //    (neither in DB nor in factory defaults), check the parent
+      // 3. No entry found anywhere for this child → inherit from parent
       if (key.includes(".")) {
         const pKey = key.split(".")[0];
         if (globalPerms.has(pKey)) return !!globalPerms.get(pKey);
@@ -228,17 +193,11 @@ export function useModuleAccess(previewRole?: string): UseModuleAccessReturn {
 
     const inGlobalPerms = resolveRbac(moduleKey);
     if (!inGlobalPerms) {
-      return finalize(
-        { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore },
-        { inPlan: true, inActivePoles: true, inGlobalPerms: false }
-      );
+      return { allowed: false, blockedByPlan: false, blockedByRbac: true, isCore };
     }
 
-    return finalize(
-      { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore },
-      { inPlan: true, inActivePoles: true, inGlobalPerms }
-    );
-  }, [isBypassing, currentPlan, orgStatus, effectiveRoles, globalPerms, activePoleSet, logRbacDecision]);
+    return { allowed: true, blockedByPlan: false, blockedByRbac: false, isCore };
+  }, [isBypassing, currentPlan, orgStatus, effectiveRoles, globalPerms, activePoleSet]);
 
   const hasAccess = useCallback((moduleKey: string): boolean => {
     return checkAccess(moduleKey).allowed;
