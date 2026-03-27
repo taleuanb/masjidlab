@@ -1531,46 +1531,45 @@ function SettingsSection() {
   if (isLoading) return <Skeleton className="h-40 w-full" />;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2"><Settings2 className="h-5 w-5" /> Paramètres généraux</CardTitle>
-        <CardDescription>Configuration de base du module Éducation.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-5 sm:grid-cols-3">
+    <div className="space-y-6">
+      <div className="grid gap-6 sm:grid-cols-3">
         <div className="space-y-2">
-          <Label>Cycle de facturation</Label>
+          <Label className="text-sm font-medium">Cycle de facturation</Label>
           <Select value={billingCycle} onValueChange={setBillingCycle}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="mensuel">Mensuel</SelectItem>
               <SelectItem value="trimestriel">Trimestriel</SelectItem>
               <SelectItem value="annuel">Annuel</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">Fréquence de génération des factures de scolarité.</p>
         </div>
         <div className="space-y-2">
-          <Label>Seuil d'alerte absences</Label>
-          <Input type="number" min={0} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+          <Label className="text-sm font-medium">Seuil d'alerte absences</Label>
+          <Input type="number" min={0} value={threshold} onChange={(e) => setThreshold(e.target.value)} className="bg-background" />
+          <p className="text-xs text-muted-foreground">Nombre d'absences avant déclenchement d'une alerte parent.</p>
         </div>
         <div className="space-y-2">
-          <Label>Devise</Label>
+          <Label className="text-sm font-medium">Devise</Label>
           <Select value={currency} onValueChange={setCurrency}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="EUR">EUR (€)</SelectItem>
               <SelectItem value="USD">USD ($)</SelectItem>
               <SelectItem value="GBP">GBP (£)</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">Devise utilisée pour tous les montants financiers.</p>
         </div>
-        <div className="sm:col-span-3 flex justify-end">
-          <Button onClick={() => upsert.mutate()} disabled={upsert.isPending}>
-            {upsert.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Enregistrer
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="flex justify-end">
+        <Button onClick={() => upsert.mutate()} disabled={upsert.isPending} className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+          {upsert.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          Enregistrer les réglages
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -2493,9 +2492,31 @@ export function MadrasaHub() {
         </TabsContent>
 
         {/* 4. Paramètres & Communications */}
-        <TabsContent value="parametres" className="space-y-6">
-          <SettingsSection />
-          <CommunicationsTab />
+        <TabsContent value="parametres">
+          <Accordion type="multiple" defaultValue={["admin-settings"]} className="space-y-2">
+            <AccordionItem value="admin-settings" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Settings2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Réglages Administratifs</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <SettingsSection />
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="communications" className="border rounded-lg shadow-sm overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Modèles de Communication (WhatsApp)</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <CommunicationsTab />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </TabsContent>
       </Tabs>
     </div>
