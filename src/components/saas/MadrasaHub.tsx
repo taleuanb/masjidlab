@@ -1573,6 +1573,7 @@ function StudioSection() {
   const [selection, setSelection] = useState<StudioSelection>({ type: "none" });
   const [expandedCycles, setExpandedCycles] = useState<Set<string>>(new Set());
   const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
+  const [launchpadOpen, setLaunchpadOpen] = useState(false);
 
   // Class form state (reused from ClassesSection pattern)
   const [classForm, setClassForm] = useState({ nom: "", levelId: "", salleId: "", capacityMax: "15", profId: "" });
