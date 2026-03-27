@@ -1847,6 +1847,16 @@ function StudioSection() {
             </SelectContent>
           </Select>
         </div>
+        <div className="px-3 pb-2">
+          <Button
+            onClick={() => setLaunchpadOpen(true)}
+            className="w-full h-9 text-xs gap-1.5 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+            size="sm"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Lancer un cursus
+          </Button>
+        </div>
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-0.5">
             {tree.length === 0 && (
