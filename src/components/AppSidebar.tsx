@@ -24,7 +24,6 @@ import { useRole, type UserRole, UI_ROLE_TO_DB } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
 import type { Pole } from "@/types/amm";
 import { useModuleAccess } from "@/hooks/useModuleAccess";
-import { CORE_MODULE_IDS, MODULE_MAP } from "@/config/module-registry";
 
 const POLES: Pole[] = ["Imam", "École (Avenir)", "Social (ABD)", "Accueil", "Récolte", "Digital", "Com", "Parking"];
 
