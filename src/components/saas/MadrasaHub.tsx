@@ -1791,13 +1791,95 @@ function StudioSection() {
 
   // Inspector data
   const selectedLevel = selection.type === "level" ? (levels as any[]).find((l: any) => l.id === selection.id) : null;
-  const selectedClass = selection.type === "class" ? (classes as any[]).find((c: any) => c.id === selection.id) : null;
+  const isNewClass = selection.type === "class" && selection.id === "__new__";
+  const selectedClass = selection.type === "class" && !isNewClass ? (classes as any[]).find((c: any) => c.id === selection.id) : null;
+
+  // Student management for selected class
+  const selectedClassId = selection.type === "class" && selection.id !== "__new__" ? selection.id : null;
+
+  const { data: classEnrollments = [], refetch: refetchEnrollments } = useQuery({
+    queryKey: ["class_enrollments", selectedClassId, orgId],
+    enabled: !!selectedClassId && !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_enrollments")
+        .select("id, student_id, madrasa_students(id, nom, prenom)")
+        .eq("class_id", selectedClassId!)
+        .eq("org_id", orgId!)
+        .eq("statut", "Actif");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: allStudents = [] } = useQuery({
+    queryKey: ["madrasa_students_all", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_students")
+        .select("id, nom, prenom")
+        .eq("org_id", orgId!)
+        .order("nom");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const [studentSearch, setStudentSearch] = useState("");
+  const [showStudentSearch, setShowStudentSearch] = useState(false);
+
+  const enrolledStudentIds = React.useMemo(() => new Set(classEnrollments.map((e: any) => e.student_id)), [classEnrollments]);
+
+  const filteredStudents = React.useMemo(() => {
+    if (!studentSearch.trim()) return [];
+    const q = studentSearch.toLowerCase();
+    return allStudents.filter((s: any) => !enrolledStudentIds.has(s.id) && (`${s.prenom} ${s.nom}`.toLowerCase().includes(q) || `${s.nom} ${s.prenom}`.toLowerCase().includes(q))).slice(0, 10);
+  }, [allStudents, studentSearch, enrolledStudentIds]);
+
+  const enrollStudent = useMutation({
+    mutationFn: async (studentId: string) => {
+      if (!selectedClassId || !orgId || !selectedYearId) throw new Error("Données manquantes");
+      const currentYear = years.find(y => y.id === selectedYearId);
+      const { error } = await supabase.from("madrasa_enrollments").insert({
+        student_id: studentId,
+        class_id: selectedClassId,
+        org_id: orgId,
+        annee_scolaire: currentYear?.label ?? "2025/2026",
+        academic_year_id: selectedYearId,
+        statut: "Actif",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchEnrollments();
+      qc.invalidateQueries({ queryKey: ["enrollment_counts", orgId] });
+      setStudentSearch("");
+      setShowStudentSearch(false);
+      toast({ title: "Élève inscrit" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  const removeEnrollment = useMutation({
+    mutationFn: async (enrollmentId: string) => {
+      const { error } = await supabase.from("madrasa_enrollments").update({ statut: "Retiré" }).eq("id", enrollmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchEnrollments();
+      qc.invalidateQueries({ queryKey: ["enrollment_counts", orgId] });
+      toast({ title: "Élève retiré de la classe" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
 
   const inspectorClasses = React.useMemo(() => {
     if (selection.type === "level") return (classes as any[]).filter((c: any) => c.level_id === selection.id);
     if (selection.type === "class" && selectedClass) return (classes as any[]).filter((c: any) => c.level_id === selectedClass.level_id);
+    if (isNewClass && classForm.levelId) return (classes as any[]).filter((c: any) => c.level_id === classForm.levelId);
     return [];
-  }, [selection, classes, selectedClass]);
+  }, [selection, classes, selectedClass, isNewClass, classForm.levelId]);
 
   const alerts = React.useMemo(() => {
     const items: { msg: string; severity: "warning" | "error" }[] = [];
