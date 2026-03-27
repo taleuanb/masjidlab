@@ -2172,7 +2172,11 @@ function StudioSection() {
       </div>
     </div>
 
-    <LaunchpadWizard open={launchpadOpen} onOpenChange={setLaunchpadOpen} />
+    <LaunchpadWizard open={launchpadOpen} onOpenChange={setLaunchpadOpen} orgId={orgId} onSuccess={() => {
+      qc.invalidateQueries({ queryKey: ["madrasa_cycles", orgId] });
+      qc.invalidateQueries({ queryKey: ["madrasa_levels", orgId] });
+      qc.invalidateQueries({ queryKey: ["madrasa_subjects", orgId] });
+    }} />
     </>
   );
 }
