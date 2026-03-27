@@ -186,7 +186,7 @@ function AcademicYearsSection() {
         </div>
         <DatePickerField label="Début" date={startDate} onSelect={setStartDate} />
         <DatePickerField label="Fin" date={endDate} onSelect={setEndDate} />
-        <Button onClick={() => addYear.mutate()} disabled={addYear.isPending} size="sm" className="h-9 bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+        <Button onClick={() => addYear.mutate()} disabled={addYear.isPending} size="sm" className="h-9 bg-brand-navy hover:bg-brand-navy/90 text-white">
           {addYear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
           Ajouter
         </Button>
@@ -302,7 +302,7 @@ function CyclesSection() {
       <div className="grid gap-2 sm:grid-cols-3">
         <Input placeholder="Nom du cycle" value={nom} onChange={(e) => setNom(e.target.value)} className="h-9" />
         <Input placeholder="Description (optionnel)" value={desc} onChange={(e) => setDesc(e.target.value)} className="h-9" />
-        <Button onClick={() => addCycle.mutate()} disabled={addCycle.isPending} size="sm" className="h-9 bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+        <Button onClick={() => addCycle.mutate()} disabled={addCycle.isPending} size="sm" className="h-9 bg-brand-navy hover:bg-brand-navy/90 text-white">
           {addCycle.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
           Ajouter
         </Button>
@@ -426,7 +426,7 @@ function CalendarSection() {
     <>
       <div className="space-y-4">
         <div className="flex justify-end">
-          <Button size="sm" onClick={() => setOpen(true)} className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+          <Button size="sm" onClick={() => setOpen(true)} className="bg-brand-navy hover:bg-brand-navy/90 text-white">
             <Plus className="h-4 w-4 mr-1" /> Ajouter une période
           </Button>
         </div>
@@ -723,7 +723,7 @@ function SubjectsSection() {
               {SUBJECT_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button onClick={() => addSubject.mutate()} disabled={addSubject.isPending} size="sm" className="h-9 bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+          <Button onClick={() => addSubject.mutate()} disabled={addSubject.isPending} size="sm" className="h-9 bg-brand-navy hover:bg-brand-navy/90 text-white">
             <Plus className="h-4 w-4 mr-1" /> Ajouter
           </Button>
         </div>
@@ -881,7 +881,7 @@ function LevelsSection() {
             </SelectContent>
           </Select>
           <Input type="number" min={0} placeholder="Tarif (€)" value={tarif} onChange={(e) => setTarif(e.target.value)} className="h-9" />
-          <Button onClick={() => addLevel.mutate()} disabled={addLevel.isPending || !cycleId} size="sm" className="h-9 bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+          <Button onClick={() => addLevel.mutate()} disabled={addLevel.isPending || !cycleId} size="sm" className="h-9 bg-brand-navy hover:bg-brand-navy/90 text-white">
             <Plus className="h-4 w-4 mr-1" /> Ajouter
           </Button>
         </div>
@@ -1222,7 +1222,7 @@ function ClassesSection() {
               Gestion des classes rattachées à l'année {currentYear?.label ?? "—"}.
             </CardDescription>
           </div>
-          <Button size="sm" onClick={openAdd} className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+          <Button size="sm" onClick={openAdd} className="bg-brand-navy hover:bg-brand-navy/90 text-white">
             <Plus className="h-4 w-4 mr-1" /> Nouvelle classe
           </Button>
         </CardHeader>
