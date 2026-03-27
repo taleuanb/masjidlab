@@ -424,75 +424,65 @@ function CalendarSection() {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CalendarDays className="h-5 w-5" /> Calendrier Scolaire
-            </CardTitle>
-            <CardDescription>Fermetures, vacances et jalons qui impactent l'assiduité.</CardDescription>
-          </div>
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Ajouter
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setOpen(true)} className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Ajouter une période
           </Button>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Aucune période configurée. Ajoutez vos vacances et jalons pour protéger l'assiduité.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Titre</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-center">Cours suspendus</TableHead>
-                  <TableHead className="w-16" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((e) => {
-                  const badge = calendarTypeBadge(e.type);
-                  return (
-                    <TableRow key={e.id}>
-                      <TableCell className="font-medium">{e.title}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {fmtDate(e.start_date)} → {fmtDate(e.end_date)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={badge.color}>{badge.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {e.affects_classes ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <ShieldCheck className="h-4 w-4 text-emerald-500 mx-auto" />
-                              </TooltipTrigger>
-                              <TooltipContent>L'assiduité est protégée pendant cette période</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Non</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => deleteEntry.mutate(e.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : entries.length === 0 ? (
+          <EmptyState icon={CalendarDays} message="Aucune période configurée." hint="Ajoutez vos vacances et jalons pour protéger l'assiduité des élèves." />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40">
+                <TableHead>Titre</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-center">Cours suspendus</TableHead>
+                <TableHead className="w-16" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((e) => {
+                const badge = calendarTypeBadge(e.type);
+                return (
+                  <TableRow key={e.id} className="hover:bg-muted/30">
+                    <TableCell className="font-medium">{e.title}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {fmtDate(e.start_date)} → {fmtDate(e.end_date)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={badge.color}>{badge.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {e.affects_classes ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <ShieldCheck className="h-4 w-4 text-emerald-500 mx-auto" />
+                            </TooltipTrigger>
+                            <TooltipContent>L'assiduité est protégée pendant cette période</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Non</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => deleteEntry.mutate(e.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
 
       {/* Dialog ajout période */}
       <Dialog open={open} onOpenChange={setOpen}>
