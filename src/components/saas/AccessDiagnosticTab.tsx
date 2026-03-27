@@ -54,6 +54,31 @@ const StatusDot = ({ ok }: { ok: boolean | null }) => {
     : <XCircle className="h-4 w-4 text-destructive" />;
 };
 
+/**
+ * Strict RBAC resolution — mirrors useModuleAccess.resolveRbac exactly.
+ * 1. Explicit DB entry → definitive
+ * 2. Factory default (if any permission bit set) → definitive  
+ * 3. No entry → inherit from parent
+ */
+function resolveRbacStrict(permMap: Map<string, boolean>, role: string, key: string): boolean {
+  // 1. DB entry for exact module
+  if (permMap.has(key)) return !!permMap.get(key);
+
+  // 2. Factory default — check if an explicit entry exists
+  const perm = getDefaultPermission(role, key);
+  const hasFactoryEntry = perm.can_view || perm.can_edit || perm.can_delete;
+  if (hasFactoryEntry) return perm.can_view;
+
+  // 3. No entry → inherit from parent
+  if (key.includes(".")) {
+    const pKey = key.split(".")[0];
+    if (permMap.has(pKey)) return !!permMap.get(pKey);
+    return hasDefaultView(role, pKey);
+  }
+
+  return false;
+}
+
 export function AccessDiagnosticTab() {
   const { toast } = useToast();
   const [orgs, setOrgs] = useState<OrgOption[]>([]);
