@@ -1061,7 +1061,6 @@ export function MadrasaHub() {
         <TabsContent value="cursus" className="space-y-6">
           <SubjectsSection />
           <LevelsSection />
-          <TrackingConfigTab />
         </TabsContent>
 
         {/* 3. Classes — placeholder for now */}
