@@ -7,6 +7,7 @@ import {
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
   AlertTriangle, Users, Pencil, MessageCircle, FileText,
   Clock, LayoutGrid, ChevronRight, FolderOpen, Folder,
+  Sparkles,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
