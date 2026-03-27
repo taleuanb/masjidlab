@@ -6,8 +6,10 @@ import {
   GraduationCap, Layers, BookOpen, Settings2, Star,
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
   AlertTriangle, Users, Pencil, MessageCircle, FileText,
-  Clock,
+  Clock, LayoutGrid, ChevronRight, FolderOpen, Folder,
 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
