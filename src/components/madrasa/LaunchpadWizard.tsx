@@ -123,9 +123,12 @@ export function LaunchpadWizard({ open, onOpenChange, orgId, onSuccess }: Launch
         || selectedPack?.nom?.toLowerCase().includes("converti");
       setCustomStructure(
         data.map((item) => {
-          const suggestedSubjects = Array.isArray(item.suggested_subjects)
-            ? (item.suggested_subjects as string[])
+          const rawSubjects = Array.isArray(item.suggested_subjects)
+            ? item.suggested_subjects
             : [];
+          const suggestedSubjects: string[] = rawSubjects.map((s: any) =>
+            typeof s === "string" ? s : (s && typeof s === "object" && "name" in s ? String(s.name) : String(s))
+          );
           return {
             templateItemId: item.id,
             label: item.level_label,
