@@ -169,17 +169,13 @@ export function useModuleAccess(previewRole?: string): UseModuleAccessReturn {
       }
 
       // 2. Factory default for this exact module → definitive if entry exists
-      const hasFactoryEntry = effectiveRoles.some((r) => {
+      const hasExplicitFactory = effectiveRoles.some((r) => {
         const perm = getDefaultPermission(r, key);
-        // An entry "exists" if it's not the implicit NONE fallback
-        // We check if ANY permission bit is set, or if the key is explicitly listed
         return perm.can_view || perm.can_edit || perm.can_delete;
       });
-      // If factory has an explicit entry (even if all false), it's definitive
-      // We detect "explicitly listed" by checking if hasDefaultView returns differently
-      // from the NONE fallback — but we need to know if the key IS in the matrix
-      const factoryCanView = effectiveRoles.some((r) => hasDefaultView(r, key));
-      if (hasFactoryEntry || factoryCanView) return factoryCanView;
+      if (hasExplicitFactory) {
+        return effectiveRoles.some((r) => hasDefaultView(r, key));
+      }
 
       // 3. No entry found anywhere for this child → inherit from parent
       if (key.includes(".")) {
