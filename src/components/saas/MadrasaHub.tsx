@@ -6,6 +6,7 @@ import {
   GraduationCap, Layers, BookOpen, Settings2, Star,
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
   AlertTriangle, Users, Pencil, MessageCircle, FileText,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -940,8 +941,17 @@ function LevelsSection() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   3. CLASSES — CRUD complet
+   3. CLASSES — CRUD complet + Planning
    ═══════════════════════════════════════════════════════════════════════════ */
+
+const DAY_LABELS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"] as const;
+
+interface ScheduleSlot {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  subject_ids: string[];
+}
 
 function ClassesSection() {
   const { orgId } = useOrganization();
@@ -950,6 +960,7 @@ function ClassesSection() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState({ nom: "", levelId: "", salleId: "", capacityMax: "15", profId: "" });
+  const [schedules, setSchedules] = useState<ScheduleSlot[]>([]);
 
   // Current academic year
   const { data: currentYear } = useQuery({
@@ -971,6 +982,17 @@ function ClassesSection() {
         .select("*, madrasa_levels(label, madrasa_cycles(nom)), rooms:salle_id(name, floor, capacity), profiles:prof_id(display_name)")
         .eq("org_id", orgId!)
         .order("nom");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // All schedules for schedule summary in list
+  const { data: allSchedules = [] } = useQuery({
+    queryKey: ["madrasa_schedules_all", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_schedules").select("*").eq("org_id", orgId!);
       if (error) throw error;
       return data;
     },
@@ -1006,6 +1028,16 @@ function ClassesSection() {
     },
   });
 
+  const { data: subjects = [] } = useQuery({
+    queryKey: ["madrasa_subjects", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_subjects").select("id, name, category").eq("org_id", orgId!).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Enrollment counts per class
   const { data: enrollmentCounts = [] } = useQuery({
     queryKey: ["enrollment_counts", orgId],
@@ -1019,13 +1051,33 @@ function ClassesSection() {
     },
   });
 
+  // Schedule summary map
+  const scheduleSummary = React.useMemo(() => {
+    const map = new Map<string, string>();
+    const byClass = new Map<string, typeof allSchedules>();
+    for (const s of allSchedules) {
+      if (!byClass.has(s.class_id)) byClass.set(s.class_id, []);
+      byClass.get(s.class_id)!.push(s);
+    }
+    for (const [cid, slots] of byClass.entries()) {
+      const parts = slots.map(s => `${DAY_LABELS[s.day_of_week] ?? "?"} ${s.start_time?.slice(0, 5)} - ${s.end_time?.slice(0, 5)}`);
+      map.set(cid, parts.join(" · "));
+    }
+    return map;
+  }, [allSchedules]);
+
   const openAdd = () => {
+    if (!currentYear) {
+      toast({ title: "Aucune année courante", description: "Définissez une année courante dans l'onglet Pilotage avant de créer une classe.", variant: "destructive" });
+      return;
+    }
     setEditing(null);
     setForm({ nom: "", levelId: "", salleId: "", capacityMax: "15", profId: "" });
+    setSchedules([]);
     setDialogOpen(true);
   };
 
-  const openEdit = (c: any) => {
+  const openEdit = async (c: any) => {
     setEditing(c);
     setForm({
       nom: c.nom,
@@ -1034,12 +1086,49 @@ function ClassesSection() {
       capacityMax: String(c.capacity_max ?? 15),
       profId: c.prof_id || "",
     });
+    // Load existing schedules for this class
+    const { data: existingSchedules } = await supabase
+      .from("madrasa_schedules")
+      .select("*")
+      .eq("class_id", c.id)
+      .eq("org_id", orgId!);
+    setSchedules(
+      (existingSchedules || []).map(s => ({
+        day_of_week: s.day_of_week,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        subject_ids: s.subject_ids || [],
+      }))
+    );
     setDialogOpen(true);
+  };
+
+  const addSlot = () => {
+    setSchedules(prev => [...prev, { day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] }]);
+  };
+
+  const removeSlot = (idx: number) => {
+    setSchedules(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateSlot = (idx: number, patch: Partial<ScheduleSlot>) => {
+    setSchedules(prev => prev.map((s, i) => i === idx ? { ...s, ...patch } : s));
+  };
+
+  const toggleSubject = (idx: number, subjectId: string) => {
+    setSchedules(prev => prev.map((s, i) => {
+      if (i !== idx) return s;
+      const has = s.subject_ids.includes(subjectId);
+      return { ...s, subject_ids: has ? s.subject_ids.filter(id => id !== subjectId) : [...s.subject_ids, subjectId] };
+    }));
   };
 
   const saveClass = useMutation({
     mutationFn: async () => {
       if (!form.nom.trim()) throw new Error("Le nom est requis");
+      if (!currentYear) throw new Error("Aucune année courante définie");
+      if (schedules.length === 0) throw new Error("Ajoutez au moins un créneau de cours");
+
       const payload: any = {
         nom: form.nom.trim(),
         level_id: form.levelId || null,
@@ -1047,18 +1136,41 @@ function ClassesSection() {
         capacity_max: parseInt(form.capacityMax) || 15,
         prof_id: form.profId || null,
         org_id: orgId!,
-        academic_year_id: currentYear?.id || null,
+        academic_year_id: currentYear.id,
       };
+
+      let classId: string;
+
       if (editing) {
         const { error } = await supabase.from("madrasa_classes").update(payload).eq("id", editing.id);
         if (error) throw error;
+        classId = editing.id;
       } else {
-        const { error } = await supabase.from("madrasa_classes").insert(payload);
+        const { data, error } = await supabase.from("madrasa_classes").insert(payload).select("id").single();
         if (error) throw error;
+        classId = data.id;
+      }
+
+      // Transactional schedule sync: delete old, insert new
+      const { error: delErr } = await supabase.from("madrasa_schedules").delete().eq("class_id", classId).eq("org_id", orgId!);
+      if (delErr) throw delErr;
+
+      if (schedules.length > 0) {
+        const rows = schedules.map(s => ({
+          class_id: classId,
+          org_id: orgId!,
+          day_of_week: s.day_of_week,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          subject_ids: s.subject_ids,
+        }));
+        const { error: insErr } = await supabase.from("madrasa_schedules").insert(rows);
+        if (insErr) throw insErr;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["madrasa_classes", orgId] });
+      qc.invalidateQueries({ queryKey: ["madrasa_schedules_all", orgId] });
       setDialogOpen(false);
       toast({ title: editing ? "Classe modifiée" : "Classe créée" });
     },
@@ -1070,9 +1182,15 @@ function ClassesSection() {
       const { error } = await supabase.from("madrasa_classes").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["madrasa_classes", orgId] }); toast({ title: "Classe supprimée" }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["madrasa_classes", orgId] });
+      qc.invalidateQueries({ queryKey: ["madrasa_schedules_all", orgId] });
+      toast({ title: "Classe supprimée" });
+    },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
+
+  const subjectName = (id: string) => (subjects as any[]).find((s: any) => s.id === id)?.name ?? id;
 
   return (
     <>
@@ -1087,6 +1205,12 @@ function ClassesSection() {
           <Button size="sm" onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> Nouvelle classe</Button>
         </CardHeader>
         <CardContent>
+          {!currentYear && (
+            <div className="flex items-center gap-2 mb-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              Aucune année courante définie. Rendez-vous dans l'onglet <strong>Pilotage</strong> pour en activer une.
+            </div>
+          )}
           {isLoading ? (
             <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : classes.length === 0 ? (
@@ -1111,6 +1235,7 @@ function ClassesSection() {
                   const room = c.rooms as any;
                   const level = c.madrasa_levels as any;
                   const prof = c.profiles as any;
+                  const schedText = scheduleSummary.get(c.id);
 
                   return (
                     <TableRow key={c.id}>
@@ -1128,7 +1253,17 @@ function ClassesSection() {
                           </div>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>
-                      <TableCell className="text-sm">{prof?.display_name ?? "—"}</TableCell>
+                      <TableCell>
+                        <div>
+                          <span className="text-sm">{prof?.display_name ?? "—"}</span>
+                          {schedText && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Clock className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">{schedText}</span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-sm">
                         {room?.name ? `${room.name} - ${room.floor} (${room.capacity})` : "—"}
                       </TableCell>
@@ -1158,29 +1293,60 @@ function ClassesSection() {
         </CardContent>
       </Card>
 
-      {/* Dialog ajout/édition */}
+      {/* Dialog ajout/édition avec planning */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Modifier la classe" : "Nouvelle classe"}</DialogTitle>
             <DialogDescription>
-              {currentYear ? `Année : ${currentYear.label}` : "⚠️ Aucune année courante définie"}
+              {editing ? "Modifiez les informations et le planning." : "Créez une classe et définissez son planning."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            {/* Nom */}
             <div className="space-y-2">
-              <Label>Nom *</Label>
-              <Input placeholder="Ex: CE1 Coran" value={form.nom} onChange={(e) => setForm(f => ({ ...f, nom: e.target.value }))} />
+              <Label>Nom de la classe *</Label>
+              <Input placeholder="Ex: CE1 - Groupe A" value={form.nom} onChange={(e) => setForm(f => ({ ...f, nom: e.target.value }))} />
             </div>
+
+            {/* Niveau */}
+            <div className="space-y-2">
+              <Label>Niveau</Label>
+              <Select value={form.levelId} onValueChange={(v) => setForm(f => ({ ...f, levelId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                <SelectContent>
+                  {(levels as any[]).map((l: any) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.label} {l.madrasa_cycles?.nom ? `(${l.madrasa_cycles.nom})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Professeur */}
+            <div className="space-y-2">
+              <Label>Professeur</Label>
+              <Select value={form.profId} onValueChange={(v) => setForm(f => ({ ...f, profId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                <SelectContent>
+                  {(teachers as any[]).map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Salle + Capacité */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Niveau</Label>
-                <Select value={form.levelId} onValueChange={(v) => setForm(f => ({ ...f, levelId: v }))}>
+                <Label>Salle</Label>
+                <Select value={form.salleId} onValueChange={(v) => setForm(f => ({ ...f, salleId: v }))}>
                   <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
                   <SelectContent>
-                    {(levels as any[]).map((l: any) => (
-                      <SelectItem key={l.id} value={l.id}>
-                        {l.label} {l.madrasa_cycles?.nom ? `(${l.madrasa_cycles.nom})` : ""}
+                    {(rooms as any[]).map((r: any) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name} - {r.floor} ({r.capacity} places)
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1191,29 +1357,97 @@ function ClassesSection() {
                 <Input type="number" min={1} value={form.capacityMax} onChange={(e) => setForm(f => ({ ...f, capacityMax: e.target.value }))} />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Salle</Label>
-              <Select value={form.salleId} onValueChange={(v) => setForm(f => ({ ...f, salleId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
-                <SelectContent>
-                  {(rooms as any[]).map((r: any) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name} - {r.floor} ({r.capacity} places)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {/* ── Planning des cours ── */}
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-base font-semibold">Planning des cours</Label>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addSlot}>
+                <Plus className="h-4 w-4 mr-1" /> Ajouter un créneau
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label>Enseignant</Label>
-              <Select value={form.profId} onValueChange={(v) => setForm(f => ({ ...f, profId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
-                <SelectContent>
-                  {(teachers as any[]).map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {schedules.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
+                Aucun créneau défini. Ajoutez au moins un créneau de cours.
+              </p>
+            )}
+
+            <div className="space-y-4">
+              {schedules.map((slot, idx) => (
+                <div key={idx} className="border rounded-lg p-3 space-y-3 bg-muted/30">
+                  {/* Row: Day + Times + Delete */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Select value={String(slot.day_of_week)} onValueChange={(v) => updateSlot(idx, { day_of_week: Number(v) })}>
+                      <SelectTrigger className="w-[130px] h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {DAY_LABELS.map((label, i) => (
+                          <SelectItem key={i} value={String(i)}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="time"
+                        className="w-[110px] h-9"
+                        value={slot.start_time}
+                        onChange={(e) => updateSlot(idx, { start_time: e.target.value })}
+                      />
+                      <span className="text-muted-foreground text-sm">→</span>
+                      <Input
+                        type="time"
+                        className="w-[110px] h-9"
+                        value={slot.end_time}
+                        onChange={(e) => updateSlot(idx, { end_time: e.target.value })}
+                      />
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 ml-auto" onClick={() => removeSlot(idx)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+
+                  {/* Subjects multi-select as checkboxes + badges */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs text-muted-foreground">{slot.subject_ids.length} matière(s)</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full justify-start h-auto min-h-[36px] py-1.5 px-3 font-normal">
+                          {slot.subject_ids.length === 0 ? (
+                            <span className="text-muted-foreground">Sélectionner des matières…</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {slot.subject_ids.map(id => (
+                                <Badge key={id} variant="secondary" className="text-xs">{subjectName(id)}</Badge>
+                              ))}
+                            </div>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2 max-h-60 overflow-y-auto" align="start">
+                        {(subjects as any[]).length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-2">Aucune matière. Créez-en dans l'onglet Cursus.</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {(subjects as any[]).map((s: any) => (
+                              <label key={s.id} className="flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-accent cursor-pointer text-sm">
+                                <Checkbox
+                                  checked={slot.subject_ids.includes(s.id)}
+                                  onCheckedChange={() => toggleSubject(idx, s.id)}
+                                />
+                                <span>{s.name}</span>
+                                {s.category && <Badge variant="outline" className="text-[10px] ml-auto">{s.category}</Badge>}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
           <DialogFooter>
