@@ -696,69 +696,90 @@ function SubjectsSection() {
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
-  const catLabel = (cat: string | null) => SUBJECT_CATEGORIES.find(c => c.value === cat)?.label ?? cat ?? "—";
+  const catLabel = (cat: string | null) => SUBJECT_CATEGORIES.find(c => c.value === cat)?.label ?? cat ?? "Sans catégorie";
+
+  // Group subjects by category
+  const groupedSubjects = React.useMemo(() => {
+    const map = new Map<string, Tables<"madrasa_subjects">[]>();
+    for (const s of subjects) {
+      const cat = s.category || "other";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(s);
+    }
+    return Array.from(map.entries()).sort((a, b) => {
+      const order = SUBJECT_CATEGORIES.map(c => c.value);
+      return order.indexOf(a[0]) - order.indexOf(b[0]);
+    });
+  }, [subjects]);
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2"><BookOpen className="h-5 w-5" /> Matières & Suivi</CardTitle>
-          <CardDescription>Catalogue de matières enseignées et configuration des formulaires de suivi par matière.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-3">
-            <Input placeholder="Nom de la matière…" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSubject.mutate()} className="h-9" />
-            <Select value={newCategory} onValueChange={setNewCategory}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="Catégorie…" /></SelectTrigger>
-              <SelectContent>
-                {SUBJECT_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button onClick={() => addSubject.mutate()} disabled={addSubject.isPending} size="sm" className="h-9">
-              <Plus className="h-4 w-4 mr-1" /> Ajouter
-            </Button>
-          </div>
-          {isLoading ? (
-            <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : subjects.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Aucune matière configurée.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Catégorie</TableHead>
-                  <TableHead>Suivi</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subjects.map((s) => {
-                  const configured = configuredSet.has(s.id);
-                  const fieldCount = configured ? ((configs.find((c) => c.subject_id === s.id)?.form_schema_json as unknown as FormField[])?.length ?? 0) : 0;
-                  return (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell>
-                        {s.category ? <Badge variant="outline">{catLabel(s.category)}</Badge> : <span className="text-xs text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell>
-                        <Button size="sm" variant={configured ? "outline" : "secondary"} className="text-xs h-7" onClick={() => setSelectedSubject(s)}>
-                          <Settings2 className="h-3.5 w-3.5 mr-1" />
-                          {configured ? `${fieldCount} champ(s)` : "Configurer"}
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => deleteSubject.mutate(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Input placeholder="Nom de la matière…" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSubject.mutate()} className="h-9" />
+          <Select value={newCategory} onValueChange={setNewCategory}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="Catégorie…" /></SelectTrigger>
+            <SelectContent>
+              {SUBJECT_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => addSubject.mutate()} disabled={addSubject.isPending} size="sm" className="h-9 bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Ajouter
+          </Button>
+        </div>
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : subjects.length === 0 ? (
+          <EmptyState icon={BookOpen} message="Aucune matière configurée." hint="Ajoutez vos matières (Coran, Arabe, Fiqh…) pour commencer." />
+        ) : (
+          <Accordion type="multiple" defaultValue={groupedSubjects.length > 0 ? [groupedSubjects[0][0]] : []}>
+            {groupedSubjects.map(([cat, items]) => (
+              <AccordionItem key={cat} value={cat} className="border rounded-lg mb-2 shadow-sm overflow-hidden">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    <Badge variant="outline" className={cn("text-xs", CATEGORY_COLORS[cat] || CATEGORY_COLORS.other)}>
+                      {catLabel(cat)}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{items.length} matière(s)</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
+                        <TableHead>Nom</TableHead>
+                        <TableHead>Suivi</TableHead>
+                        <TableHead className="w-16" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((s) => {
+                        const configured = configuredSet.has(s.id);
+                        const fieldCount = configured ? ((configs.find((c) => c.subject_id === s.id)?.form_schema_json as unknown as FormField[])?.length ?? 0) : 0;
+                        return (
+                          <TableRow key={s.id} className="hover:bg-muted/30">
+                            <TableCell className="font-medium">{s.name}</TableCell>
+                            <TableCell>
+                              <Button size="sm" variant={configured ? "outline" : "secondary"} className="text-xs h-7" onClick={() => setSelectedSubject(s)}>
+                                <Settings2 className="h-3.5 w-3.5 mr-1" />
+                                {configured ? `${fieldCount} champ(s)` : "Configurer"}
+                              </Button>
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" onClick={() => deleteSubject.mutate(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        )}
+      </div>
       {selectedSubject && orgId && (
         <FormBuilderDialog open={!!selectedSubject} onOpenChange={(v) => !v && setSelectedSubject(null)} subject={selectedSubject} orgId={orgId} />
       )}
