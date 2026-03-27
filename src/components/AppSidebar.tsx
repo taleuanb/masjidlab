@@ -3,7 +3,6 @@ import masjidLabLogo from "@/assets/masjidlab-logo.png";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { getVitrineUrl } from "@/lib/domain";
 import {
   Building2, LayoutDashboard, CalendarDays, Users, Calendar, Car, Wrench,
@@ -25,7 +24,6 @@ import { useRole, type UserRole, UI_ROLE_TO_DB } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
 import type { Pole } from "@/types/amm";
 import { useModuleAccess } from "@/hooks/useModuleAccess";
-import { CORE_MODULE_IDS, MODULE_MAP } from "@/config/module-registry";
 
 const POLES: Pole[] = ["Imam", "École (Avenir)", "Social (ABD)", "Accueil", "Récolte", "Digital", "Com", "Parking"];
 
@@ -222,33 +220,15 @@ export function AppSidebar() {
   const { role, setRole, pole, setPole, displayName, isSuperAdmin, userDbRoles } = useRole();
   const { activePoles, org, allOrgs, overrideOrgId, setOverrideOrgId } = useOrganization();
   const { signOut, dbRole, permissions, refreshPermissions, impersonatedUser } = useAuth();
-  const { hasAccess, isBypassing } = useModuleAccess();
 
   const isGhostActive = !!impersonatedUser;
   const isPreviewingOtherRole = !isGhostActive && isSuperAdmin && role !== "Super Admin";
-  const effectiveBypass = isBypassing && !isPreviewingOtherRole;
 
-  // ── Preview permissions (for "Prévisualiser en tant que") ──
-  const [previewPermissions, setPreviewPermissions] = useState<Set<string> | null>(null);
+  // Pass the preview role to useModuleAccess so it uses a single resolution path
+  const previewDbRole = isPreviewingOtherRole ? UI_ROLE_TO_DB[role] : undefined;
+  const { hasAccess, isBypassing } = useModuleAccess(previewDbRole);
+
   const orgId = org?.id;
-  const effectiveDbRole = UI_ROLE_TO_DB[role] ?? dbRole;
-
-  const fetchPreviewPermissions = useCallback(async () => {
-    if (effectiveBypass) { setPreviewPermissions(null); return; }
-    if (!orgId || !effectiveDbRole) { setPreviewPermissions(null); return; }
-    const { data, error } = await supabase.rpc("get_effective_permissions" as any, {
-      p_org_id: orgId,
-      p_role: effectiveDbRole,
-    });
-    if (error || !data) { setPreviewPermissions(null); return; }
-    const allowed = new Set<string>();
-    for (const row of data as any[]) {
-      if (row.enabled || row.can_view) allowed.add(row.module);
-    }
-    setPreviewPermissions(allowed);
-  }, [orgId, effectiveDbRole, effectiveBypass]);
-
-  useEffect(() => { fetchPreviewPermissions(); }, [fetchPreviewPermissions]);
 
   useEffect(() => {
     if (orgId) refreshPermissions(orgId);
@@ -258,19 +238,10 @@ export function AppSidebar() {
     if (!impersonatedUser && isSuperAdmin) setRole("Super Admin");
   }, [impersonatedUser, isSuperAdmin, setRole]);
 
+  // Single-line visibility: delegate entirely to the unified hook
   const isModuleVisible = useCallback((moduleKey: string): boolean => {
-    if (!hasAccess(moduleKey)) return false;
-    if (isPreviewingOtherRole && previewPermissions !== null) {
-      if (CORE_MODULE_IDS.has(moduleKey)) {
-        const meta = MODULE_MAP.get(moduleKey);
-        const defaultRoles = meta?.defaultRoles ?? [];
-        const previewDbRole = UI_ROLE_TO_DB[role];
-        return defaultRoles.includes("*") || (previewDbRole ? defaultRoles.includes(previewDbRole) : false);
-      }
-      if (!previewPermissions.has(moduleKey)) return false;
-    }
-    return true;
-  }, [hasAccess, isPreviewingOtherRole, previewPermissions, role]);
+    return hasAccess(moduleKey);
+  }, [hasAccess]);
 
   // ── GROUPE A: Administration — visible if any admin item is accessible ──
   const visibleAdminItems = useMemo(

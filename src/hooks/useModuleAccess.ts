@@ -39,22 +39,25 @@ interface UseModuleAccessReturn {
 }
 
 
-export function useModuleAccess(): UseModuleAccessReturn {
+export function useModuleAccess(previewRole?: string): UseModuleAccessReturn {
   const { dbRole, dbRoles, impersonatedUser } = useAuth();
   const { org, activePoles } = useOrganization();
 
   const isSuperAdmin = dbRole === "super_admin";
   const isGhostActive = !!impersonatedUser;
-  const isBypassing = isSuperAdmin && !isGhostActive;
+  // Disable bypass when previewing another role
+  const isBypassing = isSuperAdmin && !isGhostActive && !previewRole;
 
   const currentPlan = (org?.subscription_plan ?? "starter") as PlanId;
   const orgStatus = org?.status ?? "active";
 
   // ── Fetch GLOBAL permissions (org_id IS NULL) for effective roles ──
   const effectiveRoles = useMemo(() => {
+    // If previewing a specific role, use only that role
+    if (previewRole) return [previewRole];
     if (isGhostActive && impersonatedUser?.roles) return impersonatedUser.roles;
     return dbRoles.length > 0 ? dbRoles : (dbRole ? [dbRole] : []);
-  }, [dbRoles, dbRole, isGhostActive, impersonatedUser]);
+  }, [previewRole, dbRoles, dbRole, isGhostActive, impersonatedUser]);
 
   const [globalPerms, setGlobalPerms] = useState<Map<string, boolean>>(new Map());
 
