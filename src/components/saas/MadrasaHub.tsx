@@ -1555,14 +1555,623 @@ function SettingsSection() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   5. STUDIO — IDE-style 3-column view
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+type StudioSelection = 
+  | { type: "none" }
+  | { type: "level"; id: string }
+  | { type: "class"; id: string };
+
+function StudioSection() {
+  const { orgId } = useOrganization();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const [selectedYearId, setSelectedYearId] = useState<string>("");
+  const [selection, setSelection] = useState<StudioSelection>({ type: "none" });
+  const [expandedCycles, setExpandedCycles] = useState<Set<string>>(new Set());
+  const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
+
+  // Class form state (reused from ClassesSection pattern)
+  const [classForm, setClassForm] = useState({ nom: "", levelId: "", salleId: "", capacityMax: "15", profId: "" });
+  const [classSchedules, setClassSchedules] = useState<ScheduleSlot[]>([]);
+
+  /* ── Queries ── */
+  const { data: years = [] } = useQuery({
+    queryKey: ["madrasa_academic_years", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_academic_years").select("*").eq("org_id", orgId!).order("start_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Auto-select current year
+  React.useEffect(() => {
+    if (years.length > 0 && !selectedYearId) {
+      const cur = years.find(y => y.is_current);
+      setSelectedYearId(cur?.id ?? years[0].id);
+    }
+  }, [years, selectedYearId]);
+
+  const { data: cycles = [] } = useQuery({
+    queryKey: ["madrasa_cycles", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_cycles").select("*").eq("org_id", orgId!).order("nom");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: levels = [] } = useQuery({
+    queryKey: ["madrasa_levels", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_levels").select("*, madrasa_cycles(nom)").eq("org_id", orgId!).order("label");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: classes = [] } = useQuery({
+    queryKey: ["madrasa_classes", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_classes")
+        .select("*, madrasa_levels(label, madrasa_cycles(nom)), rooms:salle_id(name, floor, capacity), profiles:prof_id(display_name)")
+        .eq("org_id", orgId!)
+        .order("nom");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: rooms = [] } = useQuery({
+    queryKey: ["rooms", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("rooms").select("*").eq("org_id", orgId!).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: teachers = [] } = useQuery({
+    queryKey: ["teachers", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, display_name").eq("org_id", orgId!).eq("is_active", true).order("display_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: subjects = [] } = useQuery({
+    queryKey: ["madrasa_subjects", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_subjects").select("id, name, category").eq("org_id", orgId!).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: enrollmentCountsRaw = [] } = useQuery({
+    queryKey: ["enrollment_counts", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_enrollments").select("class_id").eq("org_id", orgId!).eq("statut", "Actif");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: allSchedules = [] } = useQuery({
+    queryKey: ["madrasa_schedules_all", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_schedules").select("*").eq("org_id", orgId!);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const enrollmentCounts = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const e of enrollmentCountsRaw) { counts.set(e.class_id, (counts.get(e.class_id) || 0) + 1); }
+    return counts;
+  }, [enrollmentCountsRaw]);
+
+  // Tree structure: cycles > levels > classes
+  const tree = React.useMemo(() => {
+    return cycles.map(cycle => {
+      const cycleLevels = (levels as any[]).filter((l: any) => l.cycle_id === cycle.id);
+      return {
+        ...cycle,
+        levels: cycleLevels.map((level: any) => ({
+          ...level,
+          classes: (classes as any[]).filter((c: any) => c.level_id === level.id && (!selectedYearId || c.academic_year_id === selectedYearId)),
+        })),
+      };
+    });
+  }, [cycles, levels, classes, selectedYearId]);
+
+  const toggleCycle = (id: string) => setExpandedCycles(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const toggleLevel = (id: string) => setExpandedLevels(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  // Load class into form when selecting
+  const selectClass = async (c: any) => {
+    setSelection({ type: "class", id: c.id });
+    setClassForm({
+      nom: c.nom,
+      levelId: c.level_id || "",
+      salleId: c.salle_id || "",
+      capacityMax: String(c.capacity_max ?? 15),
+      profId: c.prof_id || "",
+    });
+    const { data: existingSchedules } = await supabase
+      .from("madrasa_schedules").select("*").eq("class_id", c.id).eq("org_id", orgId!);
+    setClassSchedules(
+      (existingSchedules || []).map(s => ({
+        day_of_week: s.day_of_week,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        subject_ids: s.subject_ids || [],
+      }))
+    );
+  };
+
+  // Schedule helpers
+  const addSlot = () => setClassSchedules(prev => [...prev, { day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] }]);
+  const removeSlot = (idx: number) => setClassSchedules(prev => prev.filter((_, i) => i !== idx));
+  const updateSlot = (idx: number, patch: Partial<ScheduleSlot>) => setClassSchedules(prev => prev.map((s, i) => i === idx ? { ...s, ...patch } : s));
+  const toggleSubject = (idx: number, subjectId: string) => {
+    setClassSchedules(prev => prev.map((s, i) => {
+      if (i !== idx) return s;
+      const has = s.subject_ids.includes(subjectId);
+      return { ...s, subject_ids: has ? s.subject_ids.filter(id => id !== subjectId) : [...s.subject_ids, subjectId] };
+    }));
+  };
+
+  const subjectName = (id: string) => (subjects as any[]).find((s: any) => s.id === id)?.name ?? id;
+
+  // Save class mutation (reuses same logic as ClassesSection)
+  const saveClass = useMutation({
+    mutationFn: async () => {
+      if (!classForm.nom.trim()) throw new Error("Le nom est requis");
+      if (!selectedYearId) throw new Error("Aucune année sélectionnée");
+      if (classSchedules.length === 0) throw new Error("Ajoutez au moins un créneau");
+
+      const classId = selection.type === "class" ? selection.id : null;
+      const payload: any = {
+        nom: classForm.nom.trim(),
+        level_id: classForm.levelId || null,
+        salle_id: classForm.salleId || null,
+        capacity_max: parseInt(classForm.capacityMax) || 15,
+        prof_id: classForm.profId || null,
+        org_id: orgId!,
+        academic_year_id: selectedYearId,
+      };
+
+      let finalId: string;
+      if (classId) {
+        const { error } = await supabase.from("madrasa_classes").update(payload).eq("id", classId);
+        if (error) throw error;
+        finalId = classId;
+      } else {
+        const { data, error } = await supabase.from("madrasa_classes").insert(payload).select("id").single();
+        if (error) throw error;
+        finalId = data.id;
+      }
+
+      const { error: delErr } = await supabase.from("madrasa_schedules").delete().eq("class_id", finalId).eq("org_id", orgId!);
+      if (delErr) throw delErr;
+
+      if (classSchedules.length > 0) {
+        const rows = classSchedules.map(s => ({ class_id: finalId, org_id: orgId!, day_of_week: s.day_of_week, start_time: s.start_time, end_time: s.end_time, subject_ids: s.subject_ids }));
+        const { error: insErr } = await supabase.from("madrasa_schedules").insert(rows);
+        if (insErr) throw insErr;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["madrasa_classes", orgId] });
+      qc.invalidateQueries({ queryKey: ["madrasa_schedules_all", orgId] });
+      toast({ title: "Classe enregistrée" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  // Inspector data
+  const selectedLevel = selection.type === "level" ? (levels as any[]).find((l: any) => l.id === selection.id) : null;
+  const selectedClass = selection.type === "class" ? (classes as any[]).find((c: any) => c.id === selection.id) : null;
+
+  const inspectorClasses = React.useMemo(() => {
+    if (selection.type === "level") return (classes as any[]).filter((c: any) => c.level_id === selection.id);
+    if (selection.type === "class" && selectedClass) return (classes as any[]).filter((c: any) => c.level_id === selectedClass.level_id);
+    return [];
+  }, [selection, classes, selectedClass]);
+
+  const alerts = React.useMemo(() => {
+    const items: { msg: string; severity: "warning" | "error" }[] = [];
+    const schedByClass = new Map<string, any[]>();
+    for (const s of allSchedules) {
+      if (!schedByClass.has(s.class_id)) schedByClass.set(s.class_id, []);
+      schedByClass.get(s.class_id)!.push(s);
+    }
+    // Classes without schedules
+    for (const c of classes as any[]) {
+      if (!schedByClass.has(c.id) || schedByClass.get(c.id)!.length === 0) {
+        items.push({ msg: `"${c.nom}" n'a aucun créneau`, severity: "warning" });
+      }
+    }
+    // Room conflicts: same room, same day, overlapping times
+    const roomSlots: { room: string; day: number; start: string; end: string; className: string }[] = [];
+    for (const c of classes as any[]) {
+      if (!c.salle_id) continue;
+      const scheds = schedByClass.get(c.id) || [];
+      for (const s of scheds) {
+        roomSlots.push({ room: c.salle_id, day: s.day_of_week, start: s.start_time, end: s.end_time, className: c.nom });
+      }
+    }
+    for (let i = 0; i < roomSlots.length; i++) {
+      for (let j = i + 1; j < roomSlots.length; j++) {
+        const a = roomSlots[i], b = roomSlots[j];
+        if (a.room === b.room && a.day === b.day && a.start < b.end && b.start < a.end) {
+          items.push({ msg: `Conflit salle : "${a.className}" & "${b.className}" le ${DAY_LABELS[a.day]}`, severity: "error" });
+        }
+      }
+    }
+    return items;
+  }, [classes, allSchedules]);
+
+  return (
+    <div className="border rounded-lg overflow-hidden flex" style={{ minHeight: 600 }}>
+      {/* ── Sidebar Left: Tree ── */}
+      <div className="w-[250px] shrink-0 border-r bg-muted/20 flex flex-col">
+        <div className="p-3 border-b space-y-1">
+          <Label className="text-xs text-muted-foreground">Année scolaire</Label>
+          <Select value={selectedYearId} onValueChange={setSelectedYearId}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+            <SelectContent>
+              {years.map(y => (
+                <SelectItem key={y.id} value={y.id}>
+                  {y.label} {y.is_current ? "★" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <ScrollArea className="flex-1">
+          <div className="p-2 space-y-0.5">
+            {tree.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-6">Aucun cycle configuré.</p>
+            )}
+            {tree.map(cycle => {
+              const isExpanded = expandedCycles.has(cycle.id);
+              return (
+                <div key={cycle.id}>
+                  <button
+                    onClick={() => toggleCycle(cycle.id)}
+                    className="flex items-center gap-1.5 w-full text-left px-2 py-1.5 rounded-sm hover:bg-accent text-sm font-medium"
+                  >
+                    <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", isExpanded && "rotate-90")} />
+                    <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="truncate">{cycle.nom}</span>
+                  </button>
+                  {isExpanded && cycle.levels.map((level: any) => {
+                    const isLevelExpanded = expandedLevels.has(level.id);
+                    const isLevelSelected = selection.type === "level" && selection.id === level.id;
+                    return (
+                      <div key={level.id} className="ml-4">
+                        <button
+                          onClick={() => { toggleLevel(level.id); setSelection({ type: "level", id: level.id }); }}
+                          className={cn(
+                            "flex items-center gap-1.5 w-full text-left px-2 py-1 rounded-sm hover:bg-accent text-sm",
+                            isLevelSelected && "bg-accent font-medium"
+                          )}
+                        >
+                          <ChevronRight className={cn("h-3 w-3 transition-transform", isLevelExpanded && "rotate-90")} />
+                          {isLevelExpanded ? <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" /> : <Folder className="h-3.5 w-3.5 text-muted-foreground" />}
+                          <span className="truncate">{level.label}</span>
+                          <Badge variant="outline" className="ml-auto text-[10px] h-4 px-1">{level.classes.length}</Badge>
+                        </button>
+                        {isLevelExpanded && level.classes.map((c: any) => {
+                          const isClassSelected = selection.type === "class" && selection.id === c.id;
+                          return (
+                            <button
+                              key={c.id}
+                              onClick={() => selectClass(c)}
+                              className={cn(
+                                "flex items-center gap-1.5 w-full text-left ml-4 px-2 py-1 rounded-sm hover:bg-accent text-xs",
+                                isClassSelected && "bg-primary/10 text-primary font-medium"
+                              )}
+                            >
+                              <GraduationCap className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{c.nom}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* ── Canvas Central: Editor ── */}
+      <div className="flex-1 overflow-y-auto">
+        <ScrollArea className="h-full">
+          <div className="p-4">
+            {selection.type === "none" && (
+              <div className="flex flex-col items-center justify-center h-[500px] text-muted-foreground">
+                <LayoutGrid className="h-12 w-12 mb-3 opacity-30" />
+                <p className="text-sm">Sélectionnez un niveau ou une classe dans l'arborescence.</p>
+              </div>
+            )}
+
+            {/* ── Level selected: compact subjects & tarif ── */}
+            {selection.type === "level" && selectedLevel && (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Layers className="h-5 w-5" />
+                    {selectedLevel.label}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedLevel.madrasa_cycles?.nom ?? "—"} · Tarif : {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(selectedLevel.tarif_mensuel ?? 0)}/mois
+                  </p>
+                </div>
+                <Separator />
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Classes de ce niveau</h4>
+                  {inspectorClasses.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Aucune classe rattachée.</p>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {inspectorClasses.map((c: any) => {
+                        const enrolled = enrollmentCounts.get(c.id) || 0;
+                        const cap = c.capacity_max || 15;
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => selectClass(c)}
+                            className="border rounded-md p-3 text-left hover:bg-accent/50 transition-colors"
+                          >
+                            <p className="font-medium text-sm">{c.nom}</p>
+                            <p className="text-xs text-muted-foreground">{c.profiles?.display_name ?? "—"}</p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <Progress value={Math.min(100, Math.round((enrolled / cap) * 100))} className="h-1.5 flex-1" />
+                              <span className="text-[10px] text-muted-foreground">{enrolled}/{cap}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Class selected: full edit form with planning ── */}
+            {selection.type === "class" && selectedClass && (
+              <div className="space-y-4 max-w-2xl">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5" />
+                    {selectedClass.nom}
+                  </h3>
+                  <Button size="sm" onClick={() => saveClass.mutate()} disabled={saveClass.isPending}>
+                    {saveClass.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                    Enregistrer
+                  </Button>
+                </div>
+                <Separator />
+
+                {/* Basic fields */}
+                <div className="space-y-2">
+                  <Label>Nom de la classe *</Label>
+                  <Input value={classForm.nom} onChange={(e) => setClassForm(f => ({ ...f, nom: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Niveau</Label>
+                    <Select value={classForm.levelId} onValueChange={(v) => setClassForm(f => ({ ...f, levelId: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                      <SelectContent>
+                        {(levels as any[]).map((l: any) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.label} {l.madrasa_cycles?.nom ? `(${l.madrasa_cycles.nom})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Professeur</Label>
+                    <Select value={classForm.profId} onValueChange={(v) => setClassForm(f => ({ ...f, profId: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                      <SelectContent>
+                        {(teachers as any[]).map((t: any) => (
+                          <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Salle</Label>
+                    <Select value={classForm.salleId} onValueChange={(v) => setClassForm(f => ({ ...f, salleId: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                      <SelectContent>
+                        {(rooms as any[]).map((r: any) => (
+                          <SelectItem key={r.id} value={r.id}>{r.name} - {r.floor} ({r.capacity})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Capacité max</Label>
+                    <Input type="number" min={1} value={classForm.capacityMax} onChange={(e) => setClassForm(f => ({ ...f, capacityMax: e.target.value }))} />
+                  </div>
+                </div>
+
+                {/* Planning */}
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Label className="text-base font-semibold">Planning des cours</Label>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={addSlot}>
+                    <Plus className="h-4 w-4 mr-1" /> Ajouter un créneau
+                  </Button>
+                </div>
+
+                {classSchedules.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
+                    Aucun créneau défini.
+                  </p>
+                )}
+
+                <div className="space-y-3">
+                  {classSchedules.map((slot, idx) => (
+                    <div key={idx} className="border rounded-lg p-3 space-y-3 bg-muted/30">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Select value={String(slot.day_of_week)} onValueChange={(v) => updateSlot(idx, { day_of_week: Number(v) })}>
+                          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {DAY_LABELS.map((label, i) => <SelectItem key={i} value={String(i)}>{label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Input type="time" className="w-[100px] h-8 text-xs" value={slot.start_time} onChange={(e) => updateSlot(idx, { start_time: e.target.value })} />
+                        <span className="text-muted-foreground text-xs">→</span>
+                        <Input type="time" className="w-[100px] h-8 text-xs" value={slot.end_time} onChange={(e) => updateSlot(idx, { end_time: e.target.value })} />
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 ml-auto" onClick={() => removeSlot(idx)}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-muted-foreground">{slot.subject_ids.length} matière(s)</span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="w-full justify-start h-auto min-h-[32px] py-1 px-2 font-normal text-xs">
+                              {slot.subject_ids.length === 0 ? (
+                                <span className="text-muted-foreground">Matières…</span>
+                              ) : (
+                                <div className="flex flex-wrap gap-1">
+                                  {slot.subject_ids.map(id => <Badge key={id} variant="secondary" className="text-[10px]">{subjectName(id)}</Badge>)}
+                                </div>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-2 max-h-52 overflow-y-auto" align="start">
+                            {(subjects as any[]).length === 0 ? (
+                              <p className="text-xs text-muted-foreground text-center py-2">Aucune matière.</p>
+                            ) : (
+                              <div className="space-y-0.5">
+                                {(subjects as any[]).map((s: any) => (
+                                  <label key={s.id} className="flex items-center gap-2 px-2 py-1 rounded-sm hover:bg-accent cursor-pointer text-xs">
+                                    <Checkbox checked={slot.subject_ids.includes(s.id)} onCheckedChange={() => toggleSubject(idx, s.id)} />
+                                    <span>{s.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* ── Inspector Right ── */}
+      <div className="w-[280px] shrink-0 border-l bg-muted/20 overflow-y-auto">
+        <ScrollArea className="h-full">
+          <div className="p-3 space-y-4">
+            {/* Filling widget */}
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Remplissage</h4>
+              {inspectorClasses.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sélectionnez un niveau ou une classe.</p>
+              ) : (
+                <div className="space-y-2">
+                  {inspectorClasses.map((c: any) => {
+                    const enrolled = enrollmentCounts.get(c.id) || 0;
+                    const cap = c.capacity_max || 15;
+                    const pct = Math.min(100, Math.round((enrolled / cap) * 100));
+                    return (
+                      <div key={c.id} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="truncate font-medium">{c.nom}</span>
+                          <span className="text-muted-foreground">{enrolled}/{cap}</span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all", pct >= 90 ? "bg-destructive" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500")}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Alerts widget */}
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Alertes {alerts.length > 0 && <Badge variant="destructive" className="ml-1 text-[10px] h-4 px-1">{alerts.length}</Badge>}
+              </h4>
+              {alerts.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucune alerte détectée. ✓</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {alerts.slice(0, 10).map((a, i) => (
+                    <div key={i} className={cn("text-xs p-2 rounded-md border", a.severity === "error" ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-amber-50 border-amber-200 text-amber-800")}>
+                      <div className="flex items-start gap-1.5">
+                        <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                        <span>{a.msg}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MAIN HUB
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export function MadrasaHub() {
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="pilotage" className="space-y-4">
-        <TabsList className="grid w-full max-w-xl grid-cols-4">
+      <Tabs defaultValue="studio" className="space-y-4">
+        <TabsList className="grid w-full max-w-2xl grid-cols-5">
+          <TabsTrigger value="studio" className="gap-1.5 text-xs">
+            <LayoutGrid className="h-3.5 w-3.5" /> Studio
+          </TabsTrigger>
           <TabsTrigger value="pilotage" className="gap-1.5 text-xs">
             <BarChart3 className="h-3.5 w-3.5" /> Pilotage
           </TabsTrigger>
@@ -1576,6 +2185,11 @@ export function MadrasaHub() {
             <Settings2 className="h-3.5 w-3.5" /> Paramètres
           </TabsTrigger>
         </TabsList>
+
+        {/* 0. Studio */}
+        <TabsContent value="studio">
+          <StudioSection />
+        </TabsContent>
 
         {/* 1. Pilotage */}
         <TabsContent value="pilotage" className="space-y-6">
