@@ -5,6 +5,7 @@ import {
   Plus, Trash2, Loader2, CalendarDays, ShieldCheck,
   GraduationCap, Layers, BookOpen, Settings2, Star,
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
+  AlertTriangle, Users, Pencil, MessageCircle, FileText,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -939,10 +940,300 @@ function LevelsSection() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   4. PARAMÈTRES — Général (from MadrasaSettingsPanel)
+   3. CLASSES — CRUD complet
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function GeneralSettingsSection() {
+function ClassesSection() {
+  const { orgId } = useOrganization();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [form, setForm] = useState({ nom: "", levelId: "", salleId: "", capacityMax: "15", profId: "" });
+
+  // Current academic year
+  const { data: currentYear } = useQuery({
+    queryKey: ["madrasa_academic_years_current", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_academic_years").select("*").eq("org_id", orgId!).eq("is_current", true).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: classes = [], isLoading } = useQuery({
+    queryKey: ["madrasa_classes", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_classes")
+        .select("*, madrasa_levels(label, madrasa_cycles(nom)), rooms:salle_id(name, floor, capacity), profiles:prof_id(display_name)")
+        .eq("org_id", orgId!)
+        .order("nom");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: levels = [] } = useQuery({
+    queryKey: ["madrasa_levels", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_levels").select("*, madrasa_cycles(nom)").eq("org_id", orgId!).order("label");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: rooms = [] } = useQuery({
+    queryKey: ["rooms", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("rooms").select("*").eq("org_id", orgId!).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: teachers = [] } = useQuery({
+    queryKey: ["teachers", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, display_name").eq("org_id", orgId!).eq("is_active", true).order("display_name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Enrollment counts per class
+  const { data: enrollmentCounts = [] } = useQuery({
+    queryKey: ["enrollment_counts", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_enrollments").select("class_id").eq("org_id", orgId!).eq("statut", "Actif");
+      if (error) throw error;
+      const counts = new Map<string, number>();
+      for (const e of data || []) { counts.set(e.class_id, (counts.get(e.class_id) || 0) + 1); }
+      return counts;
+    },
+  });
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm({ nom: "", levelId: "", salleId: "", capacityMax: "15", profId: "" });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (c: any) => {
+    setEditing(c);
+    setForm({
+      nom: c.nom,
+      levelId: c.level_id || "",
+      salleId: c.salle_id || "",
+      capacityMax: String(c.capacity_max ?? 15),
+      profId: c.prof_id || "",
+    });
+    setDialogOpen(true);
+  };
+
+  const saveClass = useMutation({
+    mutationFn: async () => {
+      if (!form.nom.trim()) throw new Error("Le nom est requis");
+      const payload: any = {
+        nom: form.nom.trim(),
+        level_id: form.levelId || null,
+        salle_id: form.salleId || null,
+        capacity_max: parseInt(form.capacityMax) || 15,
+        prof_id: form.profId || null,
+        org_id: orgId!,
+        academic_year_id: currentYear?.id || null,
+      };
+      if (editing) {
+        const { error } = await supabase.from("madrasa_classes").update(payload).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("madrasa_classes").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["madrasa_classes", orgId] });
+      setDialogOpen(false);
+      toast({ title: editing ? "Classe modifiée" : "Classe créée" });
+    },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteClass = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("madrasa_classes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["madrasa_classes", orgId] }); toast({ title: "Classe supprimée" }); },
+    onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2"><GraduationCap className="h-5 w-5" /> Classes</CardTitle>
+            <CardDescription>
+              Gestion des classes rattachées à l'année {currentYear?.label ?? "—"}.
+            </CardDescription>
+          </div>
+          <Button size="sm" onClick={openAdd}><Plus className="h-4 w-4 mr-1" /> Nouvelle classe</Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          ) : classes.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Aucune classe configurée pour cette année.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Niveau</TableHead>
+                  <TableHead>Enseignant</TableHead>
+                  <TableHead>Salle</TableHead>
+                  <TableHead className="text-center">Remplissage</TableHead>
+                  <TableHead className="w-24" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {classes.map((c: any) => {
+                  const enrolled = enrollmentCounts instanceof Map ? (enrollmentCounts.get(c.id) || 0) : 0;
+                  const cap = c.capacity_max || 15;
+                  const pct = Math.min(100, Math.round((enrolled / cap) * 100));
+                  const room = c.rooms as any;
+                  const level = c.madrasa_levels as any;
+                  const prof = c.profiles as any;
+
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell className="font-medium">{c.nom}</TableCell>
+                      <TableCell>
+                        {level?.label ? (
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-xs">{level.label}</Badge>
+                            {level.madrasa_cycles?.nom && <span className="text-xs text-muted-foreground">({level.madrasa_cycles.nom})</span>}
+                          </div>
+                        ) : c.niveau ? (
+                          <div className="flex items-center gap-1">
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                            <span className="text-xs text-muted-foreground italic">{c.niveau}</span>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-sm">{prof?.display_name ?? "—"}</TableCell>
+                      <TableCell className="text-sm">
+                        {room?.name ? `${room.name} - ${room.floor} (${room.capacity})` : "—"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={cn("h-full rounded-full transition-all", pct >= 90 ? "bg-destructive" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500")}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground">{enrolled}/{cap}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteClass.mutate(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialog ajout/édition */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Modifier la classe" : "Nouvelle classe"}</DialogTitle>
+            <DialogDescription>
+              {currentYear ? `Année : ${currentYear.label}` : "⚠️ Aucune année courante définie"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <Label>Nom *</Label>
+              <Input placeholder="Ex: CE1 Coran" value={form.nom} onChange={(e) => setForm(f => ({ ...f, nom: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Niveau</Label>
+                <Select value={form.levelId} onValueChange={(v) => setForm(f => ({ ...f, levelId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                  <SelectContent>
+                    {(levels as any[]).map((l: any) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {l.label} {l.madrasa_cycles?.nom ? `(${l.madrasa_cycles.nom})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Capacité max</Label>
+                <Input type="number" min={1} value={form.capacityMax} onChange={(e) => setForm(f => ({ ...f, capacityMax: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Salle</Label>
+              <Select value={form.salleId} onValueChange={(v) => setForm(f => ({ ...f, salleId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                <SelectContent>
+                  {(rooms as any[]).map((r: any) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name} - {r.floor} ({r.capacity} places)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Enseignant</Label>
+              <Select value={form.profId} onValueChange={(v) => setForm(f => ({ ...f, profId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                <SelectContent>
+                  {(teachers as any[]).map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>{t.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
+            <Button onClick={() => saveClass.mutate()} disabled={saveClass.isPending || !form.nom.trim()}>
+              {saveClass.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              {editing ? "Enregistrer" : "Créer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4. PARAMÈTRES — Général + Communications intégrées
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function SettingsSection() {
   const { orgId } = useOrganization();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -986,7 +1277,7 @@ function GeneralSettingsSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Paramètres généraux</CardTitle>
+        <CardTitle className="text-lg flex items-center gap-2"><Settings2 className="h-5 w-5" /> Paramètres généraux</CardTitle>
         <CardDescription>Configuration de base du module Éducation.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-5 sm:grid-cols-3">
@@ -1002,7 +1293,7 @@ function GeneralSettingsSection() {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Seuil d'absences</Label>
+          <Label>Seuil d'alerte absences</Label>
           <Input type="number" min={0} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
         </div>
         <div className="space-y-2">
@@ -1063,21 +1354,14 @@ export function MadrasaHub() {
           <LevelsSection />
         </TabsContent>
 
-        {/* 3. Classes — placeholder for now */}
+        {/* 3. Classes */}
         <TabsContent value="classes" className="space-y-6">
-          <Card>
-            <CardContent className="py-12 text-center">
-              <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-sm text-muted-foreground">
-                La gestion des classes est accessible depuis le menu <strong>Éducation → Classes</strong>.
-              </p>
-            </CardContent>
-          </Card>
+          <ClassesSection />
         </TabsContent>
 
-        {/* 4. Paramètres */}
+        {/* 4. Paramètres & Communications */}
         <TabsContent value="parametres" className="space-y-6">
-          <GeneralSettingsSection />
+          <SettingsSection />
           <CommunicationsTab />
         </TabsContent>
       </Tabs>
