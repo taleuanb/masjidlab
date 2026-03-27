@@ -10,7 +10,7 @@ import {
   type PlanId,
 } from "@/config/module-registry";
 
-import { MadrasaSettingsPanel } from "@/components/MadrasaSettingsPanel";
+import { MadrasaHub } from "@/components/saas/MadrasaHub";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -693,7 +693,7 @@ export default function SettingsPage() {
           {/* ═══════════ MADRASSA ═══════════ */}
           {showMadrassa && (
             <TabsContent value="madrassa">
-              <MadrasaSettingsPanel />
+              <MadrasaHub />
             </TabsContent>
           )}
         </Tabs>
