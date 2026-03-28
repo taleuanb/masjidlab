@@ -964,12 +964,18 @@ function EnrollmentWizard({
   );
 }
 
-// ── Status badge colors ──
-const STATUS_COLORS: Record<string, string> = {
-  Actif: "bg-green-500/10 text-green-700 border-green-400/30",
-  "En attente": "bg-amber-500/10 text-amber-600 border-amber-400/30",
-  Suspendu: "bg-destructive/10 text-destructive border-destructive/30",
+// ── Status display mapping (UI only — does NOT change DB values) ──
+const STATUS_MAP: Record<string, { label: string; className: string }> = {
+  Actif: { label: "Placé", className: "bg-brand-emerald/10 text-brand-emerald border-brand-emerald/30" },
+  "En attente": { label: "Sandbox (À placer)", className: "bg-amber-500/10 text-amber-700 border-amber-400/30" },
+  Suspendu: { label: "Annulé / Suspendu", className: "bg-destructive/10 text-destructive border-destructive/30" },
 };
+
+function getStatusDisplay(statut: string | null, classe: { nom: string } | null) {
+  if (!statut && !classe) return STATUS_MAP["En attente"];
+  if (classe === null) return STATUS_MAP["En attente"];
+  return STATUS_MAP[statut ?? ""] ?? { label: statut ?? "—", className: "" };
+}
 
 // ── Main Page ────────────────────────────────────────────
 const Inscriptions = () => {
@@ -1037,8 +1043,8 @@ const Inscriptions = () => {
   const filtered = useMemo(() => {
     return enrollments.filter((e) => {
       // Tab filter
-      if (statusTab === "sandbox" && e.classe !== null) return false;
-      if (statusTab === "active" && e.statut !== "Actif") return false;
+      if (statusTab === "sandbox" && !(e.statut === "En attente" || e.classe === null)) return false;
+      if (statusTab === "active" && !(e.statut === "Actif" && e.classe !== null)) return false;
       if (statusTab === "suspended" && e.statut !== "Suspendu") return false;
 
       // Level filter
@@ -1071,7 +1077,7 @@ const Inscriptions = () => {
 
   return (
     <main className="flex-1 overflow-auto">
-      <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <SidebarTrigger />
@@ -1134,9 +1140,9 @@ const Inscriptions = () => {
         {/* Tabs */}
         <Tabs value={statusTab} onValueChange={setStatusTab}>
           <TabsList>
-            <TabsTrigger value="all">Toutes</TabsTrigger>
-            <TabsTrigger value="sandbox">🟡 Sandbox</TabsTrigger>
-            <TabsTrigger value="active">🟢 Actives</TabsTrigger>
+            <TabsTrigger value="all">Toutes les inscriptions</TabsTrigger>
+            <TabsTrigger value="sandbox">🟡 Sandbox (À placer)</TabsTrigger>
+            <TabsTrigger value="active">🟢 Placés</TabsTrigger>
             <TabsTrigger value="suspended">🔴 Suspendues</TabsTrigger>
           </TabsList>
         </Tabs>
@@ -1222,8 +1228,8 @@ const Inscriptions = () => {
                         </TableCell>
                         <TableCell>
                           {e.classe?.nom ?? (
-                            <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30 font-semibold">
-                              🟡 Sandbox
+                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">
+                              🟡 En attente d'affectation
                             </Badge>
                           )}
                         </TableCell>
@@ -1234,12 +1240,14 @@ const Inscriptions = () => {
                         </TableCell>
                         <TableCell className="text-sm">{e.annee_scolaire}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={cn("text-[10px]", STATUS_COLORS[e.statut ?? ""] ?? "")}
-                          >
-                            {e.statut ?? "—"}
-                          </Badge>
+                          {(() => {
+                            const display = getStatusDisplay(e.statut, e.classe);
+                            return (
+                              <Badge variant="outline" className={cn("text-[10px]", display.className)}>
+                                {display.label}
+                              </Badge>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
