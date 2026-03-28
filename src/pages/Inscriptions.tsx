@@ -1217,8 +1217,16 @@ const Inscriptions = () => {
             ) : filtered.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm font-medium">Aucune inscription trouvée</p>
-                <p className="text-xs mt-1">Cliquez sur "Nouvelle inscription" pour commencer.</p>
+                <p className="text-sm font-medium">
+                  {filterClass !== "__all__" && filterClass !== "__sandbox__"
+                    ? "Aucun élève inscrit dans cette classe pour le moment."
+                    : "Aucune inscription trouvée"}
+                </p>
+                <p className="text-xs mt-1">
+                  {filterClass !== "__all__" && filterClass !== "__sandbox__"
+                    ? "Les élèves peuvent être affectés depuis le Studio de placement."
+                    : "Cliquez sur \"Nouvelle inscription\" pour commencer."}
+                </p>
               </div>
             ) : (
               <Table>
