@@ -188,22 +188,24 @@ function EnrollmentWizard({
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [parentResults, setParentResults] = useState<ParentSearchResult[]>([]);
   const [billingCycle, setBillingCycle] = useState<"mensuel" | "trimestriel">("mensuel");
-  const [duplicateWarning, setDuplicateWarning] = "";
+  const [duplicateWarning, setDuplicateWarning] = useState("");
   const [academicYearId, setAcademicYearId] = useState<string | null>(null);
 
   const annee = getCurrentSchoolYear();
 
-  // Fetch levels, cycles & classes
+  // Fetch levels, cycles, classes & current academic year
   useEffect(() => {
     if (!open || !orgId) return;
     Promise.all([
       supabase.from("madrasa_levels").select("id, label, tarif_mensuel, cycle_id").eq("org_id", orgId),
       supabase.from("madrasa_cycles").select("id, nom").eq("org_id", orgId).order("nom"),
       supabase.from("madrasa_classes").select("id, nom, niveau, level_id").eq("org_id", orgId),
-    ]).then(([levelsRes, cyclesRes, classesRes]) => {
+      supabase.from("madrasa_academic_years").select("id, label").eq("org_id", orgId).eq("is_current", true).maybeSingle(),
+    ]).then(([levelsRes, cyclesRes, classesRes, ayRes]) => {
       setLevels((levelsRes.data ?? []) as Level[]);
       setCycles((cyclesRes.data ?? []) as Cycle[]);
       setClasses((classesRes.data ?? []) as ClassRow[]);
+      if (ayRes.data) setAcademicYearId(ayRes.data.id);
     });
   }, [open, orgId]);
 
@@ -350,17 +352,17 @@ function EnrollmentWizard({
         body: {
           student_nom: nom.trim(),
           student_prenom: prenom.trim(),
-          student_niveau: selectedLevel?.label ?? null,
           age: age ? parseInt(age, 10) : null,
           gender: gender || null,
           level_id: niveauId || null,
           parent_id: parentId,
-          parent_nom: parentMode === "new" ? newParentNom : null,
-          parent_prenom: parentMode === "new" ? newParentPrenom : null,
-          parent_email: parentMode === "new" ? newParentEmail : null,
-          parent_phone: parentMode === "new" ? newParentPhone : null,
+          parent_nom: parentMode === "new" ? newParentNom.trim() : null,
+          parent_prenom: parentMode === "new" ? newParentPrenom.trim() : null,
+          parent_email: parentMode === "new" ? newParentEmail.trim() : null,
+          parent_phone: parentMode === "new" ? newParentPhone.trim() : null,
           class_id: effectiveClassId,
           annee_scolaire: annee,
+          academic_year_id: academicYearId,
           tarif_mensuel: tarifMensuel,
           billing_cycle: billingCycle,
           org_id: orgId,
@@ -380,9 +382,13 @@ function EnrollmentWizard({
       const result = data as { success: boolean; error?: string; fees_generated?: number };
       if (!result.success) throw new Error(result.error);
 
+      const sandboxMsg = isSandbox
+        ? "L'élève a été placé dans le Sandbox. Vous pourrez l'affecter à une classe plus tard depuis le Studio."
+        : `${result.fees_generated ?? 0} échéances générées.`;
+
       toast({
         title: "✅ Inscription réussie !",
-        description: `${prenom} ${nom} inscrit(e).${isSandbox ? " (Sandbox — en attente d'affectation)" : ""} ${result.fees_generated ?? 0} échéances générées.`,
+        description: `${prenom} ${nom} inscrit(e). ${sandboxMsg}`,
       });
 
       // Reset
