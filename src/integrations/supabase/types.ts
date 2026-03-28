@@ -437,6 +437,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "madrasa_attendance_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["enrollment_id"]
+          },
+          {
             foreignKeyName: "madrasa_attendance_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
@@ -456,6 +463,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_students"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["student_id"]
           },
         ]
       }
@@ -649,34 +663,46 @@ export type Database = {
       }
       madrasa_enrollments: {
         Row: {
+          academic_status: string | null
           academic_year_id: string | null
           annee_scolaire: string
-          class_id: string
+          class_id: string | null
           created_at: string | null
           id: string
+          level_id: string | null
           org_id: string
+          pedagogical_status: string | null
+          preferences: Json | null
           statut: string | null
           student_id: string
           updated_at: string | null
         }
         Insert: {
+          academic_status?: string | null
           academic_year_id?: string | null
           annee_scolaire: string
-          class_id: string
+          class_id?: string | null
           created_at?: string | null
           id?: string
+          level_id?: string | null
           org_id: string
+          pedagogical_status?: string | null
+          preferences?: Json | null
           statut?: string | null
           student_id: string
           updated_at?: string | null
         }
         Update: {
+          academic_status?: string | null
           academic_year_id?: string | null
           annee_scolaire?: string
-          class_id?: string
+          class_id?: string | null
           created_at?: string | null
           id?: string
+          level_id?: string | null
           org_id?: string
+          pedagogical_status?: string | null
+          preferences?: Json | null
           statut?: string | null
           student_id?: string
           updated_at?: string | null
@@ -704,6 +730,13 @@ export type Database = {
             referencedColumns: ["class_id"]
           },
           {
+            foreignKeyName: "madrasa_enrollments_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_levels"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "madrasa_enrollments_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
@@ -716,6 +749,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_students"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["student_id"]
           },
         ]
       }
@@ -834,6 +874,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "madrasa_fees_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["student_id"]
+          },
+          {
             foreignKeyName: "madrasa_fees_transaction_id_fkey"
             columns: ["transaction_id"]
             isOneToOne: false
@@ -891,6 +938,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_students"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_grades_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["student_id"]
           },
         ]
       }
@@ -1217,6 +1271,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "madrasa_student_goals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["student_id"]
+          },
+          {
             foreignKeyName: "madrasa_student_goals_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
@@ -1305,13 +1366,22 @@ export type Database = {
             referencedRelation: "madrasa_students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "madrasa_student_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["student_id"]
+          },
         ]
       }
       madrasa_students: {
         Row: {
           age: number | null
           created_at: string | null
+          current_assessment: Json | null
           date_naissance: string | null
+          family_id: string | null
           gender: string | null
           id: string
           niveau: string | null
@@ -1324,7 +1394,9 @@ export type Database = {
         Insert: {
           age?: number | null
           created_at?: string | null
+          current_assessment?: Json | null
           date_naissance?: string | null
+          family_id?: string | null
           gender?: string | null
           id?: string
           niveau?: string | null
@@ -1337,7 +1409,9 @@ export type Database = {
         Update: {
           age?: number | null
           created_at?: string | null
+          current_assessment?: Json | null
           date_naissance?: string | null
+          family_id?: string | null
           gender?: string | null
           id?: string
           niveau?: string | null
@@ -1595,6 +1669,8 @@ export type Database = {
           phone: string | null
           pole_id: string | null
           tags: string[]
+          teacher_availabilities: Json | null
+          teacher_specialties: string[] | null
           updated_at: string
           user_id: string
         }
@@ -1610,6 +1686,8 @@ export type Database = {
           phone?: string | null
           pole_id?: string | null
           tags?: string[]
+          teacher_availabilities?: Json | null
+          teacher_specialties?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -1625,6 +1703,8 @@ export type Database = {
           phone?: string | null
           pole_id?: string | null
           tags?: string[]
+          teacher_availabilities?: Json | null
+          teacher_specialties?: string[] | null
           updated_at?: string
           user_id?: string
         }
@@ -2097,6 +2177,43 @@ export type Database = {
             referencedRelation: "madrasa_students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "madrasa_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["student_id"]
+          },
+        ]
+      }
+      view_unplaced_students: {
+        Row: {
+          academic_year_id: string | null
+          age: number | null
+          enrollment_id: string | null
+          family_id: string | null
+          gender: string | null
+          level_id: string | null
+          nom: string | null
+          preferences: Json | null
+          prenom: string | null
+          student_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_enrollments_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_enrollments_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_levels"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -2221,6 +2338,8 @@ export type Database = {
         | "eleve"
         | "enseignant"
       contract_type: "CDI" | "CDD" | "Bénévole" | "Vacataire"
+      enrollment_academic_status: "pre_registered" | "validated" | "archived"
+      enrollment_pedagogical_status: "waiting_placement" | "placed" | "on_trial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2359,6 +2478,12 @@ export const Constants = {
         "enseignant",
       ],
       contract_type: ["CDI", "CDD", "Bénévole", "Vacataire"],
+      enrollment_academic_status: ["pre_registered", "validated", "archived"],
+      enrollment_pedagogical_status: [
+        "waiting_placement",
+        "placed",
+        "on_trial",
+      ],
     },
   },
 } as const
