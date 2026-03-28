@@ -799,12 +799,11 @@ function EnrollmentWizard({
                       </Badge>
                     </>
                   )}
-                  {(testScore || assessmentNotes) && (
+                  {(testLevel || assessmentNotes) && (
                     <>
                       <span className="text-muted-foreground">Évaluation</span>
                       <span>
-                        {testScore && <span className="font-medium">{testScore}/20</span>}
-                        {testScore && assessmentNotes && " — "}
+                        {testLevel && <Badge variant="outline" className="text-[10px] mr-1">{testLevel === "debutant" ? "Débutant" : testLevel === "intermediaire" ? "Intermédiaire" : "Confirmé"}</Badge>}
                         {assessmentNotes && <span className="text-muted-foreground">{assessmentNotes.substring(0, 60)}{assessmentNotes.length > 60 ? "…" : ""}</span>}
                       </span>
                     </>
