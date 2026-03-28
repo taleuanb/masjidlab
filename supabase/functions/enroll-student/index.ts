@@ -130,6 +130,7 @@ serve(async (req) => {
           org_id: body.org_id,
           family_id: body.family_id || undefined,
           current_assessment: body.assessment ? body.assessment : {},
+          statut: "actif",
         })
         .select("id")
         .single();
@@ -140,9 +141,7 @@ serve(async (req) => {
 
     // 4. Determine enrollment status
     const isSandbox = !body.class_id;
-    const enrollmentStatut = isSandbox ? "En attente" : "Actif";
-    const pedagogicalStatus = isSandbox ? "waiting_placement" : "placed";
-    const academicStatus = isSandbox ? "pre_registered" : "enrolled";
+    const enrollmentStatut = isSandbox ? "en_attente" : "place";
 
     // 5. Insert enrollment
     const { data: enrollment, error: enrollErr } = await supabase
@@ -154,8 +153,6 @@ serve(async (req) => {
         academic_year_id: body.academic_year_id || null,
         annee_scolaire: body.annee_scolaire,
         statut: enrollmentStatut,
-        pedagogical_status: pedagogicalStatus,
-        academic_status: academicStatus,
         org_id: body.org_id,
         preferences: body.preferences ? {
           days: body.preferences.days ?? [],

@@ -110,6 +110,7 @@ serve(async (req) => {
             parent_id: parentId,
             org_id: body.org_id,
             current_assessment: {},
+            statut: "actif",
           })
           .select("id")
           .single();
@@ -126,9 +127,7 @@ serve(async (req) => {
             level_id: levelId,
             academic_year_id: body.academic_year_id || null,
             annee_scolaire: body.annee_scolaire_label,
-            statut: "En attente",
-            pedagogical_status: "waiting_placement",
-            academic_status: "pre_registered",
+            statut: "en_attente",
             org_id: body.org_id,
             preferences: { days: [], sibling_priority: false },
           })
