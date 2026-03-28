@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
   Search, Users, LayoutDashboard, Heart, CalendarDays, MapPin, X, GripVertical,
-  AlertTriangle, ShieldAlert, CheckCircle2,
+  AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
@@ -102,8 +102,7 @@ function evaluateMatch(student: PoolStudent, cls: StudioClass): MatchResult {
   // Gender
   const gr = cls.cycleConstraints.genderRestriction;
   if (gr && student.genre && student.genre !== gr) {
-    alerts.push({ type: "gender", message: `Genre non autorisé (cycle ${gr === "M" ? "Garçons" : "Filles"})`, severity: "error" });
-    blocked = true;
+    alerts.push({ type: "gender", message: `Genre différent du cycle (${gr === "M" ? "Garçons" : "Filles"})`, severity: "warn" });
   }
 
   // Age
@@ -393,26 +392,23 @@ function DroppableClassCard({
       className={cn(
         "flex flex-col transition-all duration-200",
         // Dimmed non-matching classes
-        isDragging && !isPerfect && !hasWarnings && (isFull || (!hasErrors)) && "opacity-40",
-        // Perfect match: green glow
-        isDragging && isPerfect && !isOver && "ring-2 ring-emerald-400/50 border-emerald-400/60 shadow-[0_0_15px_hsl(var(--brand-emerald)/0.2)]",
-        // Warn match: subtle highlight
-        isDragging && hasWarnings && !hasErrors && !isOver && "ring-1 ring-amber-400/40 border-amber-400/50",
-        // Gender blocked: red
-        isDragging && hasErrors && !isOver && "ring-2 ring-destructive/40 border-destructive/50 opacity-70",
+      isDragging && !isPerfect && !hasWarnings && "opacity-40",
+      // Perfect match: green glow
+      isDragging && isPerfect && !isOver && "ring-2 ring-emerald-400/50 border-emerald-400/60 shadow-[0_0_15px_hsl(var(--brand-emerald)/0.2)]",
+      // Warn match: subtle highlight
+      isDragging && hasWarnings && !isOver && "ring-1 ring-amber-400/40 border-amber-400/50",
         // Hovering states
-        isOver && isPerfect && "ring-2 ring-emerald-500 border-emerald-500 shadow-xl bg-emerald-500/5",
-        isOver && hasWarnings && !hasErrors && "ring-2 ring-amber-500 border-amber-500 shadow-xl bg-amber-500/5",
-        isOver && hasErrors && "ring-2 ring-destructive border-destructive shadow-xl bg-destructive/5",
+      isOver && isPerfect && "ring-2 ring-emerald-500 border-emerald-500 shadow-xl bg-emerald-500/5",
+      isOver && hasWarnings && "ring-2 ring-amber-500 border-amber-500 shadow-xl bg-amber-500/5",
         isOver && isFull && !hasErrors && "ring-2 ring-destructive border-destructive bg-destructive/5",
         // Default full
         !isDragging && isFull && "opacity-60",
       )}
     >
       <CardHeader className="p-4 pb-2 space-y-1">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm font-semibold truncate">{cls.nom}</CardTitle>
-          <div className="flex items-center gap-1 shrink-0">
+        <div className="flex flex-col gap-1">
+          <CardTitle className="text-sm font-semibold">{cls.nom}</CardTitle>
+          <div className="flex items-center gap-1 flex-wrap">
             {cls.levelLabel && (
               <Badge variant="secondary" className="text-[10px]">{cls.levelLabel}</Badge>
             )}
@@ -459,12 +455,8 @@ function DroppableClassCard({
         {isOver && matchResult && matchResult.alerts.length > 0 && (
           <div className="space-y-1">
             {matchResult.alerts.map((a, i) => (
-              <div key={i} className={cn("flex items-center gap-1.5 text-[11px] rounded px-2 py-1",
-                a.severity === "error" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-700"
-              )}>
-                {a.severity === "error"
-                  ? <ShieldAlert className="h-3 w-3 shrink-0" />
-                  : <AlertTriangle className="h-3 w-3 shrink-0" />}
+              <div key={i} className="flex items-center gap-1.5 text-[11px] rounded px-2 py-1 bg-amber-500/10 text-amber-700">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
                 {a.message}
               </div>
             ))}
@@ -494,22 +486,19 @@ function DroppableClassCard({
         {/* Drop zone */}
         <div className={cn(
           "border-2 border-dashed rounded-lg flex items-center justify-center py-4 text-xs select-none mt-auto transition-colors",
-          isOver && !isFull && !hasErrors && "border-emerald-500 bg-emerald-500/10 text-emerald-700 font-medium",
-          isOver && hasErrors && "border-destructive bg-destructive/10 text-destructive font-medium",
-          isOver && isFull && !hasErrors && "border-destructive bg-destructive/10 text-destructive font-medium",
+          isOver && !isFull && "border-emerald-500 bg-emerald-500/10 text-emerald-700 font-medium",
+          isOver && isFull && "border-destructive bg-destructive/10 text-destructive font-medium",
           !isOver && isDragging && isPerfect && "border-emerald-400/50 bg-emerald-500/5 text-emerald-600",
           !isOver && !isDragging && "border-muted-foreground/25 text-muted-foreground",
           !isOver && isDragging && !isPerfect && "border-muted-foreground/15 text-muted-foreground/50",
         )}>
           <span className="opacity-70 flex items-center gap-1.5">
-            {isOver && hasErrors
-              ? <><ShieldAlert className="h-3.5 w-3.5" /> Placement interdit</>
-              : isOver && isFull
-                ? "⛔ Classe complète"
-                : isOver
-                  ? <><CheckCircle2 className="h-3.5 w-3.5" /> Relâcher pour placer</>
-                  : isDragging && isPerfect
-                    ? <><CheckCircle2 className="h-3.5 w-3.5" /> Compatible ✓</>
+            {isOver && isFull
+              ? "⛔ Classe complète"
+              : isOver
+                ? <><CheckCircle2 className="h-3.5 w-3.5" /> Relâcher pour placer</>
+                : isDragging && isPerfect
+                  ? <><CheckCircle2 className="h-3.5 w-3.5" /> Compatible ✓</>
                     : isFull
                       ? "Classe complète"
                       : `Glisser un élève ici (${remaining} place${remaining > 1 ? "s" : ""})`}
@@ -633,12 +622,7 @@ export function PlacementStudioTab() {
 
     const match = evaluateMatch(student, targetClass);
 
-    // Hard block: gender restriction
-    if (match.alerts.some((a) => a.severity === "error")) {
-      const errorMsg = match.alerts.filter((a) => a.severity === "error").map((a) => a.message).join(". ");
-      toast({ title: "🚫 Placement interdit", description: errorMsg, variant: "destructive" });
-      return;
-    }
+    // Hard block: capacity only
 
     // Hard block: capacity
     if (targetClass.enrolledCount >= targetClass.capacityMax) {
