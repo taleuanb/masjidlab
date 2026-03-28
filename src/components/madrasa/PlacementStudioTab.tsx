@@ -622,12 +622,7 @@ export function PlacementStudioTab() {
 
     const match = evaluateMatch(student, targetClass);
 
-    // Hard block: gender restriction
-    if (match.alerts.some((a) => a.severity === "error")) {
-      const errorMsg = match.alerts.filter((a) => a.severity === "error").map((a) => a.message).join(". ");
-      toast({ title: "🚫 Placement interdit", description: errorMsg, variant: "destructive" });
-      return;
-    }
+    // Hard block: capacity only
 
     // Hard block: capacity
     if (targetClass.enrolledCount >= targetClass.capacityMax) {
