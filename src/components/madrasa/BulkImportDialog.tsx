@@ -273,16 +273,21 @@ export function BulkImportDialog({ open, onOpenChange, orgId, onSuccess }: BulkI
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: "array" });
-        const sheetName = wb.SheetNames[0];
-        if (!sheetName) { setFileError("Aucune feuille trouvée dans le fichier."); return; }
+        // Skip "Référentiels" sheet — prefer one named "Inscription(s)" or the first non-référentiel sheet
+        const targetSheetName = wb.SheetNames.find(name =>
+          name.toLowerCase().includes("inscription")
+        ) || wb.SheetNames.find(name =>
+          !name.toLowerCase().includes("référentiel") && !name.toLowerCase().includes("referentiel")
+        ) || wb.SheetNames[0];
+        if (!targetSheetName) { setFileError("Aucune feuille trouvée dans le fichier."); return; }
 
         // Use header:1 to get raw 2D array (fixes Apple Numbers metadata rows)
-        const rawRows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, defval: "" });
+        const rawRows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[targetSheetName], { header: 1, defval: "" });
         if (!rawRows.length) { setFileError("Fichier vide."); return; }
 
         // Find the real header row (skip Numbers metadata)
         const headerIdx = findHeaderRow(rawRows as unknown[][]);
-        const headerRow = (rawRows[headerIdx] as unknown[]).map((c) => String(c ?? "").trim()).filter(Boolean);
+        const headerRow = (rawRows[headerIdx] as unknown[]).map((c) => String(c ?? "").trim()).filter((v) => v !== "" && !v.startsWith("_EMPTY") && v !== "null" && v !== "undefined");
         if (headerRow.length < 2) { setFileError("Pas assez de colonnes détectées."); return; }
 
         // Build clean JSON from header + data rows
