@@ -164,7 +164,7 @@ function EnrollmentWizard({
   const [classId, setClassId] = useState("");
 
   // Assessment & Preferences
-  const [testScore, setTestScore] = useState("");
+  const [testLevel, setTestLevel] = useState("");
   const [assessmentNotes, setAssessmentNotes] = useState("");
   const [prefDays, setPrefDays] = useState<string[]>([]);
   const [siblingPriority, setSiblingPriority] = useState(false);
@@ -332,7 +332,7 @@ function EnrollmentWizard({
   const canGoStep2 = !!(nom.trim() && prenom.trim() && niveauId);
   const canGoStep3 = parentMode === "search"
     ? true
-    : (newParentPhone.trim().length > 0) && (newParentEmail ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newParentEmail) : true);
+    : (newParentPhone.trim().length >= 10) && (newParentEmail ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newParentEmail) : true);
 
   const handleSelectParent = (p: ParentSearchResult) => {
     setParentId(p.id);
@@ -365,7 +365,7 @@ function EnrollmentWizard({
           org_id: orgId,
           family_id: suggestedFamilyId,
           assessment: {
-            test_score: testScore ? parseFloat(testScore) : null,
+            test_level: testLevel || null,
             notes: assessmentNotes || null,
           },
           preferences: {
@@ -387,7 +387,7 @@ function EnrollmentWizard({
       // Reset
       setStep(0);
       setNom(""); setPrenom(""); setGender(""); setAge(""); setNiveauId(""); setClassId("");
-      setTestScore(""); setAssessmentNotes(""); setPrefDays([]); setSiblingPriority(false);
+      setTestLevel(""); setAssessmentNotes(""); setPrefDays([]); setSiblingPriority(false);
       setParentId(null); setParentName(""); setParentSearch(""); setSuggestedFamilyId(null);
       setNewParentNom(""); setNewParentPrenom(""); setNewParentEmail(""); setNewParentPhone("");
       setBillingCycle("mensuel");
@@ -541,16 +541,17 @@ function EnrollmentWizard({
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Évaluation initiale</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-sm font-medium mb-1 block">Note du test</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={20}
-                        step={0.5}
-                        value={testScore}
-                        onChange={(e) => setTestScore(e.target.value)}
-                        placeholder="/ 20"
-                      />
+                      <label className="text-sm font-medium mb-1 block">Niveau évalué</label>
+                      <Select value={testLevel} onValueChange={setTestLevel}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un niveau" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="debutant">Débutant</SelectItem>
+                          <SelectItem value="intermediaire">Intermédiaire</SelectItem>
+                          <SelectItem value="confirme">Confirmé</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="text-sm font-medium mb-1 block">Observations</label>
@@ -729,10 +730,13 @@ function EnrollmentWizard({
                   )}
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Téléphone *</label>
-                  <Input value={newParentPhone} onChange={(e) => setNewParentPhone(e.target.value)} placeholder="+33…" />
+                  <label className="text-sm font-medium mb-1 block">Téléphone <span className="text-destructive">*</span></label>
+                  <Input value={newParentPhone} onChange={(e) => setNewParentPhone(e.target.value)} placeholder="+33 6 12 34 56 78" />
+                  {newParentPhone.trim().length > 0 && newParentPhone.trim().length < 10 && (
+                    <p className="text-xs text-destructive mt-1">Minimum 10 caractères requis</p>
+                  )}
                   {!newParentPhone.trim() && (
-                    <p className="text-xs text-muted-foreground mt-1">Obligatoire pour un nouveau parent</p>
+                    <p className="text-xs text-muted-foreground mt-1">Obligatoire pour un nouveau parent (min. 10 caractères)</p>
                   )}
                 </div>
               </div>
