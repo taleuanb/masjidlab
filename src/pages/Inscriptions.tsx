@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardList, PlusCircle, Loader2, Check, ChevronRight, ChevronLeft,
-  User, Users, Receipt, Search, GraduationCap, AlertCircle,
+  User, Users, Receipt, Search, GraduationCap, AlertCircle, UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +19,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -29,18 +29,28 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
 
 // ── Types ────────────────────────────────────────────────
 interface Level {
   id: string;
   label: string;
   tarif_mensuel: number | null;
+  cycle_id: string | null;
+}
+
+interface Cycle {
+  id: string;
+  nom: string;
 }
 
 interface ClassRow {
   id: string;
   nom: string;
   niveau: string | null;
+  level_id: string | null;
 }
 
 interface EnrollmentRow {
@@ -50,6 +60,16 @@ interface EnrollmentRow {
   created_at: string | null;
   student: { nom: string; prenom: string; niveau: string | null } | null;
   classe: { nom: string } | null;
+}
+
+interface ParentSearchResult {
+  user_id: string;
+  id: string;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  roles: string[];
+  existingFamilyId: string | null;
 }
 
 // ── Current school year ──
@@ -100,6 +120,16 @@ function Stepper({ current }: { current: number }) {
   );
 }
 
+// ── Role label mapping ──
+const ROLE_LABELS: Record<string, { label: string; color: string }> = {
+  admin: { label: "Admin", color: "bg-destructive/15 text-destructive border-destructive/30" },
+  responsable: { label: "Responsable", color: "bg-purple-100 text-purple-700 border-purple-300" },
+  enseignant: { label: "Enseignant", color: "bg-brand-cyan/15 text-brand-cyan border-brand-cyan/30" },
+  benevole: { label: "Bénévole", color: "bg-muted text-muted-foreground border-border" },
+  parent: { label: "Parent", color: "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30" },
+  super_admin: { label: "Super Admin", color: "bg-amber-100 text-amber-700 border-amber-300" },
+};
+
 // ── Enrollment Dialog ────────────────────────────────────
 function EnrollmentWizard({
   open,
@@ -128,46 +158,122 @@ function EnrollmentWizard({
   const [parentSearch, setParentSearch] = useState("");
   const [parentId, setParentId] = useState<string | null>(null);
   const [parentName, setParentName] = useState("");
+  const [suggestedFamilyId, setSuggestedFamilyId] = useState<string | null>(null);
   const [newParentNom, setNewParentNom] = useState("");
   const [newParentPrenom, setNewParentPrenom] = useState("");
   const [newParentEmail, setNewParentEmail] = useState("");
   const [newParentPhone, setNewParentPhone] = useState("");
+  const [parentComboOpen, setParentComboOpen] = useState(false);
 
   // Data
   const [levels, setLevels] = useState<Level[]>([]);
+  const [cycles, setCycles] = useState<Cycle[]>([]);
   const [classes, setClasses] = useState<ClassRow[]>([]);
-  const [parentResults, setParentResults] = useState<{ user_id: string; display_name: string; email: string | null }[]>([]);
+  const [parentResults, setParentResults] = useState<ParentSearchResult[]>([]);
   const [billingCycle, setBillingCycle] = useState<"mensuel" | "trimestriel">("mensuel");
   const [duplicateWarning, setDuplicateWarning] = useState("");
 
   const annee = getCurrentSchoolYear();
 
-  // Fetch levels & classes
+  // Fetch levels, cycles & classes
   useEffect(() => {
     if (!open || !orgId) return;
     Promise.all([
-      supabase.from("madrasa_levels").select("id, label, tarif_mensuel").eq("org_id", orgId),
-      supabase.from("madrasa_classes").select("id, nom, niveau").eq("org_id", orgId),
-    ]).then(([levelsRes, classesRes]) => {
+      supabase.from("madrasa_levels").select("id, label, tarif_mensuel, cycle_id").eq("org_id", orgId),
+      supabase.from("madrasa_cycles").select("id, nom").eq("org_id", orgId).order("nom"),
+      supabase.from("madrasa_classes").select("id, nom, niveau, level_id").eq("org_id", orgId),
+    ]).then(([levelsRes, cyclesRes, classesRes]) => {
       setLevels((levelsRes.data ?? []) as Level[]);
+      setCycles((cyclesRes.data ?? []) as Cycle[]);
       setClasses((classesRes.data ?? []) as ClassRow[]);
     });
   }, [open, orgId]);
 
-  // Search parents
+  // Group levels by cycle
+  const groupedLevels = useMemo(() => {
+    const groups: { cycle: Cycle; levels: Level[] }[] = [];
+    const cycleMap = new Map(cycles.map(c => [c.id, c]));
+    const ungrouped: Level[] = [];
+
+    for (const level of levels) {
+      if (level.cycle_id && cycleMap.has(level.cycle_id)) {
+        let group = groups.find(g => g.cycle.id === level.cycle_id);
+        if (!group) {
+          group = { cycle: cycleMap.get(level.cycle_id)!, levels: [] };
+          groups.push(group);
+        }
+        group.levels.push(level);
+      } else {
+        ungrouped.push(level);
+      }
+    }
+    return { groups, ungrouped };
+  }, [levels, cycles]);
+
+  // Get selected level display label
+  const selectedLevel = levels.find((l) => l.id === niveauId);
+  const selectedLevelDisplay = useMemo(() => {
+    if (!selectedLevel) return null;
+    const cycle = selectedLevel.cycle_id ? cycles.find(c => c.id === selectedLevel.cycle_id) : null;
+    return cycle ? `${cycle.nom} > ${selectedLevel.label}` : selectedLevel.label;
+  }, [selectedLevel, cycles]);
+
+  // Search parents with roles
   useEffect(() => {
     if (parentSearch.length < 2 || !orgId) {
       setParentResults([]);
       return;
     }
     const timeout = setTimeout(async () => {
-      const { data } = await supabase
+      const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, email")
+        .select("user_id, id, display_name, email, phone")
         .eq("org_id", orgId)
-        .or(`display_name.ilike.%${parentSearch}%,email.ilike.%${parentSearch}%`)
-        .limit(5);
-      setParentResults((data ?? []) as any[]);
+        .or(`display_name.ilike.%${parentSearch}%,email.ilike.%${parentSearch}%,phone.ilike.%${parentSearch}%`)
+        .limit(8);
+
+      if (!profiles || profiles.length === 0) {
+        setParentResults([]);
+        return;
+      }
+
+      // Fetch roles for these users
+      const userIds = profiles.map(p => p.user_id);
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", userIds);
+
+      const roleMap: Record<string, string[]> = {};
+      for (const r of (roles ?? [])) {
+        if (!roleMap[r.user_id]) roleMap[r.user_id] = [];
+        roleMap[r.user_id].push(r.role);
+      }
+
+      // Check existing children for family_id
+      const profileIds = profiles.map(p => p.id);
+      const { data: existingChildren } = await supabase
+        .from("madrasa_students")
+        .select("parent_id, family_id")
+        .in("parent_id", profileIds)
+        .limit(50);
+
+      const familyMap: Record<string, string> = {};
+      for (const child of (existingChildren ?? [])) {
+        if (child.parent_id && child.family_id) {
+          familyMap[child.parent_id] = child.family_id;
+        }
+      }
+
+      setParentResults(profiles.map(p => ({
+        user_id: p.user_id,
+        id: p.id,
+        display_name: p.display_name,
+        email: p.email,
+        phone: p.phone,
+        roles: roleMap[p.user_id] ?? [],
+        existingFamilyId: familyMap[p.id] ?? null,
+      })));
     }, 300);
     return () => clearTimeout(timeout);
   }, [parentSearch, orgId]);
@@ -195,9 +301,8 @@ function EnrollmentWizard({
     return () => clearTimeout(timeout);
   }, [nom, prenom, orgId]);
 
-  const selectedLevel = levels.find((l) => l.id === niveauId);
   const filteredClasses = niveauId
-    ? classes.filter((c) => c.niveau === selectedLevel?.label || !c.niveau)
+    ? classes.filter((c) => c.level_id === niveauId || (!c.level_id && c.niveau === selectedLevel?.label))
     : classes;
 
   const tarifMensuel = selectedLevel?.tarif_mensuel ?? 0;
@@ -207,6 +312,13 @@ function EnrollmentWizard({
 
   const canGoStep2 = nom.trim() && prenom.trim() && classId;
   const canGoStep3 = parentMode === "search" ? true : (newParentEmail ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newParentEmail) : true);
+
+  const handleSelectParent = (p: ParentSearchResult) => {
+    setParentId(p.id);
+    setParentName(p.display_name);
+    setSuggestedFamilyId(p.existingFamilyId);
+    setParentComboOpen(false);
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -242,7 +354,7 @@ function EnrollmentWizard({
       // Reset
       setStep(0);
       setNom(""); setPrenom(""); setDateNaissance(undefined); setNiveauId(""); setClassId("");
-      setParentId(null); setParentName(""); setParentSearch("");
+      setParentId(null); setParentName(""); setParentSearch(""); setSuggestedFamilyId(null);
       setNewParentNom(""); setNewParentPrenom(""); setNewParentEmail(""); setNewParentPhone("");
       setBillingCycle("mensuel");
       onOpenChange(false);
@@ -323,14 +435,35 @@ function EnrollmentWizard({
                 <label className="text-sm font-medium mb-1 block">Niveau</label>
                 <Select value={niveauId} onValueChange={setNiveauId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choisir un niveau" />
+                    <SelectValue placeholder="Choisir un niveau">
+                      {selectedLevelDisplay ?? "Choisir un niveau"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {levels.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>
-                        {l.label} {l.tarif_mensuel ? `— ${l.tarif_mensuel} €/mois` : ""}
-                      </SelectItem>
+                    {groupedLevels.groups.map((g) => (
+                      <SelectGroup key={g.cycle.id}>
+                        <SelectLabel className="text-xs font-bold uppercase tracking-wide text-brand-navy">
+                          {g.cycle.nom}
+                        </SelectLabel>
+                        {g.levels.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.label} {l.tarif_mensuel ? `— ${l.tarif_mensuel} €/mois` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
+                    {groupedLevels.ungrouped.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                          Autres niveaux
+                        </SelectLabel>
+                        {groupedLevels.ungrouped.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.label} {l.tarif_mensuel ? `— ${l.tarif_mensuel} €/mois` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -374,7 +507,7 @@ function EnrollmentWizard({
               <Button
                 variant={parentMode === "new" ? "default" : "outline"}
                 size="sm"
-                onClick={() => { setParentMode("new"); setParentId(null); setParentName(""); }}
+                onClick={() => { setParentMode("new"); setParentId(null); setParentName(""); setSuggestedFamilyId(null); }}
               >
                 <PlusCircle className="h-3.5 w-3.5 mr-1" />
                 Nouveau parent
@@ -383,36 +516,90 @@ function EnrollmentWizard({
 
             {parentMode === "search" ? (
               <div className="space-y-3">
-                <Input
-                  placeholder="Rechercher par nom ou email…"
-                  value={parentSearch}
-                  onChange={(e) => setParentSearch(e.target.value)}
-                />
                 {parentId && (
                   <div className="flex items-center gap-2 rounded-md bg-primary/10 border border-primary/30 p-3 text-sm">
                     <Check className="h-4 w-4 text-primary" />
-                    Parent sélectionné : <strong>{parentName}</strong>
+                    <span>Parent sélectionné : <strong>{parentName}</strong></span>
+                    {suggestedFamilyId && (
+                      <Badge variant="outline" className="ml-auto text-[10px] bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30">
+                        Fratrie détectée
+                      </Badge>
+                    )}
+                    <Button variant="ghost" size="sm" className="ml-auto h-6 px-2 text-xs" onClick={() => { setParentId(null); setParentName(""); setSuggestedFamilyId(null); }}>
+                      Changer
+                    </Button>
                   </div>
                 )}
-                {parentResults.length > 0 && (
-                  <div className="border rounded-md divide-y max-h-48 overflow-y-auto">
-                    {parentResults.map((p) => (
-                      <button
-                        key={p.user_id}
-                        className={cn(
-                          "w-full text-left px-3 py-2 text-sm hover:bg-accent/50 transition-colors",
-                          parentId === p.user_id && "bg-primary/5"
-                        )}
-                        onClick={() => { setParentId(p.user_id); setParentName(p.display_name); }}
-                      >
-                        <span className="font-medium">{p.display_name}</span>
-                        {p.email && <span className="text-muted-foreground ml-2">{p.email}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {parentSearch.length >= 2 && parentResults.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Aucun résultat. Essayez "Nouveau parent".</p>
+
+                {!parentId && (
+                  <Popover open={parentComboOpen} onOpenChange={setParentComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal text-muted-foreground">
+                        <Search className="h-4 w-4 mr-2" />
+                        Rechercher par nom, email ou téléphone…
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder="Nom, email ou téléphone…"
+                          value={parentSearch}
+                          onValueChange={setParentSearch}
+                        />
+                        <CommandList>
+                          {parentSearch.length >= 2 && parentResults.length === 0 && (
+                            <CommandEmpty>
+                              <div className="flex flex-col items-center gap-2 py-4">
+                                <p className="text-sm text-muted-foreground">Aucun profil trouvé</p>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => { setParentMode("new"); setParentComboOpen(false); }}
+                                >
+                                  <UserPlus className="h-3.5 w-3.5 mr-1" />
+                                  Créer un nouveau profil parent
+                                </Button>
+                              </div>
+                            </CommandEmpty>
+                          )}
+                          {parentResults.length > 0 && (
+                            <CommandGroup heading="Profils trouvés">
+                              {parentResults.map((p) => (
+                                <CommandItem
+                                  key={p.user_id}
+                                  value={p.user_id}
+                                  onSelect={() => handleSelectParent(p)}
+                                  className="flex flex-col items-start gap-1 py-2.5"
+                                >
+                                  <div className="flex items-center gap-2 w-full">
+                                    <span className="font-medium text-sm">{p.display_name}</span>
+                                    {p.roles.map((r) => {
+                                      const cfg = ROLE_LABELS[r];
+                                      if (!cfg) return null;
+                                      return (
+                                        <Badge key={r} variant="outline" className={cn("text-[9px] px-1.5 py-0", cfg.color)}>
+                                          {cfg.label}
+                                        </Badge>
+                                      );
+                                    })}
+                                    {p.existingFamilyId && (
+                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30 ml-auto">
+                                        Fratrie
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    {p.email && <span>{p.email}</span>}
+                                    {p.phone && <span>{p.phone}</span>}
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 )}
               </div>
             ) : (
@@ -461,7 +648,7 @@ function EnrollmentWizard({
                   <span className="text-muted-foreground">Date naiss.</span>
                   <span>{dateNaissance ? format(dateNaissance, "dd/MM/yyyy") : "—"}</span>
                   <span className="text-muted-foreground">Niveau</span>
-                  <span>{selectedLevel?.label ?? "—"}</span>
+                  <span>{selectedLevelDisplay ?? "—"}</span>
                   <span className="text-muted-foreground">Classe</span>
                   <span>{classes.find((c) => c.id === classId)?.nom ?? "—"}</span>
                   <span className="text-muted-foreground">Parent</span>
@@ -469,6 +656,14 @@ function EnrollmentWizard({
                     {parentId ? parentName : parentMode === "new" && newParentPrenom
                       ? `${newParentPrenom} ${newParentNom}` : "Aucun"}
                   </span>
+                  {suggestedFamilyId && (
+                    <>
+                      <span className="text-muted-foreground">Fratrie</span>
+                      <Badge variant="outline" className="text-[10px] w-fit bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30">
+                        Regroupement automatique
+                      </Badge>
+                    </>
+                  )}
                   <span className="text-muted-foreground">Année</span>
                   <span>{annee}</span>
                 </div>
@@ -527,7 +722,6 @@ function EnrollmentWizard({
     </Dialog>
   );
 }
-
 // ── Status badge colors ──
 const STATUS_COLORS: Record<string, string> = {
   Actif: "bg-green-500/10 text-green-700 border-green-400/30",
