@@ -1321,7 +1321,7 @@ const Inscriptions = () => {
                 try {
                   const { error } = await supabase
                     .from("madrasa_enrollments")
-                    .delete()
+                    .update({ statut: "annule" })
                     .eq("id", enrollmentToDelete);
                   if (error) throw error;
                   toast({ title: "✅ Inscription annulée", description: "L'inscription a été retirée avec succès." });
