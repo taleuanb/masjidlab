@@ -320,6 +320,49 @@ function EnrollmentWizard({
     return () => clearTimeout(timeout);
   }, [nom, prenom, orgId]);
 
+  // Phone duplicate detection
+  const normalizePhone = useCallback((p: string) => p.replace(/[\s.\-()]/g, ""), []);
+
+  useEffect(() => {
+    const cleaned = normalizePhone(newParentPhone);
+    if (cleaned.length < 10 || !orgId || parentMode !== "new") {
+      setPhoneDuplicate(null);
+      return;
+    }
+    const timeout = setTimeout(async () => {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, user_id, display_name, email, phone")
+        .eq("org_id", orgId)
+        .not("phone", "is", null)
+        .limit(100);
+
+      const match = (profiles ?? []).find(
+        (p) => p.phone && normalizePhone(p.phone) === cleaned
+      );
+      setPhoneDuplicate(match ? { id: match.id, user_id: match.user_id, display_name: match.display_name, email: match.email } : null);
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [newParentPhone, orgId, parentMode, normalizePhone]);
+
+  const handleUseExistingProfile = async () => {
+    if (!phoneDuplicate) return;
+    setParentId(phoneDuplicate.id);
+    setParentName(phoneDuplicate.display_name);
+    const { data: children } = await supabase
+      .from("madrasa_students")
+      .select("family_id")
+      .eq("parent_id", phoneDuplicate.id)
+      .not("family_id", "is", null)
+      .limit(1);
+    const fId = children?.[0]?.family_id ?? null;
+    setSuggestedFamilyId(fId);
+    if (fId) setSiblingPriority(true);
+    setParentMode("search");
+    setNewParentNom(""); setNewParentPrenom(""); setNewParentEmail(""); setNewParentPhone("");
+    setPhoneDuplicate(null);
+  };
+
   const isSandbox = classId === SANDBOX_VALUE;
   const effectiveClassId = isSandbox ? null : classId;
 
