@@ -7,29 +7,24 @@ const corsHeaders = {
 };
 
 interface EnrollmentRequest {
-  // Student
   student_nom: string;
   student_prenom: string;
-  student_niveau: string | null;
   age: number | null;
   gender: string | null;
   level_id: string | null;
-  // Parent
   parent_id: string | null;
   parent_nom: string | null;
   parent_prenom: string | null;
   parent_email: string | null;
   parent_phone: string | null;
-  // Enrollment
-  class_id: string | null; // null = sandbox
+  class_id: string | null;
   annee_scolaire: string;
-  // Billing
+  academic_year_id: string | null;
   tarif_mensuel: number;
   billing_cycle: "mensuel" | "trimestriel";
   org_id: string;
-  // Enriched
   family_id: string | null;
-  assessment: { test_score: number | null; notes: string | null } | null;
+  assessment: { test_level: string | null; notes: string | null } | null;
   preferences: { days: string[]; sibling_priority: boolean } | null;
 }
 
@@ -128,7 +123,7 @@ serve(async (req) => {
         .insert({
           nom: body.student_nom.trim(),
           prenom: body.student_prenom.trim(),
-          niveau: body.student_niveau || null,
+          niveau: null,
           age: body.age ?? null,
           gender: body.gender || null,
           parent_id: parentId,
@@ -156,6 +151,7 @@ serve(async (req) => {
         student_id: finalStudentId,
         class_id: body.class_id || null,
         level_id: body.level_id || null,
+        academic_year_id: body.academic_year_id || null,
         annee_scolaire: body.annee_scolaire,
         statut: enrollmentStatut,
         pedagogical_status: pedagogicalStatus,
