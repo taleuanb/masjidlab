@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Plus, Trash2, Loader2, BookOpen, Layers } from "lucide-react";
+import { Plus, Trash2, Loader2, BookOpen, Layers, Move } from "lucide-react";
 import { TrackingConfigTab } from "@/components/madrasa/TrackingConfigTab";
 import { CommunicationsTab } from "@/components/madrasa/CommunicationsTab";
 import { CalendarTab } from "@/components/madrasa/CalendarTab";
+import { PlacementStudioTab } from "@/components/madrasa/PlacementStudioTab";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
