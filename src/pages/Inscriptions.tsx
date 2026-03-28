@@ -977,6 +977,10 @@ const Inscriptions = () => {
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [search, setSearch] = useState("");
 
+  const [statusTab, setStatusTab] = useState("all");
+  const [filterLevel, setFilterLevel] = useState("__all__");
+  const [filterClass, setFilterClass] = useState("__all__");
+
   const fetchEnrollments = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
@@ -1011,20 +1015,52 @@ const Inscriptions = () => {
 
   useEffect(() => { fetchEnrollments(); }, [fetchEnrollments]);
 
+  // Extract unique levels & classes for filters
+  const uniqueLevels = useMemo(() => {
+    const set = new Set<string>();
+    enrollments.forEach((e) => { if (e.student?.niveau) set.add(e.student.niveau); });
+    return Array.from(set).sort();
+  }, [enrollments]);
+
+  const uniqueClasses = useMemo(() => {
+    const set = new Set<string>();
+    enrollments.forEach((e) => { if (e.classe?.nom) set.add(e.classe.nom); });
+    return Array.from(set).sort();
+  }, [enrollments]);
+
   const filtered = useMemo(() => {
-    if (!search) return enrollments;
-    const q = search.toLowerCase();
     return enrollments.filter((e) => {
-      const name = `${e.student?.prenom ?? ""} ${e.student?.nom ?? ""}`.toLowerCase();
-      return name.includes(q) || e.classe?.nom?.toLowerCase().includes(q);
+      // Tab filter
+      if (statusTab === "sandbox" && e.classe !== null) return false;
+      if (statusTab === "active" && e.statut !== "Actif") return false;
+      if (statusTab === "suspended" && e.statut !== "Suspendu") return false;
+
+      // Level filter
+      if (filterLevel !== "__all__" && e.student?.niveau !== filterLevel) return false;
+
+      // Class filter
+      if (filterClass !== "__all__") {
+        if (filterClass === "__sandbox__" && e.classe !== null) return false;
+        if (filterClass !== "__sandbox__" && e.classe?.nom !== filterClass) return false;
+      }
+
+      // Search
+      if (search) {
+        const q = search.toLowerCase();
+        const name = `${e.student?.prenom ?? ""} ${e.student?.nom ?? ""}`.toLowerCase();
+        if (!name.includes(q) && !e.classe?.nom?.toLowerCase().includes(q)) return false;
+      }
+
+      return true;
     });
-  }, [enrollments, search]);
+  }, [enrollments, search, statusTab, filterLevel, filterClass]);
 
   const stats = useMemo(() => {
     const total = enrollments.length;
     const actif = enrollments.filter((e) => e.statut === "Actif").length;
     const pending = enrollments.filter((e) => e.statut === "En attente").length;
-    return { total, actif, pending };
+    const sandbox = enrollments.filter((e) => e.classe === null).length;
+    return { total, actif, pending, sandbox };
   }, [enrollments]);
 
   return (
