@@ -181,6 +181,7 @@ function EnrollmentWizard({
   const [newParentEmail, setNewParentEmail] = useState("");
   const [newParentPhone, setNewParentPhone] = useState("");
   const [parentComboOpen, setParentComboOpen] = useState(false);
+  const [phoneDuplicate, setPhoneDuplicate] = useState<{ id: string; user_id: string; display_name: string; email: string | null } | null>(null);
 
   // Data
   const [levels, setLevels] = useState<Level[]>([]);
@@ -318,6 +319,49 @@ function EnrollmentWizard({
     }, 500);
     return () => clearTimeout(timeout);
   }, [nom, prenom, orgId]);
+
+  // Phone duplicate detection
+  const normalizePhone = useCallback((p: string) => p.replace(/[\s.\-()]/g, ""), []);
+
+  useEffect(() => {
+    const cleaned = normalizePhone(newParentPhone);
+    if (cleaned.length < 10 || !orgId || parentMode !== "new") {
+      setPhoneDuplicate(null);
+      return;
+    }
+    const timeout = setTimeout(async () => {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, user_id, display_name, email, phone")
+        .eq("org_id", orgId)
+        .not("phone", "is", null)
+        .limit(100);
+
+      const match = (profiles ?? []).find(
+        (p) => p.phone && normalizePhone(p.phone) === cleaned
+      );
+      setPhoneDuplicate(match ? { id: match.id, user_id: match.user_id, display_name: match.display_name, email: match.email } : null);
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [newParentPhone, orgId, parentMode, normalizePhone]);
+
+  const handleUseExistingProfile = async () => {
+    if (!phoneDuplicate) return;
+    setParentId(phoneDuplicate.id);
+    setParentName(phoneDuplicate.display_name);
+    const { data: children } = await supabase
+      .from("madrasa_students")
+      .select("family_id")
+      .eq("parent_id", phoneDuplicate.id)
+      .not("family_id", "is", null)
+      .limit(1);
+    const fId = children?.[0]?.family_id ?? null;
+    setSuggestedFamilyId(fId);
+    if (fId) setSiblingPriority(true);
+    setParentMode("search");
+    setNewParentNom(""); setNewParentPrenom(""); setNewParentEmail(""); setNewParentPhone("");
+    setPhoneDuplicate(null);
+  };
 
   const isSandbox = classId === SANDBOX_VALUE;
   const effectiveClassId = isSandbox ? null : classId;
@@ -746,6 +790,31 @@ function EnrollmentWizard({
                     <p className="text-xs text-muted-foreground mt-1">Obligatoire pour un nouveau parent (min. 10 caractères)</p>
                   )}
                 </div>
+                {phoneDuplicate && (
+                  <div className="sm:col-span-2 rounded-lg border border-amber-400/50 bg-amber-500/10 p-3 space-y-2">
+                    <div className="flex items-start gap-2 text-sm">
+                      <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-medium text-amber-700">
+                          Ce numéro est déjà lié au profil : <strong>{phoneDuplicate.display_name}</strong>
+                        </p>
+                        {phoneDuplicate.email && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{phoneDuplicate.email}</p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-amber-400/50 text-amber-700 hover:bg-amber-500/15"
+                      onClick={handleUseExistingProfile}
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1.5" />
+                      Utiliser ce profil existant
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
