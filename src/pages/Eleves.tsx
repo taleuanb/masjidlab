@@ -8,7 +8,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   GraduationCap, Trash2, Search, Users, UserCheck, BarChart3,
   Rocket, Building2, MoreHorizontal, MessageCircle, ArrowRightLeft,
-  FileText, Pencil, BookOpen,
+  FileText, Pencil, BookOpen, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,7 @@ interface FeeRow {
 
 interface ParentProfile {
   id: string;
+  display_name: string;
   phone: string | null;
 }
 
@@ -65,6 +66,7 @@ const Eleves = () => {
   const [filterCycle, setFilterCycle] = useState<string>("all");
   const [filterClass, setFilterClass] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterGender, setFilterGender] = useState<string>("all");
 
   const { data: students = [], isLoading } = useQuery({
     queryKey: ["madrasa_students", orgId],
@@ -117,7 +119,7 @@ const Eleves = () => {
       if (parentIds.length === 0) return [];
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, phone")
+        .select("id, display_name, phone")
         .in("id", parentIds);
       if (error) throw error;
       return data as ParentProfile[];
@@ -182,7 +184,7 @@ const Eleves = () => {
     onError: () => toast.error("Erreur lors de la suppression"),
   });
 
-  // Teacher scope: only show students enrolled in teacher's classes
+  // Teacher scope
   const teacherClassIdSet = useMemo(
     () => (isTeacher ? new Set(teacherClassIds) : null),
     [isTeacher, teacherClassIds]
@@ -203,7 +205,7 @@ const Eleves = () => {
     return students.filter(s => scopedStudentIds.has(s.id));
   }, [students, scopedStudentIds]);
 
-  // Build lookup maps
+  // Lookup maps
   const feeStatusMap = useMemo(() => {
     if (!canSeeFinance) return {};
     const map: Record<string, "ok" | "overdue" | "pending"> = {};
@@ -216,10 +218,10 @@ const Eleves = () => {
     return map;
   }, [fees, canSeeFinance]);
 
-  const parentPhoneMap = useMemo(() => {
-    const map: Record<string, string> = {};
+  const parentMap = useMemo(() => {
+    const map: Record<string, ParentProfile> = {};
     for (const p of parentProfiles) {
-      if (p.phone) map[p.id] = p.phone;
+      map[p.id] = p;
     }
     return map;
   }, [parentProfiles]);
@@ -228,6 +230,19 @@ const Eleves = () => {
     if (filterCycle === "all") return null;
     return new Set(levels.filter(l => l.cycle_id === filterCycle).map(l => l.id));
   }, [filterCycle, levels]);
+
+  // Build level lookup for cycle name resolution
+  const levelMap = useMemo(() => {
+    const map: Record<string, { label: string; cycle_id: string | null }> = {};
+    for (const l of levels) map[l.id] = { label: l.label, cycle_id: l.cycle_id };
+    return map;
+  }, [levels]);
+
+  const cycleMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of cycles) map[c.id] = c.nom;
+    return map;
+  }, [cycles]);
 
   const scopedClasses = useMemo(() => {
     if (!teacherClassIdSet) return classes;
@@ -242,7 +257,15 @@ const Eleves = () => {
   const filtered = useMemo(() => {
     return scopedStudents.filter(s => {
       const q = search.toLowerCase();
-      if (q && !`${s.nom} ${s.prenom}`.toLowerCase().includes(q)) return false;
+      if (q) {
+        const parentName = s.parent_id ? (parentMap[s.parent_id]?.display_name ?? "") : "";
+        if (
+          !`${s.nom} ${s.prenom}`.toLowerCase().includes(q) &&
+          !parentName.toLowerCase().includes(q)
+        ) return false;
+      }
+
+      if (filterGender !== "all" && s.gender !== filterGender) return false;
 
       const enr = scopedEnrollments.find(e => e.student_id === s.id);
       const cls = enr?.madrasa_classes;
@@ -265,7 +288,7 @@ const Eleves = () => {
 
       return true;
     });
-  }, [scopedStudents, search, filterCycle, filterClass, filterStatus, scopedEnrollments, cycleFilteredLevelIds]);
+  }, [scopedStudents, search, filterCycle, filterClass, filterStatus, filterGender, scopedEnrollments, cycleFilteredLevelIds, parentMap]);
 
   const activeEnrollments = scopedEnrollments.filter(e => e.statut === "Actif").length;
   const totalCapacity = useMemo(() => scopedClasses.reduce((sum, c) => sum + (c.capacity_max ?? 15), 0), [scopedClasses]);
@@ -276,9 +299,9 @@ const Eleves = () => {
 
   const openWhatsApp = (parentId: string | null) => {
     if (!parentId) { toast.error("Aucun parent rattaché"); return; }
-    const phone = parentPhoneMap[parentId];
-    if (!phone) { toast.error("Numéro du parent non disponible"); return; }
-    const cleaned = phone.replace(/\s+/g, "").replace(/^0/, "33");
+    const parent = parentMap[parentId];
+    if (!parent?.phone) { toast.error("Numéro du parent non disponible"); return; }
+    const cleaned = parent.phone.replace(/\s+/g, "").replace(/^0/, "33");
     window.open(`https://wa.me/${cleaned}`, "_blank");
   };
 
@@ -288,6 +311,24 @@ const Eleves = () => {
     if (status === "pending") return <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-[10px]">En attente</Badge>;
     if (status === "ok") return <Badge className="bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30 text-[10px]">À jour</Badge>;
     return <span className="text-xs text-muted-foreground">—</span>;
+  };
+
+  const getGenderBadge = (gender: string | null) => {
+    if (gender === "M") return <Badge className="bg-sky-100 text-sky-700 border-sky-300 text-[10px] px-1.5">M</Badge>;
+    if (gender === "F") return <Badge className="bg-pink-100 text-pink-700 border-pink-300 text-[10px] px-1.5">F</Badge>;
+    return null;
+  };
+
+  const getCycleName = (levelId: string | null | undefined): string | null => {
+    if (!levelId) return null;
+    const level = levelMap[levelId];
+    if (!level?.cycle_id) return null;
+    return cycleMap[level.cycle_id] ?? null;
+  };
+
+  const getLevelLabel = (levelId: string | null | undefined): string | null => {
+    if (!levelId) return null;
+    return levelMap[levelId]?.label ?? null;
   };
 
   return (
@@ -367,8 +408,16 @@ const Eleves = () => {
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Rechercher un élève par nom ou prénom..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Rechercher par élève ou parent..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
+          <Select value={filterGender} onValueChange={setFilterGender}>
+            <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Sexe" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous</SelectItem>
+              <SelectItem value="M">Homme</SelectItem>
+              <SelectItem value="F">Femme</SelectItem>
+            </SelectContent>
+          </Select>
           {!isTeacher && (
             <Select value={filterCycle} onValueChange={v => { setFilterCycle(v); setFilterClass("all"); }}>
               <SelectTrigger className="w-full sm:w-[170px]"><SelectValue placeholder="Cycle" /></SelectTrigger>
@@ -424,13 +473,13 @@ const Eleves = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40">
-                  <TableHead className="w-[50px]" />
                   <TableHead>Élève</TableHead>
-                  <TableHead className="hidden sm:table-cell">Classe / Niveau</TableHead>
+                  <TableHead className="hidden sm:table-cell">Âge</TableHead>
+                  <TableHead className="hidden md:table-cell">Parcours</TableHead>
+                  <TableHead className="hidden lg:table-cell">Responsable Légal</TableHead>
                   <TableHead>Statut</TableHead>
-                  {canSeeFinance && <TableHead className="hidden md:table-cell">Finance</TableHead>}
-                  <TableHead className="hidden lg:table-cell">Naissance</TableHead>
-                  <TableHead className="text-right w-[120px]">Actions</TableHead>
+                  {canSeeFinance && <TableHead className="hidden xl:table-cell">Finance</TableHead>}
+                  <TableHead className="text-right w-[130px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -438,34 +487,60 @@ const Eleves = () => {
                   const enrollment = scopedEnrollments.find(e => e.student_id === s.id);
                   const statut = enrollment?.statut ?? "Inactif";
                   const cls = enrollment?.madrasa_classes;
+                  const parent = s.parent_id ? parentMap[s.parent_id] : null;
+                  const cycleName = getCycleName(cls?.level_id);
+                  const levelLabel = getLevelLabel(cls?.level_id);
+
                   return (
                     <TableRow
                       key={s.id}
-                      className="cursor-pointer hover:bg-muted/30"
+                      className="cursor-pointer hover:bg-muted/40 border-b"
                       onClick={() => navigate(`/eleves/${s.id}`)}
                     >
-                      {/* Avatar */}
+                      {/* Élève: Avatar + Nom + Genre badge */}
                       <TableCell>
-                        <Avatar className="h-8 w-8 bg-brand-navy/10 text-brand-navy">
-                          <AvatarFallback className="text-xs font-semibold bg-brand-navy/10 text-brand-navy">
-                            {getInitials(s.nom, s.prenom)}
-                          </AvatarFallback>
-                        </Avatar>
-                      </TableCell>
-
-                      {/* Nom + Prénom */}
-                      <TableCell>
-                        <span className="font-medium leading-tight">{s.nom} {s.prenom}</span>
-                      </TableCell>
-
-                      {/* Classe / Niveau */}
-                      <TableCell className="hidden sm:table-cell">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge variant="outline" className="text-[11px]">{cls?.nom ?? "—"}</Badge>
-                          <Badge className="bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30 text-[10px]">
-                            {cls?.niveau ?? s.niveau ?? "—"}
-                          </Badge>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8 bg-brand-navy/10 text-brand-navy shrink-0">
+                            <AvatarFallback className="text-xs font-semibold bg-brand-navy/10 text-brand-navy">
+                              {getInitials(s.nom, s.prenom)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-sm leading-tight">{s.prenom} {s.nom}</span>
+                            {getGenderBadge(s.gender)}
+                          </div>
                         </div>
+                      </TableCell>
+
+                      {/* Âge */}
+                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                        {s.age ? `${s.age} ans` : "—"}
+                      </TableCell>
+
+                      {/* Parcours: Cycle badge > Niveau > Classe */}
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {cycleName && (
+                            <Badge className="bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30 text-[10px]">
+                              {cycleName}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {levelLabel ?? cls?.niveau ?? "—"} &gt; {cls?.nom ?? "—"}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      {/* Responsable Légal */}
+                      <TableCell className="hidden lg:table-cell">
+                        {parent ? (
+                          <div>
+                            <p className="text-sm font-medium leading-tight">{parent.display_name}</p>
+                            <p className="text-xs text-muted-foreground">{parent.phone ?? "—"}</p>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
 
                       {/* Statut inscription */}
@@ -481,21 +556,31 @@ const Eleves = () => {
                         </Badge>
                       </TableCell>
 
-                      {/* Statut financier (admin only) */}
+                      {/* Finance (admin only) */}
                       {canSeeFinance && (
-                        <TableCell className="hidden md:table-cell">
+                        <TableCell className="hidden xl:table-cell">
                           {getFeeStatusBadge(s.id)}
                         </TableCell>
                       )}
 
-                      {/* Date naissance */}
-                      <TableCell className="text-muted-foreground hidden lg:table-cell text-xs">
-                        {s.date_naissance ?? "—"}
-                      </TableCell>
-
                       {/* Actions */}
                       <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
+                          {/* Voir profil */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                onClick={() => navigate(`/eleves/${s.id}`)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Voir la fiche</TooltipContent>
+                          </Tooltip>
+
                           {/* WhatsApp */}
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -519,7 +604,6 @@ const Eleves = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
-                              {/* Teacher: only pedagogical follow-up */}
                               {isTeacher ? (
                                 <DropdownMenuItem onClick={() => navigate(`/eleves/${s.id}`)}>
                                   <BookOpen className="h-3.5 w-3.5 mr-2" /> Voir suivi pédagogique
@@ -530,10 +614,7 @@ const Eleves = () => {
                                     <Pencil className="h-3.5 w-3.5 mr-2" /> Modifier l'inscription
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => toast.info("Fonctionnalité à venir")}>
-                                    <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Transférer de classe
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => toast.info("Fonctionnalité à venir")}>
-                                    <FileText className="h-3.5 w-3.5 mr-2" /> Générer reçu
+                                    <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Changer de classe
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <AlertDialog>
