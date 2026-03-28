@@ -627,7 +627,7 @@ export function BulkImportDialog({ open, onOpenChange, orgId, onSuccess }: BulkI
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">{mappedCount}/{SYSTEM_FIELDS.length} champs mappés</p>
                   {!requiredMapped && (
-                    <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50">
+                    <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30 bg-destructive/10">
                       Champs obligatoires manquants
                     </Badge>
                   )}
