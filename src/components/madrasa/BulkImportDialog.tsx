@@ -662,7 +662,7 @@ export function BulkImportDialog({ open, onOpenChange, orgId, onSuccess }: BulkI
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="__none__">— Non mappé —</SelectItem>
-                                {fileColumns.map((col) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
+                                {fileColumns.filter(col => col.trim() !== "" && !col.startsWith("_EMPTY") && col !== "null" && col !== "undefined").map((col) => <SelectItem key={col} value={col}>{col}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             {mapping[field.key] && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
