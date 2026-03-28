@@ -518,6 +518,7 @@ export function PlacementStudioTab() {
 
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("all");
+  const [genderFilter, setGenderFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
   const [activeStudent, setActiveStudent] = useState<PoolStudent | null>(null);
   const [overClassId, setOverClassId] = useState<string | null>(null);
@@ -574,6 +575,7 @@ export function PlacementStudioTab() {
     return pool.filter((s) => {
       const q = search.toLowerCase();
       if (q && !`${s.prenom} ${s.nom}`.toLowerCase().includes(q)) return false;
+      if (genderFilter !== "all" && s.genre !== genderFilter) return false;
       if (levelFilter !== "all" && s.levelId !== levelFilter) return false;
       if (dayFilter !== "all") {
         const dayNum = parseInt(dayFilter, 10);
@@ -581,7 +583,7 @@ export function PlacementStudioTab() {
       }
       return true;
     });
-  }, [pool, search, levelFilter, dayFilter]);
+  }, [pool, search, genderFilter, levelFilter, dayFilter]);
 
   /* ── Match results for all classes against active student ── */
 
@@ -718,6 +720,14 @@ export function PlacementStudioTab() {
               <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-xs" />
             </div>
             <div className="grid gap-2">
+              <Select value={genderFilter} onValueChange={setGenderFilter}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Genre" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les genres</SelectItem>
+                  <SelectItem value="M">Garçons</SelectItem>
+                  <SelectItem value="F">Filles</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={levelFilter} onValueChange={setLevelFilter}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Niveau" /></SelectTrigger>
                 <SelectContent>
