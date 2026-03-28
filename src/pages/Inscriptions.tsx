@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown } from "lucide-react";
+import { BulkImportDialog } from "@/components/madrasa/BulkImportDialog";
 
 // ── Types ────────────────────────────────────────────────
 interface Level {
@@ -968,6 +969,7 @@ const Inscriptions = () => {
   const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   const fetchEnrollments = useCallback(async () => {
@@ -1032,6 +1034,13 @@ const Inscriptions = () => {
             <p className="text-sm text-muted-foreground">Gestion des inscriptions scolaires — {getCurrentSchoolYear()}</p>
           </div>
           <div className="flex-1" />
+          <Button
+            variant="outline"
+            onClick={() => setBulkImportOpen(true)}
+          >
+            <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+            <span className="hidden sm:inline">Import en masse</span>
+          </Button>
           <Button onClick={() => setWizardOpen(true)} className="bg-brand-navy hover:bg-brand-navy/90">
             <PlusCircle className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Nouvelle inscription</span>
