@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Plus, Trash2, Loader2, BookOpen, Layers } from "lucide-react";
+import { Plus, Trash2, Loader2, BookOpen, Layers, Move } from "lucide-react";
 import { TrackingConfigTab } from "@/components/madrasa/TrackingConfigTab";
 import { CommunicationsTab } from "@/components/madrasa/CommunicationsTab";
 import { CalendarTab } from "@/components/madrasa/CalendarTab";
+import { PlacementStudioTab } from "@/components/madrasa/PlacementStudioTab";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -328,10 +329,11 @@ export function MadrasaSettingsPanel() {
   return (
     <div className="space-y-4">
       <Tabs defaultValue="general" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="subjects">Matières</TabsTrigger>
           <TabsTrigger value="levels">Niveaux</TabsTrigger>
+          <TabsTrigger value="placement" className="gap-1.5"><Move className="h-3.5 w-3.5" />Placement Studio</TabsTrigger>
           <TabsTrigger value="tracking">Suivis</TabsTrigger>
           <TabsTrigger value="communications">Communications</TabsTrigger>
           <TabsTrigger value="calendar">📅 Calendrier</TabsTrigger>
@@ -339,6 +341,7 @@ export function MadrasaSettingsPanel() {
         <TabsContent value="general"><GeneralTab /></TabsContent>
         <TabsContent value="subjects"><SubjectsTab /></TabsContent>
         <TabsContent value="levels"><LevelsTab /></TabsContent>
+        <TabsContent value="placement"><PlacementStudioTab /></TabsContent>
         <TabsContent value="tracking"><TrackingConfigTab /></TabsContent>
         <TabsContent value="communications"><CommunicationsTab /></TabsContent>
         <TabsContent value="calendar"><CalendarTab /></TabsContent>
