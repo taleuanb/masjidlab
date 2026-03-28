@@ -1,19 +1,18 @@
 import React, { useState, useMemo } from "react";
 import {
   Search, Users, LayoutDashboard, Heart, CalendarDays, MapPin, X, GripVertical,
+  AlertTriangle, ShieldAlert, CheckCircle2,
 } from "lucide-react";
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
   DragStartEvent, DragEndEvent, DragOverEvent, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -58,12 +57,28 @@ interface PoolStudent {
   siblingPriority: boolean;
 }
 
+interface PlacedStudent {
+  enrollmentId: string;
+  studentId: string;
+  nom: string;
+  prenom: string;
+  genre: string | null;
+  age: number | null;
+}
+
+interface CycleConstraints {
+  genderRestriction: string | null;
+  ageMin: number | null;
+  ageMax: number | null;
+}
+
 interface StudioClass {
   id: string;
   nom: string;
   levelId: string | null;
   levelLabel: string | null;
   cycleName: string | null;
+  cycleConstraints: CycleConstraints;
   capacityMax: number;
   enrolledCount: number;
   enrolledStudents: PlacedStudent[];
@@ -72,13 +87,48 @@ interface StudioClass {
   scheduleSlots: { day: number; start: string; end: string }[];
 }
 
-interface PlacedStudent {
-  enrollmentId: string;
-  studentId: string;
-  nom: string;
-  prenom: string;
-  genre: string | null;
-  age: number | null;
+type MatchResult = {
+  compatible: boolean;
+  blocked: boolean;
+  alerts: { type: "gender" | "age" | "level"; message: string; severity: "error" | "warn" }[];
+};
+
+/* ── Match engine ── */
+
+function evaluateMatch(student: PoolStudent, cls: StudioClass): MatchResult {
+  const alerts: MatchResult["alerts"] = [];
+  let blocked = false;
+
+  // Gender
+  const gr = cls.cycleConstraints.genderRestriction;
+  if (gr && student.genre && student.genre !== gr) {
+    alerts.push({ type: "gender", message: `Genre non autorisé (cycle ${gr === "M" ? "Garçons" : "Filles"})`, severity: "error" });
+    blocked = true;
+  }
+
+  // Age
+  const { ageMin, ageMax } = cls.cycleConstraints;
+  if (student.age != null) {
+    if (ageMin != null && student.age < ageMin) {
+      alerts.push({ type: "age", message: `Âge trop bas (min ${ageMin} ans)`, severity: "warn" });
+    }
+    if (ageMax != null && student.age > ageMax) {
+      alerts.push({ type: "age", message: `Âge trop élevé (max ${ageMax} ans)`, severity: "warn" });
+    }
+  }
+
+  // Level
+  if (student.levelId && cls.levelId && student.levelId !== cls.levelId) {
+    alerts.push({ type: "level", message: `Niveau différent (${student.levelLabel} → ${cls.levelLabel})`, severity: "warn" });
+  }
+
+  // Capacity
+  if (cls.enrolledCount >= cls.capacityMax) {
+    blocked = true;
+  }
+
+  const compatible = alerts.length === 0 && !blocked;
+  return { compatible, blocked, alerts };
 }
 
 /* ── Data hooks ── */
@@ -129,7 +179,7 @@ function usePlacementData(orgId: string | null) {
           .from("madrasa_classes")
           .select(`
             id, nom, level_id, capacity_max,
-            madrasa_levels!madrasa_classes_level_id_fkey(label, madrasa_cycles(nom)),
+            madrasa_levels!madrasa_classes_level_id_fkey(label, madrasa_cycles(nom, gender_restriction, age_min, age_max)),
             rooms:salle_id(name)
           `)
           .eq("org_id", orgId!),
@@ -154,12 +204,9 @@ function usePlacementData(orgId: string | null) {
         if (!e.class_id) return;
         const arr = enrollMap.get(e.class_id) ?? [];
         arr.push({
-          enrollmentId: e.id,
-          studentId: e.student_id,
-          nom: e.madrasa_students?.nom ?? "",
-          prenom: e.madrasa_students?.prenom ?? "",
-          genre: e.madrasa_students?.gender ?? null,
-          age: e.madrasa_students?.age ?? null,
+          enrollmentId: e.id, studentId: e.student_id,
+          nom: e.madrasa_students?.nom ?? "", prenom: e.madrasa_students?.prenom ?? "",
+          genre: e.madrasa_students?.gender ?? null, age: e.madrasa_students?.age ?? null,
         });
         enrollMap.set(e.class_id, arr);
       });
@@ -174,12 +221,16 @@ function usePlacementData(orgId: string | null) {
       return (classesRes.data ?? []).map((c: any): StudioClass => {
         const slots = schedMap.get(c.id) ?? [];
         const students = enrollMap.get(c.id) ?? [];
+        const cycle = c.madrasa_levels?.madrasa_cycles;
         return {
-          id: c.id,
-          nom: c.nom,
-          levelId: c.level_id,
+          id: c.id, nom: c.nom, levelId: c.level_id,
           levelLabel: c.madrasa_levels?.label ?? null,
-          cycleName: c.madrasa_levels?.madrasa_cycles?.nom ?? null,
+          cycleName: cycle?.nom ?? null,
+          cycleConstraints: {
+            genderRestriction: cycle?.gender_restriction ?? null,
+            ageMin: cycle?.age_min ?? null,
+            ageMax: cycle?.age_max ?? null,
+          },
           capacityMax: c.capacity_max ?? 15,
           enrolledCount: students.length,
           enrolledStudents: students,
@@ -218,7 +269,7 @@ function DraggableStudentCard({ student }: { student: PoolStudent }) {
 
   const style: React.CSSProperties = {
     transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
-    opacity: isDragging ? 0.3 : 1,
+    opacity: isDragging ? 0.25 : 1,
     zIndex: isDragging ? 50 : undefined,
   };
 
@@ -283,20 +334,22 @@ function DraggableStudentCard({ student }: { student: PoolStudent }) {
   );
 }
 
-/* ── Overlay Card (shown while dragging) ── */
+/* ── Overlay Card ── */
 
 function DragOverlayCard({ student }: { student: PoolStudent }) {
   return (
     <Card className="w-64 shadow-2xl border-primary ring-2 ring-primary/30 rotate-2">
       <CardContent className="p-3 space-y-1">
-        <p className="font-semibold text-sm">
-          {student.prenom} {student.nom}
-        </p>
-        {student.levelLabel && (
-          <Badge variant="secondary" className="text-[10px]">
-            {student.levelLabel}
-          </Badge>
-        )}
+        <p className="font-semibold text-sm">{student.prenom} {student.nom}</p>
+        <div className="flex gap-1">
+          {student.levelLabel && <Badge variant="secondary" className="text-[10px]">{student.levelLabel}</Badge>}
+          {student.genre && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+              {student.genre === "M" ? "G" : "F"}
+            </Badge>
+          )}
+          {student.age != null && <span className="text-[10px] text-muted-foreground">{student.age}a</span>}
+        </div>
       </CardContent>
     </Card>
   );
@@ -305,19 +358,15 @@ function DragOverlayCard({ student }: { student: PoolStudent }) {
 /* ── Droppable Class Card ── */
 
 function DroppableClassCard({
-  cls,
-  isOver,
-  isCompatible,
-  activeStudent,
-  onUnplace,
+  cls, isOver, matchResult, isDragging, onUnplace,
 }: {
   cls: StudioClass;
   isOver: boolean;
-  isCompatible: boolean;
-  activeStudent: PoolStudent | null;
+  matchResult: MatchResult | null;
+  isDragging: boolean;
   onUnplace: (enrollmentId: string) => void;
 }) {
-  const { setNodeRef, isOver: localIsOver } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id: `class-${cls.id}`,
     data: { type: "class", classId: cls.id },
   });
@@ -331,28 +380,51 @@ function DroppableClassCard({
     .map((s) => `${DAY_LABELS[s.day]} ${s.start.slice(0, 5)}-${s.end.slice(0, 5)}`)
     .join(" · ");
 
-  const showHighlight = activeStudent && isCompatible && !isFull;
-  const showWarning = isOver && isFull;
+  const hasErrors = matchResult?.alerts.some((a) => a.severity === "error");
+  const hasWarnings = matchResult?.alerts.some((a) => a.severity === "warn");
+  const isPerfect = matchResult?.compatible;
+
+  // Visual states during drag
+  const dimmed = isDragging && !isPerfect && !hasWarnings && !hasErrors && !isFull;
 
   return (
     <Card
       ref={setNodeRef}
       className={cn(
         "flex flex-col transition-all duration-200",
-        showHighlight && "border-primary ring-2 ring-primary/20 shadow-lg",
-        isOver && !isFull && "border-primary ring-2 ring-primary/40 shadow-xl bg-primary/5",
-        showWarning && "border-destructive ring-2 ring-destructive/30",
-        isFull && !isOver && "opacity-60",
+        // Dimmed non-matching classes
+        isDragging && !isPerfect && !hasWarnings && (isFull || (!hasErrors)) && "opacity-40",
+        // Perfect match: green glow
+        isDragging && isPerfect && !isOver && "ring-2 ring-emerald-400/50 border-emerald-400/60 shadow-[0_0_15px_hsl(var(--brand-emerald)/0.2)]",
+        // Warn match: subtle highlight
+        isDragging && hasWarnings && !hasErrors && !isOver && "ring-1 ring-amber-400/40 border-amber-400/50",
+        // Gender blocked: red
+        isDragging && hasErrors && !isOver && "ring-2 ring-destructive/40 border-destructive/50 opacity-70",
+        // Hovering states
+        isOver && isPerfect && "ring-2 ring-emerald-500 border-emerald-500 shadow-xl bg-emerald-500/5",
+        isOver && hasWarnings && !hasErrors && "ring-2 ring-amber-500 border-amber-500 shadow-xl bg-amber-500/5",
+        isOver && hasErrors && "ring-2 ring-destructive border-destructive shadow-xl bg-destructive/5",
+        isOver && isFull && !hasErrors && "ring-2 ring-destructive border-destructive bg-destructive/5",
+        // Default full
+        !isDragging && isFull && "opacity-60",
       )}
     >
       <CardHeader className="p-4 pb-2 space-y-1">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-semibold truncate">{cls.nom}</CardTitle>
-          {cls.levelLabel && (
-            <Badge variant="secondary" className="text-[10px] shrink-0">
-              {cls.levelLabel}
-            </Badge>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {cls.levelLabel && (
+              <Badge variant="secondary" className="text-[10px]">{cls.levelLabel}</Badge>
+            )}
+            {cls.cycleConstraints.genderRestriction && (
+              <Badge variant="outline" className={cn("text-[9px] px-1 py-0",
+                cls.cycleConstraints.genderRestriction === "M"
+                  ? "border-sky-400/40 text-sky-600" : "border-pink-400/40 text-pink-600"
+              )}>
+                {cls.cycleConstraints.genderRestriction === "M" ? "♂" : "♀"}
+              </Badge>
+            )}
+          </div>
         </div>
         {scheduleLabel && (
           <p className="text-[11px] text-muted-foreground flex items-center gap-1">
@@ -364,6 +436,12 @@ function DroppableClassCard({
             <MapPin className="h-3 w-3" /> {cls.roomName}
           </p>
         )}
+        {/* Cycle age range */}
+        {(cls.cycleConstraints.ageMin != null || cls.cycleConstraints.ageMax != null) && (
+          <p className="text-[10px] text-muted-foreground">
+            Âge : {cls.cycleConstraints.ageMin ?? "–"} – {cls.cycleConstraints.ageMax ?? "–"} ans
+          </p>
+        )}
       </CardHeader>
       <CardContent className="p-4 pt-0 flex flex-col gap-3 flex-1">
         {/* Gauge */}
@@ -372,27 +450,32 @@ function DroppableClassCard({
             <span>{cls.enrolledCount}/{cls.capacityMax} élèves</span>
             <span>{pct}%</span>
           </div>
-          <Progress
-            value={pct}
-            className="h-2"
-            style={{
-              "--progress-color":
-                pct >= 90
-                  ? "hsl(var(--destructive))"
-                  : pct >= 70
-                    ? "hsl(38 92% 50%)"
-                    : "hsl(var(--brand-emerald))",
-            } as React.CSSProperties}
+          <Progress value={pct} className="h-2"
+            style={{ "--progress-color": pct >= 90 ? "hsl(var(--destructive))" : pct >= 70 ? "hsl(38 92% 50%)" : "hsl(var(--brand-emerald))" } as React.CSSProperties}
           />
         </div>
 
-        {/* Placed students chips */}
+        {/* Alerts when hovering */}
+        {isOver && matchResult && matchResult.alerts.length > 0 && (
+          <div className="space-y-1">
+            {matchResult.alerts.map((a, i) => (
+              <div key={i} className={cn("flex items-center gap-1.5 text-[11px] rounded px-2 py-1",
+                a.severity === "error" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-700"
+              )}>
+                {a.severity === "error"
+                  ? <ShieldAlert className="h-3 w-3 shrink-0" />
+                  : <AlertTriangle className="h-3 w-3 shrink-0" />}
+                {a.message}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Placed students */}
         {cls.enrolledStudents.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {cls.enrolledStudents.map((s) => (
-              <Badge
-                key={s.enrollmentId}
-                variant="outline"
+              <Badge key={s.enrollmentId} variant="outline"
                 className="text-[10px] px-1.5 py-0.5 gap-1 group hover:border-destructive/50"
               >
                 {s.prenom} {s.nom.charAt(0)}.
@@ -411,19 +494,25 @@ function DroppableClassCard({
         {/* Drop zone */}
         <div className={cn(
           "border-2 border-dashed rounded-lg flex items-center justify-center py-4 text-xs select-none mt-auto transition-colors",
-          isOver && !isFull && "border-primary bg-primary/10 text-primary font-medium",
-          isOver && isFull && "border-destructive bg-destructive/10 text-destructive font-medium",
-          !isOver && showHighlight && "border-primary/50 bg-primary/5 text-primary",
-          !isOver && !showHighlight && "border-muted-foreground/25 text-muted-foreground",
+          isOver && !isFull && !hasErrors && "border-emerald-500 bg-emerald-500/10 text-emerald-700 font-medium",
+          isOver && hasErrors && "border-destructive bg-destructive/10 text-destructive font-medium",
+          isOver && isFull && !hasErrors && "border-destructive bg-destructive/10 text-destructive font-medium",
+          !isOver && isDragging && isPerfect && "border-emerald-400/50 bg-emerald-500/5 text-emerald-600",
+          !isOver && !isDragging && "border-muted-foreground/25 text-muted-foreground",
+          !isOver && isDragging && !isPerfect && "border-muted-foreground/15 text-muted-foreground/50",
         )}>
-          <span className="opacity-70">
-            {isOver && isFull
-              ? "⛔ Classe complète"
-              : isFull
-                ? "Classe complète"
+          <span className="opacity-70 flex items-center gap-1.5">
+            {isOver && hasErrors
+              ? <><ShieldAlert className="h-3.5 w-3.5" /> Placement interdit</>
+              : isOver && isFull
+                ? "⛔ Classe complète"
                 : isOver
-                  ? "✓ Relâcher pour placer"
-                  : `Glisser un élève ici (${remaining} place${remaining > 1 ? "s" : ""})`}
+                  ? <><CheckCircle2 className="h-3.5 w-3.5" /> Relâcher pour placer</>
+                  : isDragging && isPerfect
+                    ? <><CheckCircle2 className="h-3.5 w-3.5" /> Compatible ✓</>
+                    : isFull
+                      ? "Classe complète"
+                      : `Glisser un élève ici (${remaining} place${remaining > 1 ? "s" : ""})`}
           </span>
         </div>
       </CardContent>
@@ -490,7 +579,7 @@ export function PlacementStudioTab() {
     },
   });
 
-  /* ── Filter students ── */
+  /* ── Filters ── */
 
   const filteredStudents = useMemo(() => {
     return pool.filter((s) => {
@@ -505,39 +594,27 @@ export function PlacementStudioTab() {
     });
   }, [pool, search, levelFilter, dayFilter]);
 
-  /* ── Compatible classes for active dragged student ── */
+  /* ── Match results for all classes against active student ── */
 
-  const compatibleClassIds = useMemo(() => {
-    if (!activeStudent) return new Set<string>();
-    const ids = new Set<string>();
+  const matchResults = useMemo(() => {
+    if (!activeStudent) return new Map<string, MatchResult>();
+    const map = new Map<string, MatchResult>();
     for (const cls of classes) {
-      const levelMatch = !activeStudent.levelId || !cls.levelId || activeStudent.levelId === cls.levelId;
-      const dayMatch =
-        activeStudent.preferredDays.length === 0 ||
-        cls.scheduleDays.length === 0 ||
-        activeStudent.preferredDays.some((d) => cls.scheduleDays.includes(d));
-      const hasSpace = cls.enrolledCount < cls.capacityMax;
-      if (levelMatch && dayMatch && hasSpace) ids.add(cls.id);
+      map.set(cls.id, evaluateMatch(activeStudent, cls));
     }
-    return ids;
+    return map;
   }, [activeStudent, classes]);
 
   /* ── DnD handlers ── */
 
   const handleDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current;
-    if (data?.type === "student") {
-      setActiveStudent(data.student as PoolStudent);
-    }
+    if (data?.type === "student") setActiveStudent(data.student as PoolStudent);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
     const overId = event.over?.id;
-    if (overId && String(overId).startsWith("class-")) {
-      setOverClassId(String(overId).replace("class-", ""));
-    } else {
-      setOverClassId(null);
-    }
+    setOverClassId(overId && String(overId).startsWith("class-") ? String(overId).replace("class-", "") : null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -546,7 +623,6 @@ export function PlacementStudioTab() {
     setOverClassId(null);
 
     if (!over || !String(over.id).startsWith("class-")) return;
-
     const studentData = active.data.current;
     if (studentData?.type !== "student") return;
 
@@ -555,18 +631,25 @@ export function PlacementStudioTab() {
     const targetClass = classes.find((c) => c.id === classId);
     if (!targetClass) return;
 
-    // Check capacity
+    const match = evaluateMatch(student, targetClass);
+
+    // Hard block: gender restriction
+    if (match.alerts.some((a) => a.severity === "error")) {
+      const errorMsg = match.alerts.filter((a) => a.severity === "error").map((a) => a.message).join(". ");
+      toast({ title: "🚫 Placement interdit", description: errorMsg, variant: "destructive" });
+      return;
+    }
+
+    // Hard block: capacity
     if (targetClass.enrolledCount >= targetClass.capacityMax) {
       toast({ title: "Classe complète", description: `${targetClass.nom} a atteint sa capacité maximale.`, variant: "destructive" });
       return;
     }
 
-    // Warn on level mismatch
-    if (student.levelId && targetClass.levelId && student.levelId !== targetClass.levelId) {
-      toast({
-        title: "⚠️ Niveaux différents",
-        description: `${student.prenom} (${student.levelLabel}) → ${targetClass.nom} (${targetClass.levelLabel}). Placement autorisé.`,
-      });
+    // Soft warnings
+    if (match.alerts.length > 0) {
+      const warnMsg = match.alerts.map((a) => a.message).join(" · ");
+      toast({ title: "⚠️ Placement avec avertissements", description: warnMsg });
     }
 
     // Optimistic update
@@ -577,62 +660,42 @@ export function PlacementStudioTab() {
       (old ?? []).map((c) =>
         c.id === classId
           ? {
-              ...c,
-              enrolledCount: c.enrolledCount + 1,
-              enrolledStudents: [
-                ...c.enrolledStudents,
-                {
-                  enrollmentId: student.enrollmentId,
-                  studentId: student.studentId,
-                  nom: student.nom,
-                  prenom: student.prenom,
-                  genre: student.genre,
-                  age: student.age,
-                },
-              ],
+              ...c, enrolledCount: c.enrolledCount + 1,
+              enrolledStudents: [...c.enrolledStudents, {
+                enrollmentId: student.enrollmentId, studentId: student.studentId,
+                nom: student.nom, prenom: student.prenom, genre: student.genre, age: student.age,
+              }],
             }
           : c
       )
     );
 
     placeMutation.mutate({ enrollmentId: student.enrollmentId, classId });
-
     toast({ title: "✓ Élève placé", description: `${student.prenom} ${student.nom} → ${targetClass.nom}` });
   };
 
-  const handleDragCancel = () => {
-    setActiveStudent(null);
-    setOverClassId(null);
-  };
+  const handleDragCancel = () => { setActiveStudent(null); setOverClassId(null); };
 
   const handleUnplace = (enrollmentId: string) => {
-    // Find student info for optimistic update
-    let found: PlacedStudent | null = null;
     let fromClassId: string | null = null;
     for (const cls of classes) {
-      const s = cls.enrolledStudents.find((e) => e.enrollmentId === enrollmentId);
-      if (s) { found = s; fromClassId = cls.id; break; }
+      if (cls.enrolledStudents.find((e) => e.enrollmentId === enrollmentId)) {
+        fromClassId = cls.id; break;
+      }
     }
-
-    if (found && fromClassId) {
-      // Optimistic: remove from class, add back to pool
+    if (fromClassId) {
       queryClient.setQueryData(["placement_classes", orgId], (old: StudioClass[] | undefined) =>
         (old ?? []).map((c) =>
           c.id === fromClassId
-            ? {
-                ...c,
-                enrolledCount: c.enrolledCount - 1,
-                enrolledStudents: c.enrolledStudents.filter((s) => s.enrollmentId !== enrollmentId),
-              }
+            ? { ...c, enrolledCount: c.enrolledCount - 1, enrolledStudents: c.enrolledStudents.filter((s) => s.enrollmentId !== enrollmentId) }
             : c
         )
       );
     }
-
     unplaceMutation.mutate(enrollmentId);
   };
 
-  /* ── Global stats ── */
+  /* ── Stats ── */
 
   const totalCapacity = classes.reduce((s, c) => s + c.capacityMax, 0);
   const totalEnrolled = classes.reduce((s, c) => s + c.enrolledCount, 0);
@@ -656,13 +719,7 @@ export function PlacementStudioTab() {
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
       <div className="flex flex-col lg:flex-row gap-4 min-h-[600px]">
         {/* ── Left: Student Pool ── */}
         <div className="w-full lg:w-1/4 shrink-0 flex flex-col rounded-xl border bg-card">
@@ -670,26 +727,15 @@ export function PlacementStudioTab() {
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
               <h3 className="font-semibold text-sm">Élèves à placer</h3>
-              <Badge variant="secondary" className="ml-auto text-xs">
-                {filteredStudents.length}
-              </Badge>
+              <Badge variant="secondary" className="ml-auto text-xs">{filteredStudents.length}</Badge>
             </div>
-
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-xs"
-              />
+              <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-xs" />
             </div>
-
             <div className="grid gap-2">
               <Select value={levelFilter} onValueChange={setLevelFilter}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Niveau" />
-                </SelectTrigger>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Niveau" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les niveaux</SelectItem>
                   {levels.map((l: any) => (
@@ -699,11 +745,8 @@ export function PlacementStudioTab() {
                   ))}
                 </SelectContent>
               </Select>
-
               <Select value={dayFilter} onValueChange={setDayFilter}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Jour préféré" />
-                </SelectTrigger>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Jour préféré" /></SelectTrigger>
                 <SelectContent>
                   {DAY_FILTER_OPTIONS.map((d) => (
                     <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
@@ -712,18 +755,13 @@ export function PlacementStudioTab() {
               </Select>
             </div>
           </div>
-
           <ScrollArea className="flex-1 p-3">
             {filteredStudents.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-8">
-                {pool.length === 0
-                  ? "Aucun élève en attente de placement."
-                  : "Aucun élève ne correspond aux filtres."}
+                {pool.length === 0 ? "Aucun élève en attente de placement." : "Aucun élève ne correspond aux filtres."}
               </p>
             ) : (
-              filteredStudents.map((s) => (
-                <DraggableStudentCard key={s.enrollmentId} student={s} />
-              ))
+              filteredStudents.map((s) => <DraggableStudentCard key={s.enrollmentId} student={s} />)
             )}
           </ScrollArea>
         </div>
@@ -754,18 +792,15 @@ export function PlacementStudioTab() {
           </Card>
 
           {classes.length === 0 ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-              Aucune classe configurée.
-            </div>
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">Aucune classe configurée.</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {classes.map((cls) => (
                 <DroppableClassCard
-                  key={cls.id}
-                  cls={cls}
+                  key={cls.id} cls={cls}
                   isOver={overClassId === cls.id}
-                  isCompatible={compatibleClassIds.has(cls.id)}
-                  activeStudent={activeStudent}
+                  matchResult={matchResults.get(cls.id) ?? null}
+                  isDragging={!!activeStudent}
                   onUnplace={handleUnplace}
                 />
               ))}
@@ -774,7 +809,6 @@ export function PlacementStudioTab() {
         </div>
       </div>
 
-      {/* Drag Overlay */}
       <DragOverlay dropAnimation={{ duration: 200, easing: "ease" }}>
         {activeStudent ? <DragOverlayCard student={activeStudent} /> : null}
       </DragOverlay>
