@@ -993,6 +993,21 @@ const Inscriptions = () => {
   const [filterLevel, setFilterLevel] = useState("__all__");
   const [filterClass, setFilterClass] = useState("__all__");
 
+  // Real classes & levels from DB
+  const [allClasses, setAllClasses] = useState<{ id: string; nom: string; level_id: string | null }[]>([]);
+  const [allLevels, setAllLevels] = useState<{ id: string; label: string }[]>([]);
+
+  useEffect(() => {
+    if (!orgId) return;
+    Promise.all([
+      supabase.from("madrasa_classes").select("id, nom, level_id").eq("org_id", orgId).order("nom"),
+      supabase.from("madrasa_levels").select("id, label").eq("org_id", orgId).order("label"),
+    ]).then(([clsRes, lvlRes]) => {
+      setAllClasses((clsRes.data ?? []) as { id: string; nom: string; level_id: string | null }[]);
+      setAllLevels((lvlRes.data ?? []) as { id: string; label: string }[]);
+    });
+  }, [orgId]);
+
   const fetchEnrollments = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
@@ -1027,18 +1042,18 @@ const Inscriptions = () => {
 
   useEffect(() => { fetchEnrollments(); }, [fetchEnrollments]);
 
-  // Extract unique levels & classes for filters
-  const uniqueLevels = useMemo(() => {
-    const set = new Set<string>();
-    enrollments.forEach((e) => { if (e.student?.niveau) set.add(e.student.niveau); });
-    return Array.from(set).sort();
-  }, [enrollments]);
-
-  const uniqueClasses = useMemo(() => {
-    const set = new Set<string>();
-    enrollments.forEach((e) => { if (e.classe?.nom) set.add(e.classe.nom); });
-    return Array.from(set).sort();
-  }, [enrollments]);
+  // Compute enrollment counts per class
+  const classEnrollmentCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const e of enrollments) {
+      if (e.classe?.nom) {
+        // Find class by name to get its ID
+        const cls = allClasses.find(c => c.nom === e.classe?.nom);
+        if (cls) counts.set(cls.id, (counts.get(cls.id) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [enrollments, allClasses]);
 
   const filtered = useMemo(() => {
     return enrollments.filter((e) => {
