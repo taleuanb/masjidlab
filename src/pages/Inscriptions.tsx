@@ -1188,20 +1188,22 @@ const Inscriptions = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Tous les niveaux</SelectItem>
-                  {uniqueLevels.map((l) => (
-                    <SelectItem key={l} value={l}>{l}</SelectItem>
+                  {allLevels.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={filterClass} onValueChange={setFilterClass}>
-                <SelectTrigger className="w-[180px] h-9">
+                <SelectTrigger className="w-[220px] h-9">
                   <SelectValue placeholder="Toutes les classes" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">Toutes les classes</SelectItem>
                   <SelectItem value="__sandbox__">🟡 Sandbox (non placés)</SelectItem>
-                  {uniqueClasses.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  {allClasses.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nom} ({classEnrollmentCounts.get(c.id) ?? 0})
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
