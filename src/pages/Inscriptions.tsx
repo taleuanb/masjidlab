@@ -966,14 +966,14 @@ function EnrollmentWizard({
 
 // ── Status display mapping (UI only — does NOT change DB values) ──
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  Actif: { label: "Placé", className: "bg-brand-emerald/10 text-brand-emerald border-brand-emerald/30" },
-  "En attente": { label: "Sandbox (À placer)", className: "bg-amber-500/10 text-amber-700 border-amber-400/30" },
-  Suspendu: { label: "Annulé / Suspendu", className: "bg-destructive/10 text-destructive border-destructive/30" },
+  en_attente: { label: "🟡 Sandbox (À placer)", className: "bg-amber-500/10 text-amber-700 border-amber-400/30" },
+  place: { label: "🟢 Placé", className: "bg-brand-emerald/10 text-brand-emerald border-brand-emerald/30" },
+  annule: { label: "🔴 Annulé", className: "bg-destructive/10 text-destructive border-destructive/30" },
 };
 
 function getStatusDisplay(statut: string | null, classe: { nom: string } | null) {
-  if (!statut && !classe) return STATUS_MAP["En attente"];
-  if (classe === null) return STATUS_MAP["En attente"];
+  if (!statut && !classe) return STATUS_MAP["en_attente"];
+  if (classe === null) return STATUS_MAP["en_attente"];
   return STATUS_MAP[statut ?? ""] ?? { label: statut ?? "—", className: "" };
 }
 
@@ -1043,9 +1043,9 @@ const Inscriptions = () => {
   const filtered = useMemo(() => {
     return enrollments.filter((e) => {
       // Tab filter
-      if (statusTab === "sandbox" && !(e.statut === "En attente" || e.classe === null)) return false;
-      if (statusTab === "active" && !(e.statut === "Actif" && e.classe !== null)) return false;
-      if (statusTab === "suspended" && e.statut !== "Suspendu") return false;
+      if (statusTab === "sandbox" && !(e.statut === "en_attente" || e.classe === null)) return false;
+      if (statusTab === "active" && !(e.statut === "place" && e.classe !== null)) return false;
+      if (statusTab === "suspended" && e.statut !== "annule") return false;
 
       // Level filter
       if (filterLevel !== "__all__" && e.student?.niveau !== filterLevel) return false;
@@ -1069,8 +1069,8 @@ const Inscriptions = () => {
 
   const stats = useMemo(() => {
     const total = enrollments.length;
-    const actif = enrollments.filter((e) => e.statut === "Actif").length;
-    const pending = enrollments.filter((e) => e.statut === "En attente").length;
+    const actif = enrollments.filter((e) => e.statut === "place").length;
+    const pending = enrollments.filter((e) => e.statut === "en_attente").length;
     const sandbox = enrollments.filter((e) => e.classe === null).length;
     return { total, actif, pending, sandbox };
   }, [enrollments]);
@@ -1140,10 +1140,10 @@ const Inscriptions = () => {
         {/* Tabs */}
         <Tabs value={statusTab} onValueChange={setStatusTab}>
           <TabsList>
-            <TabsTrigger value="all">Toutes les inscriptions</TabsTrigger>
-            <TabsTrigger value="sandbox">🟡 Sandbox (À placer)</TabsTrigger>
+           <TabsTrigger value="all">Toutes</TabsTrigger>
+            <TabsTrigger value="sandbox">🟡 Sandbox</TabsTrigger>
             <TabsTrigger value="active">🟢 Placés</TabsTrigger>
-            <TabsTrigger value="suspended">🔴 Suspendues</TabsTrigger>
+            <TabsTrigger value="suspended">🔴 Annulés</TabsTrigger>
           </TabsList>
         </Tabs>
 

@@ -280,17 +280,15 @@ const Eleves = () => {
       }
 
       if (filterStatus !== "all") {
-        const statut = enr?.statut ?? "Inactif";
-        if (filterStatus === "Actif" && statut !== "Actif") return false;
-        if (filterStatus === "En attente" && statut !== "En attente") return false;
-        if (filterStatus === "Retiré" && statut !== "Retiré" && statut !== "Inactif") return false;
+        if (filterStatus === "actif" && s.statut !== "actif") return false;
+        if (filterStatus === "ancien" && s.statut !== "ancien") return false;
       }
 
       return true;
     });
   }, [scopedStudents, search, filterCycle, filterClass, filterStatus, filterGender, scopedEnrollments, cycleFilteredLevelIds, parentMap]);
 
-  const activeEnrollments = scopedEnrollments.filter(e => e.statut === "Actif").length;
+  const activeEnrollments = scopedEnrollments.filter(e => e.statut === "place").length;
   const totalCapacity = useMemo(() => scopedClasses.reduce((sum, c) => sum + (c.capacity_max ?? 15), 0), [scopedClasses]);
   const occupancyRate = totalCapacity > 0 ? Math.round((activeEnrollments / totalCapacity) * 100) : 0;
 
@@ -438,9 +436,8 @@ const Eleves = () => {
             <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Statut" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les statuts</SelectItem>
-              <SelectItem value="Actif">Actif</SelectItem>
-              <SelectItem value="En attente">En attente</SelectItem>
-              <SelectItem value="Retiré">Désinscrit</SelectItem>
+              <SelectItem value="actif">Actif</SelectItem>
+              <SelectItem value="ancien">Ancien élève</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -525,9 +522,15 @@ const Eleves = () => {
                               {cycleName}
                             </Badge>
                           )}
-                          <span className="text-xs text-muted-foreground">
-                            {levelLabel ?? cls?.niveau ?? "—"} &gt; {cls?.nom ?? "—"}
-                          </span>
+                          {enrollment?.statut === "en_attente" || !cls ? (
+                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">
+                              🟡 Sandbox
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {levelLabel ?? cls?.niveau ?? "—"} &gt; {cls?.nom ?? "—"}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
 
@@ -543,16 +546,16 @@ const Eleves = () => {
                         )}
                       </TableCell>
 
-                      {/* Statut inscription */}
+                      {/* Statut élève */}
                       <TableCell>
                         <Badge className={
-                          statut === "Actif"
+                          s.statut === "actif"
                             ? "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30"
-                            : statut === "En attente"
-                              ? "bg-amber-100 text-amber-700 border-amber-300"
+                            : s.statut === "ancien"
+                              ? "bg-muted text-muted-foreground border-border"
                               : "bg-muted text-muted-foreground"
                         }>
-                          {statut === "Retiré" ? "Désinscrit" : statut}
+                          {s.statut === "actif" ? "Actif" : s.statut === "ancien" ? "Ancien élève" : (s.statut ?? "—")}
                         </Badge>
                       </TableCell>
 
