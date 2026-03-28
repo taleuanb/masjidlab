@@ -631,22 +631,31 @@ export type Database = {
       }
       madrasa_cycles: {
         Row: {
+          age_max: number | null
+          age_min: number | null
           created_at: string | null
           description: string | null
+          gender_restriction: string | null
           id: string
           nom: string
           org_id: string | null
         }
         Insert: {
+          age_max?: number | null
+          age_min?: number | null
           created_at?: string | null
           description?: string | null
+          gender_restriction?: string | null
           id?: string
           nom: string
           org_id?: string | null
         }
         Update: {
+          age_max?: number | null
+          age_min?: number | null
           created_at?: string | null
           description?: string | null
+          gender_restriction?: string | null
           id?: string
           nom?: string
           org_id?: string | null
