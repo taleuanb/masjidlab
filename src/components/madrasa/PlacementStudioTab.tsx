@@ -1,20 +1,27 @@
 import React, { useState, useMemo } from "react";
 import {
-  Search, Users, LayoutDashboard, Heart, CalendarDays, MapPin, Loader2,
+  Search, Users, LayoutDashboard, Heart, CalendarDays, MapPin, X, GripVertical,
 } from "lucide-react";
+import {
+  DndContext, DragOverlay, useDraggable, useDroppable,
+  DragStartEvent, DragEndEvent, DragOverEvent, PointerSensor, useSensor, useSensors,
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 /* ── Day helpers ── */
 
@@ -59,15 +66,24 @@ interface StudioClass {
   cycleName: string | null;
   capacityMax: number;
   enrolledCount: number;
+  enrolledStudents: PlacedStudent[];
   roomName: string | null;
   scheduleDays: number[];
   scheduleSlots: { day: number; start: string; end: string }[];
 }
 
+interface PlacedStudent {
+  enrollmentId: string;
+  studentId: string;
+  nom: string;
+  prenom: string;
+  genre: string | null;
+  age: number | null;
+}
+
 /* ── Data hooks ── */
 
 function usePlacementData(orgId: string | null) {
-  // 1. Unplaced enrollments (en_attente) with student + level info
   const poolQuery = useQuery({
     queryKey: ["placement_pool", orgId],
     enabled: !!orgId,
@@ -104,12 +120,11 @@ function usePlacementData(orgId: string | null) {
     },
   });
 
-  // 2. Classes with level, room, enrolled count
   const classesQuery = useQuery({
     queryKey: ["placement_classes", orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      const [classesRes, enrollCountRes, schedulesRes] = await Promise.all([
+      const [classesRes, enrollRes, schedulesRes] = await Promise.all([
         supabase
           .from("madrasa_classes")
           .select(`
@@ -120,7 +135,10 @@ function usePlacementData(orgId: string | null) {
           .eq("org_id", orgId!),
         supabase
           .from("madrasa_enrollments")
-          .select("class_id")
+          .select(`
+            id, class_id, student_id,
+            madrasa_students!madrasa_enrollments_student_id_fkey(nom, prenom, gender, age)
+          `)
           .eq("org_id", orgId!)
           .eq("statut", "place"),
         supabase
@@ -131,13 +149,21 @@ function usePlacementData(orgId: string | null) {
 
       if (classesRes.error) throw classesRes.error;
 
-      // Count enrollments per class
-      const countMap = new Map<string, number>();
-      (enrollCountRes.data ?? []).forEach((e: any) => {
-        if (e.class_id) countMap.set(e.class_id, (countMap.get(e.class_id) ?? 0) + 1);
+      const enrollMap = new Map<string, PlacedStudent[]>();
+      (enrollRes.data ?? []).forEach((e: any) => {
+        if (!e.class_id) return;
+        const arr = enrollMap.get(e.class_id) ?? [];
+        arr.push({
+          enrollmentId: e.id,
+          studentId: e.student_id,
+          nom: e.madrasa_students?.nom ?? "",
+          prenom: e.madrasa_students?.prenom ?? "",
+          genre: e.madrasa_students?.gender ?? null,
+          age: e.madrasa_students?.age ?? null,
+        });
+        enrollMap.set(e.class_id, arr);
       });
 
-      // Group schedules per class
       const schedMap = new Map<string, { day: number; start: string; end: string }[]>();
       (schedulesRes.data ?? []).forEach((s: any) => {
         const arr = schedMap.get(s.class_id) ?? [];
@@ -147,6 +173,7 @@ function usePlacementData(orgId: string | null) {
 
       return (classesRes.data ?? []).map((c: any): StudioClass => {
         const slots = schedMap.get(c.id) ?? [];
+        const students = enrollMap.get(c.id) ?? [];
         return {
           id: c.id,
           nom: c.nom,
@@ -154,7 +181,8 @@ function usePlacementData(orgId: string | null) {
           levelLabel: c.madrasa_levels?.label ?? null,
           cycleName: c.madrasa_levels?.madrasa_cycles?.nom ?? null,
           capacityMax: c.capacity_max ?? 15,
-          enrolledCount: countMap.get(c.id) ?? 0,
+          enrolledCount: students.length,
+          enrolledStudents: students,
           roomName: c.rooms?.name ?? null,
           scheduleDays: [...new Set(slots.map((s) => s.day))],
           scheduleSlots: slots,
@@ -163,7 +191,6 @@ function usePlacementData(orgId: string | null) {
     },
   });
 
-  // 3. Levels for filter dropdown
   const levelsQuery = useQuery({
     queryKey: ["placement_levels", orgId],
     enabled: !!orgId,
@@ -181,30 +208,39 @@ function usePlacementData(orgId: string | null) {
   return { poolQuery, classesQuery, levelsQuery };
 }
 
-/* ── Sub-components ── */
+/* ── Draggable Student Card ── */
 
-function StudentCard({
-  student, isSelected, onSelect,
-}: {
-  student: PoolStudent;
-  isSelected: boolean;
-  onSelect: (s: PoolStudent | null) => void;
-}) {
+function DraggableStudentCard({ student }: { student: PoolStudent }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `student-${student.enrollmentId}`,
+    data: { type: "student", student },
+  });
+
+  const style: React.CSSProperties = {
+    transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
   return (
     <Card
+      ref={setNodeRef}
+      style={style}
       className={cn(
-        "mb-2 cursor-pointer transition-all",
-        isSelected
-          ? "border-primary ring-2 ring-primary/20 shadow-md"
-          : "hover:border-primary/40",
+        "mb-2 cursor-grab active:cursor-grabbing transition-shadow",
+        isDragging ? "shadow-lg ring-2 ring-primary/30" : "hover:border-primary/40",
       )}
-      onClick={() => onSelect(isSelected ? null : student)}
+      {...attributes}
+      {...listeners}
     >
       <CardContent className="p-3 space-y-1.5">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-semibold text-sm truncate">
-            {student.prenom} {student.nom}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+            <p className="font-semibold text-sm truncate">
+              {student.prenom} {student.nom}
+            </p>
+          </div>
           <div className="flex items-center gap-1 shrink-0">
             {student.siblingPriority && (
               <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
@@ -227,15 +263,11 @@ function StudentCard({
             )}
           </div>
         </div>
-
-        {/* Level */}
         {student.levelLabel && (
           <Badge variant="secondary" className="text-[10px]">
             {student.levelLabel}
           </Badge>
         )}
-
-        {/* Preferred days */}
         {student.preferredDays.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap">
             <CalendarDays className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -251,28 +283,68 @@ function StudentCard({
   );
 }
 
-function ClassCard({
-  cls, isHighlighted,
+/* ── Overlay Card (shown while dragging) ── */
+
+function DragOverlayCard({ student }: { student: PoolStudent }) {
+  return (
+    <Card className="w-64 shadow-2xl border-primary ring-2 ring-primary/30 rotate-2">
+      <CardContent className="p-3 space-y-1">
+        <p className="font-semibold text-sm">
+          {student.prenom} {student.nom}
+        </p>
+        {student.levelLabel && (
+          <Badge variant="secondary" className="text-[10px]">
+            {student.levelLabel}
+          </Badge>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Droppable Class Card ── */
+
+function DroppableClassCard({
+  cls,
+  isOver,
+  isCompatible,
+  activeStudent,
+  onUnplace,
 }: {
   cls: StudioClass;
-  isHighlighted: boolean;
+  isOver: boolean;
+  isCompatible: boolean;
+  activeStudent: PoolStudent | null;
+  onUnplace: (enrollmentId: string) => void;
 }) {
+  const { setNodeRef, isOver: localIsOver } = useDroppable({
+    id: `class-${cls.id}`,
+    data: { type: "class", classId: cls.id },
+  });
+
   const pct = cls.capacityMax > 0 ? Math.round((cls.enrolledCount / cls.capacityMax) * 100) : 0;
   const remaining = Math.max(0, cls.capacityMax - cls.enrolledCount);
   const isFull = remaining === 0;
 
-  // Format schedule display
   const scheduleLabel = cls.scheduleSlots
     .sort((a, b) => a.day - b.day)
     .map((s) => `${DAY_LABELS[s.day]} ${s.start.slice(0, 5)}-${s.end.slice(0, 5)}`)
     .join(" · ");
 
+  const showHighlight = activeStudent && isCompatible && !isFull;
+  const showWarning = isOver && isFull;
+
   return (
-    <Card className={cn(
-      "flex flex-col transition-all duration-200",
-      isHighlighted && "border-primary ring-2 ring-primary/20 shadow-lg",
-      isFull && "opacity-60",
-    )}>
+    <Card
+      ref={setNodeRef}
+      className={cn(
+        "flex flex-col transition-all duration-200",
+        showHighlight && "border-primary ring-2 ring-primary/20 shadow-lg",
+        isOver && !isFull && "border-primary ring-2 ring-primary/40 shadow-xl bg-primary/5",
+        showWarning && "border-destructive ring-2 ring-destructive/30",
+        isFull && !isOver && "opacity-60",
+      )}
+    >
       <CardHeader className="p-4 pb-2 space-y-1">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-semibold truncate">{cls.nom}</CardTitle>
@@ -314,18 +386,44 @@ function ClassCard({
           />
         </div>
 
+        {/* Placed students chips */}
+        {cls.enrolledStudents.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {cls.enrolledStudents.map((s) => (
+              <Badge
+                key={s.enrollmentId}
+                variant="outline"
+                className="text-[10px] px-1.5 py-0.5 gap-1 group hover:border-destructive/50"
+              >
+                {s.prenom} {s.nom.charAt(0)}.
+                <button
+                  onClick={(e) => { e.stopPropagation(); onUnplace(s.enrollmentId); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
+                  title="Retirer de la classe"
+                >
+                  <X className="h-3 w-3 text-destructive hover:text-destructive/80" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+
         {/* Drop zone */}
         <div className={cn(
-          "border-2 border-dashed rounded-lg flex items-center justify-center py-5 text-xs select-none mt-auto",
-          isHighlighted
-            ? "border-primary/50 bg-primary/5 text-primary"
-            : "border-muted-foreground/25 text-muted-foreground",
-          isFull && "border-destructive/30 text-destructive",
+          "border-2 border-dashed rounded-lg flex items-center justify-center py-4 text-xs select-none mt-auto transition-colors",
+          isOver && !isFull && "border-primary bg-primary/10 text-primary font-medium",
+          isOver && isFull && "border-destructive bg-destructive/10 text-destructive font-medium",
+          !isOver && showHighlight && "border-primary/50 bg-primary/5 text-primary",
+          !isOver && !showHighlight && "border-muted-foreground/25 text-muted-foreground",
         )}>
           <span className="opacity-70">
-            {isFull
-              ? "Classe complète"
-              : `Glisser un élève ici (${remaining} place${remaining > 1 ? "s" : ""})`}
+            {isOver && isFull
+              ? "⛔ Classe complète"
+              : isFull
+                ? "Classe complète"
+                : isOver
+                  ? "✓ Relâcher pour placer"
+                  : `Glisser un élève ici (${remaining} place${remaining > 1 ? "s" : ""})`}
           </span>
         </div>
       </CardContent>
@@ -337,19 +435,63 @@ function ClassCard({
 
 export function PlacementStudioTab() {
   const { orgId } = useOrganization();
+  const queryClient = useQueryClient();
   const { poolQuery, classesQuery, levelsQuery } = usePlacementData(orgId);
 
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
-  const [selectedStudent, setSelectedStudent] = useState<PoolStudent | null>(null);
+  const [activeStudent, setActiveStudent] = useState<PoolStudent | null>(null);
+  const [overClassId, setOverClassId] = useState<string | null>(null);
 
   const pool = poolQuery.data ?? [];
   const classes = classesQuery.data ?? [];
   const levels = levelsQuery.data ?? [];
   const isLoading = poolQuery.isLoading || classesQuery.isLoading;
 
-  // Filter students
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  /* ── Mutations ── */
+
+  const placeMutation = useMutation({
+    mutationFn: async ({ enrollmentId, classId }: { enrollmentId: string; classId: string }) => {
+      const { error } = await supabase
+        .from("madrasa_enrollments")
+        .update({ class_id: classId })
+        .eq("id", enrollmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["placement_pool", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["placement_classes", orgId] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erreur de placement", description: err.message, variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["placement_pool", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["placement_classes", orgId] });
+    },
+  });
+
+  const unplaceMutation = useMutation({
+    mutationFn: async (enrollmentId: string) => {
+      const { error } = await supabase
+        .from("madrasa_enrollments")
+        .update({ class_id: null })
+        .eq("id", enrollmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["placement_pool", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["placement_classes", orgId] });
+      toast({ title: "Élève retiré", description: "L'élève a été replacé dans le vivier." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    },
+  });
+
+  /* ── Filter students ── */
+
   const filteredStudents = useMemo(() => {
     return pool.filter((s) => {
       const q = search.toLowerCase();
@@ -363,26 +505,135 @@ export function PlacementStudioTab() {
     });
   }, [pool, search, levelFilter, dayFilter]);
 
-  // Determine which classes match selected student
-  const highlightedClassIds = useMemo(() => {
-    if (!selectedStudent) return new Set<string>();
+  /* ── Compatible classes for active dragged student ── */
+
+  const compatibleClassIds = useMemo(() => {
+    if (!activeStudent) return new Set<string>();
     const ids = new Set<string>();
     for (const cls of classes) {
-      // Level match
-      const levelMatch = !selectedStudent.levelId || !cls.levelId || selectedStudent.levelId === cls.levelId;
-      // Day match (intersection of student preferred days and class schedule days)
+      const levelMatch = !activeStudent.levelId || !cls.levelId || activeStudent.levelId === cls.levelId;
       const dayMatch =
-        selectedStudent.preferredDays.length === 0 ||
+        activeStudent.preferredDays.length === 0 ||
         cls.scheduleDays.length === 0 ||
-        selectedStudent.preferredDays.some((d) => cls.scheduleDays.includes(d));
-      // Not full
+        activeStudent.preferredDays.some((d) => cls.scheduleDays.includes(d));
       const hasSpace = cls.enrolledCount < cls.capacityMax;
       if (levelMatch && dayMatch && hasSpace) ids.add(cls.id);
     }
     return ids;
-  }, [selectedStudent, classes]);
+  }, [activeStudent, classes]);
 
-  /* Global stats */
+  /* ── DnD handlers ── */
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current;
+    if (data?.type === "student") {
+      setActiveStudent(data.student as PoolStudent);
+    }
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const overId = event.over?.id;
+    if (overId && String(overId).startsWith("class-")) {
+      setOverClassId(String(overId).replace("class-", ""));
+    } else {
+      setOverClassId(null);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveStudent(null);
+    setOverClassId(null);
+
+    if (!over || !String(over.id).startsWith("class-")) return;
+
+    const studentData = active.data.current;
+    if (studentData?.type !== "student") return;
+
+    const student = studentData.student as PoolStudent;
+    const classId = String(over.id).replace("class-", "");
+    const targetClass = classes.find((c) => c.id === classId);
+    if (!targetClass) return;
+
+    // Check capacity
+    if (targetClass.enrolledCount >= targetClass.capacityMax) {
+      toast({ title: "Classe complète", description: `${targetClass.nom} a atteint sa capacité maximale.`, variant: "destructive" });
+      return;
+    }
+
+    // Warn on level mismatch
+    if (student.levelId && targetClass.levelId && student.levelId !== targetClass.levelId) {
+      toast({
+        title: "⚠️ Niveaux différents",
+        description: `${student.prenom} (${student.levelLabel}) → ${targetClass.nom} (${targetClass.levelLabel}). Placement autorisé.`,
+      });
+    }
+
+    // Optimistic update
+    queryClient.setQueryData(["placement_pool", orgId], (old: PoolStudent[] | undefined) =>
+      (old ?? []).filter((s) => s.enrollmentId !== student.enrollmentId)
+    );
+    queryClient.setQueryData(["placement_classes", orgId], (old: StudioClass[] | undefined) =>
+      (old ?? []).map((c) =>
+        c.id === classId
+          ? {
+              ...c,
+              enrolledCount: c.enrolledCount + 1,
+              enrolledStudents: [
+                ...c.enrolledStudents,
+                {
+                  enrollmentId: student.enrollmentId,
+                  studentId: student.studentId,
+                  nom: student.nom,
+                  prenom: student.prenom,
+                  genre: student.genre,
+                  age: student.age,
+                },
+              ],
+            }
+          : c
+      )
+    );
+
+    placeMutation.mutate({ enrollmentId: student.enrollmentId, classId });
+
+    toast({ title: "✓ Élève placé", description: `${student.prenom} ${student.nom} → ${targetClass.nom}` });
+  };
+
+  const handleDragCancel = () => {
+    setActiveStudent(null);
+    setOverClassId(null);
+  };
+
+  const handleUnplace = (enrollmentId: string) => {
+    // Find student info for optimistic update
+    let found: PlacedStudent | null = null;
+    let fromClassId: string | null = null;
+    for (const cls of classes) {
+      const s = cls.enrolledStudents.find((e) => e.enrollmentId === enrollmentId);
+      if (s) { found = s; fromClassId = cls.id; break; }
+    }
+
+    if (found && fromClassId) {
+      // Optimistic: remove from class, add back to pool
+      queryClient.setQueryData(["placement_classes", orgId], (old: StudioClass[] | undefined) =>
+        (old ?? []).map((c) =>
+          c.id === fromClassId
+            ? {
+                ...c,
+                enrolledCount: c.enrolledCount - 1,
+                enrolledStudents: c.enrolledStudents.filter((s) => s.enrollmentId !== enrollmentId),
+              }
+            : c
+        )
+      );
+    }
+
+    unplaceMutation.mutate(enrollmentId);
+  };
+
+  /* ── Global stats ── */
+
   const totalCapacity = classes.reduce((s, c) => s + c.capacityMax, 0);
   const totalEnrolled = classes.reduce((s, c) => s + c.enrolledCount, 0);
   const globalPct = totalCapacity ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
@@ -405,117 +656,128 @@ export function PlacementStudioTab() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 min-h-[600px]">
-      {/* ── Left: Student Pool ── */}
-      <div className="w-full lg:w-1/4 shrink-0 flex flex-col rounded-xl border bg-card">
-        <div className="p-4 border-b space-y-3">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" />
-            <h3 className="font-semibold text-sm">Élèves à placer</h3>
-            <Badge variant="secondary" className="ml-auto text-xs">
-              {filteredStudents.length}
-            </Badge>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div className="flex flex-col lg:flex-row gap-4 min-h-[600px]">
+        {/* ── Left: Student Pool ── */}
+        <div className="w-full lg:w-1/4 shrink-0 flex flex-col rounded-xl border bg-card">
+          <div className="p-4 border-b space-y-3">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold text-sm">Élèves à placer</h3>
+              <Badge variant="secondary" className="ml-auto text-xs">
+                {filteredStudents.length}
+              </Badge>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-8 text-xs"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Select value={levelFilter} onValueChange={setLevelFilter}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Niveau" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les niveaux</SelectItem>
+                  {levels.map((l: any) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.label} {l.madrasa_cycles?.nom ? `(${l.madrasa_cycles.nom})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={dayFilter} onValueChange={setDayFilter}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Jour préféré" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAY_FILTER_OPTIONS.map((d) => (
+                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-xs"
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Select value={levelFilter} onValueChange={setLevelFilter}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Niveau" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les niveaux</SelectItem>
-                {levels.map((l: any) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.label} {l.madrasa_cycles?.nom ? `(${l.madrasa_cycles.nom})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={dayFilter} onValueChange={setDayFilter}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Jour préféré" />
-              </SelectTrigger>
-              <SelectContent>
-                {DAY_FILTER_OPTIONS.map((d) => (
-                  <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <ScrollArea className="flex-1 p-3">
+            {filteredStudents.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">
+                {pool.length === 0
+                  ? "Aucun élève en attente de placement."
+                  : "Aucun élève ne correspond aux filtres."}
+              </p>
+            ) : (
+              filteredStudents.map((s) => (
+                <DraggableStudentCard key={s.enrollmentId} student={s} />
+              ))
+            )}
+          </ScrollArea>
         </div>
 
-        <ScrollArea className="flex-1 p-3">
-          {filteredStudents.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">
-              {pool.length === 0
-                ? "Aucun élève en attente de placement."
-                : "Aucun élève ne correspond aux filtres."}
-            </p>
+        {/* ── Right: Class Grid ── */}
+        <div className="flex-1 flex flex-col gap-4">
+          <Card className="bg-muted/30">
+            <CardContent className="p-4 flex flex-wrap items-center gap-6">
+              <div className="flex items-center gap-2">
+                <LayoutDashboard className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Studio de placement</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Places disponibles :</span>
+                <Badge variant="outline" className="font-semibold">{totalAvailable}</Badge>
+              </div>
+              <div className="flex items-center gap-3 flex-1 min-w-[180px]">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Remplissage global</span>
+                <Progress value={globalPct} className="h-2 flex-1" />
+                <span className="text-xs font-medium">{globalPct}%</span>
+              </div>
+              {activeStudent && (
+                <Badge className="bg-primary/10 text-primary border-primary/30 text-xs animate-pulse">
+                  En déplacement : {activeStudent.prenom} {activeStudent.nom}
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+
+          {classes.length === 0 ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+              Aucune classe configurée.
+            </div>
           ) : (
-            filteredStudents.map((s) => (
-              <StudentCard
-                key={s.enrollmentId}
-                student={s}
-                isSelected={selectedStudent?.enrollmentId === s.enrollmentId}
-                onSelect={setSelectedStudent}
-              />
-            ))
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {classes.map((cls) => (
+                <DroppableClassCard
+                  key={cls.id}
+                  cls={cls}
+                  isOver={overClassId === cls.id}
+                  isCompatible={compatibleClassIds.has(cls.id)}
+                  activeStudent={activeStudent}
+                  onUnplace={handleUnplace}
+                />
+              ))}
+            </div>
           )}
-        </ScrollArea>
+        </div>
       </div>
 
-      {/* ── Right: Class Grid ── */}
-      <div className="flex-1 flex flex-col gap-4">
-        <Card className="bg-muted/30">
-          <CardContent className="p-4 flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Studio de placement</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Places disponibles :</span>
-              <Badge variant="outline" className="font-semibold">{totalAvailable}</Badge>
-            </div>
-            <div className="flex items-center gap-3 flex-1 min-w-[180px]">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Remplissage global</span>
-              <Progress value={globalPct} className="h-2 flex-1" />
-              <span className="text-xs font-medium">{globalPct}%</span>
-            </div>
-            {selectedStudent && (
-              <Badge className="bg-primary/10 text-primary border-primary/30 text-xs">
-                Sélectionné : {selectedStudent.prenom} {selectedStudent.nom}
-              </Badge>
-            )}
-          </CardContent>
-        </Card>
-
-        {classes.length === 0 ? (
-          <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-            Aucune classe configurée.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {classes.map((cls) => (
-              <ClassCard
-                key={cls.id}
-                cls={cls}
-                isHighlighted={highlightedClassIds.has(cls.id)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      {/* Drag Overlay */}
+      <DragOverlay dropAnimation={{ duration: 200, easing: "ease" }}>
+        {activeStudent ? <DragOverlayCard student={activeStudent} /> : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
