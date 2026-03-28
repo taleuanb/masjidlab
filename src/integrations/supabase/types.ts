@@ -1309,8 +1309,10 @@ export type Database = {
       }
       madrasa_students: {
         Row: {
+          age: number | null
           created_at: string | null
           date_naissance: string | null
+          gender: string | null
           id: string
           niveau: string | null
           nom: string
@@ -1320,8 +1322,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          age?: number | null
           created_at?: string | null
           date_naissance?: string | null
+          gender?: string | null
           id?: string
           niveau?: string | null
           nom: string
@@ -1331,8 +1335,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          age?: number | null
           created_at?: string | null
           date_naissance?: string | null
+          gender?: string | null
           id?: string
           niveau?: string | null
           nom?: string
