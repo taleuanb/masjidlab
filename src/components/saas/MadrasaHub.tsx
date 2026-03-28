@@ -7,8 +7,9 @@ import {
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
   AlertTriangle, Users, Pencil, MessageCircle, FileText,
   Clock, LayoutGrid, ChevronRight, FolderOpen, Folder,
-  Sparkles, RefreshCw, Tag, Inbox,
+  Sparkles, RefreshCw, Tag, Inbox, Move,
 } from "lucide-react";
+import { PlacementStudioTab } from "@/components/madrasa/PlacementStudioTab";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
