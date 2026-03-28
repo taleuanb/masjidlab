@@ -181,6 +181,7 @@ function EnrollmentWizard({
   const [newParentEmail, setNewParentEmail] = useState("");
   const [newParentPhone, setNewParentPhone] = useState("");
   const [parentComboOpen, setParentComboOpen] = useState(false);
+  const [phoneDuplicate, setPhoneDuplicate] = useState<{ id: string; user_id: string; display_name: string; email: string | null } | null>(null);
 
   // Data
   const [levels, setLevels] = useState<Level[]>([]);
