@@ -790,6 +790,31 @@ function EnrollmentWizard({
                     <p className="text-xs text-muted-foreground mt-1">Obligatoire pour un nouveau parent (min. 10 caractères)</p>
                   )}
                 </div>
+                {phoneDuplicate && (
+                  <div className="sm:col-span-2 rounded-lg border border-amber-400/50 bg-amber-500/10 p-3 space-y-2">
+                    <div className="flex items-start gap-2 text-sm">
+                      <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-medium text-amber-700">
+                          Ce numéro est déjà lié au profil : <strong>{phoneDuplicate.display_name}</strong>
+                        </p>
+                        {phoneDuplicate.email && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{phoneDuplicate.email}</p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-amber-400/50 text-amber-700 hover:bg-amber-500/15"
+                      onClick={handleUseExistingProfile}
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1.5" />
+                      Utiliser ce profil existant
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
