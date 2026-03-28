@@ -22,6 +22,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
@@ -976,6 +980,8 @@ const Inscriptions = () => {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [enrollmentToDelete, setEnrollmentToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [statusTab, setStatusTab] = useState("all");
   const [filterLevel, setFilterLevel] = useState("__all__");
@@ -1254,7 +1260,7 @@ const Inscriptions = () => {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
-                                onClick={() => toast({ title: "🗑️ Annuler l'inscription", description: "Fonctionnalité à venir.", variant: "destructive" })}
+                                onClick={() => setEnrollmentToDelete(e.id)}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" /> Annuler l'inscription
                               </DropdownMenuItem>
@@ -1287,6 +1293,46 @@ const Inscriptions = () => {
           />
         </>
       )}
+
+      <AlertDialog open={!!enrollmentToDelete} onOpenChange={(open) => { if (!open) setEnrollmentToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Annuler cette inscription ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action retirera l'élève de sa classe ou de la file d'attente pour cette année scolaire. Le profil de l'élève ne sera pas supprimé de la base de données.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Retour</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={async () => {
+                if (!enrollmentToDelete) return;
+                setDeleting(true);
+                try {
+                  const { error } = await supabase
+                    .from("madrasa_enrollments")
+                    .delete()
+                    .eq("id", enrollmentToDelete);
+                  if (error) throw error;
+                  toast({ title: "✅ Inscription annulée", description: "L'inscription a été retirée avec succès." });
+                  fetchEnrollments();
+                } catch (err: unknown) {
+                  const message = err instanceof Error ? err.message : "Erreur inconnue";
+                  toast({ title: "Erreur", description: message, variant: "destructive" });
+                } finally {
+                  setDeleting(false);
+                  setEnrollmentToDelete(null);
+                }
+              }}
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              Confirmer l'annulation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 };
