@@ -1142,12 +1142,19 @@ const Inscriptions = () => {
       </div>
 
       {orgId && (
-        <EnrollmentWizard
-          open={wizardOpen}
-          onOpenChange={setWizardOpen}
-          orgId={orgId}
-          onSuccess={fetchEnrollments}
-        />
+        <>
+          <EnrollmentWizard
+            open={wizardOpen}
+            onOpenChange={setWizardOpen}
+            orgId={orgId}
+            onSuccess={fetchEnrollments}
+          />
+          <BulkImportDialog
+            open={bulkImportOpen}
+            onOpenChange={setBulkImportOpen}
+            orgId={orgId}
+          />
+        </>
       )}
     </main>
   );
