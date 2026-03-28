@@ -4,7 +4,7 @@ import { fr } from "date-fns/locale";
 import {
   ClipboardList, PlusCircle, Loader2, Check, ChevronRight, ChevronLeft,
   User, Users, Receipt, Search, GraduationCap, AlertCircle, UserPlus, Clock,
-  FileSpreadsheet,
+  FileSpreadsheet, MoreHorizontal, Download, Eye, Pencil, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,11 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -972,6 +977,10 @@ const Inscriptions = () => {
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [search, setSearch] = useState("");
 
+  const [statusTab, setStatusTab] = useState("all");
+  const [filterLevel, setFilterLevel] = useState("__all__");
+  const [filterClass, setFilterClass] = useState("__all__");
+
   const fetchEnrollments = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
@@ -1006,20 +1015,52 @@ const Inscriptions = () => {
 
   useEffect(() => { fetchEnrollments(); }, [fetchEnrollments]);
 
+  // Extract unique levels & classes for filters
+  const uniqueLevels = useMemo(() => {
+    const set = new Set<string>();
+    enrollments.forEach((e) => { if (e.student?.niveau) set.add(e.student.niveau); });
+    return Array.from(set).sort();
+  }, [enrollments]);
+
+  const uniqueClasses = useMemo(() => {
+    const set = new Set<string>();
+    enrollments.forEach((e) => { if (e.classe?.nom) set.add(e.classe.nom); });
+    return Array.from(set).sort();
+  }, [enrollments]);
+
   const filtered = useMemo(() => {
-    if (!search) return enrollments;
-    const q = search.toLowerCase();
     return enrollments.filter((e) => {
-      const name = `${e.student?.prenom ?? ""} ${e.student?.nom ?? ""}`.toLowerCase();
-      return name.includes(q) || e.classe?.nom?.toLowerCase().includes(q);
+      // Tab filter
+      if (statusTab === "sandbox" && e.classe !== null) return false;
+      if (statusTab === "active" && e.statut !== "Actif") return false;
+      if (statusTab === "suspended" && e.statut !== "Suspendu") return false;
+
+      // Level filter
+      if (filterLevel !== "__all__" && e.student?.niveau !== filterLevel) return false;
+
+      // Class filter
+      if (filterClass !== "__all__") {
+        if (filterClass === "__sandbox__" && e.classe !== null) return false;
+        if (filterClass !== "__sandbox__" && e.classe?.nom !== filterClass) return false;
+      }
+
+      // Search
+      if (search) {
+        const q = search.toLowerCase();
+        const name = `${e.student?.prenom ?? ""} ${e.student?.nom ?? ""}`.toLowerCase();
+        if (!name.includes(q) && !e.classe?.nom?.toLowerCase().includes(q)) return false;
+      }
+
+      return true;
     });
-  }, [enrollments, search]);
+  }, [enrollments, search, statusTab, filterLevel, filterClass]);
 
   const stats = useMemo(() => {
     const total = enrollments.length;
     const actif = enrollments.filter((e) => e.statut === "Actif").length;
     const pending = enrollments.filter((e) => e.statut === "En attente").length;
-    return { total, actif, pending };
+    const sandbox = enrollments.filter((e) => e.classe === null).length;
+    return { total, actif, pending, sandbox };
   }, [enrollments]);
 
   return (
@@ -1036,6 +1077,14 @@ const Inscriptions = () => {
           <div className="flex-1" />
           <Button
             variant="outline"
+            size="sm"
+            onClick={() => toast({ title: "Export CSV", description: "L'export CSV sera bientôt disponible." })}
+          >
+            <Download className="h-4 w-4 mr-1.5" />
+            <span className="hidden sm:inline">Exporter</span>
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => setBulkImportOpen(true)}
           >
             <FileSpreadsheet className="h-4 w-4 mr-1.5" />
@@ -1049,7 +1098,7 @@ const Inscriptions = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{stats.total}</p>
@@ -1064,17 +1113,33 @@ const Inscriptions = () => {
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+              <p className="text-2xl font-bold text-primary">{stats.pending}</p>
               <p className="text-xs text-muted-foreground">En attente</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-accent-foreground">{stats.sandbox}</p>
+              <p className="text-xs text-muted-foreground">Sandbox</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Search + Table */}
+        {/* Tabs */}
+        <Tabs value={statusTab} onValueChange={setStatusTab}>
+          <TabsList>
+            <TabsTrigger value="all">Toutes</TabsTrigger>
+            <TabsTrigger value="sandbox">🟡 Sandbox</TabsTrigger>
+            <TabsTrigger value="active">🟢 Actives</TabsTrigger>
+            <TabsTrigger value="suspended">🔴 Suspendues</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* Search + Filters + Table */}
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Rechercher un élève ou une classe…"
@@ -1083,6 +1148,29 @@ const Inscriptions = () => {
                   className="pl-8 h-9"
                 />
               </div>
+              <Select value={filterLevel} onValueChange={setFilterLevel}>
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue placeholder="Tous les niveaux" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Tous les niveaux</SelectItem>
+                  {uniqueLevels.map((l) => (
+                    <SelectItem key={l} value={l}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterClass} onValueChange={setFilterClass}>
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue placeholder="Toutes les classes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Toutes les classes</SelectItem>
+                  <SelectItem value="__sandbox__">🟡 Sandbox (non placés)</SelectItem>
+                  {uniqueClasses.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -1106,34 +1194,76 @@ const Inscriptions = () => {
                     <TableHead>Année</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Date</TableHead>
+                    <TableHead className="w-[50px]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((e) => (
-                    <TableRow key={e.id} className="hover:bg-muted/40">
-                      <TableCell className="font-medium">
-                        {e.student ? `${e.student.prenom} ${e.student.nom}` : "—"}
-                      </TableCell>
-                      <TableCell>{e.classe?.nom ?? <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-400/30">Sandbox</Badge>}</TableCell>
-                      <TableCell>
-                        {e.student?.niveau ? (
-                          <Badge variant="outline" className="text-[10px]">{e.student.niveau}</Badge>
-                        ) : "—"}
-                      </TableCell>
-                      <TableCell className="text-sm">{e.annee_scolaire}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn("text-[10px]", STATUS_COLORS[e.statut ?? ""] ?? "")}
-                        >
-                          {e.statut ?? "—"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filtered.map((e) => {
+                    const initials = `${e.student?.prenom?.[0] ?? ""}${e.student?.nom?.[0] ?? ""}`.toUpperCase();
+                    return (
+                      <TableRow key={e.id} className="hover:bg-muted/40">
+                        <TableCell>
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-brand-navy/10 text-brand-navy text-xs font-semibold">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">
+                              {e.student ? `${e.student.prenom} ${e.student.nom}` : "—"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {e.classe?.nom ?? (
+                            <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30 font-semibold">
+                              🟡 Sandbox
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {e.student?.niveau ? (
+                            <Badge variant="outline" className="text-[10px]">{e.student.niveau}</Badge>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">{e.annee_scolaire}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn("text-[10px]", STATUS_COLORS[e.statut ?? ""] ?? "")}
+                          >
+                            {e.statut ?? "—"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => toast({ title: "👁️ Voir l'élève", description: "Fonctionnalité à venir." })}>
+                                <Eye className="h-4 w-4 mr-2" /> Voir l'élève
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => toast({ title: "✏️ Modifier le statut", description: "Fonctionnalité à venir." })}>
+                                <Pencil className="h-4 w-4 mr-2" /> Modifier le statut
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => toast({ title: "🗑️ Annuler l'inscription", description: "Fonctionnalité à venir.", variant: "destructive" })}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Annuler l'inscription
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
