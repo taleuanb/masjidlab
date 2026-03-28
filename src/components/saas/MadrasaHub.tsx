@@ -7,8 +7,9 @@ import {
   BarChart3, Eye, GripVertical, ChevronUp, ChevronDown,
   AlertTriangle, Users, Pencil, MessageCircle, FileText,
   Clock, LayoutGrid, ChevronRight, FolderOpen, Folder,
-  Sparkles, RefreshCw, Tag, Inbox,
+  Sparkles, RefreshCw, Tag, Inbox, Move,
 } from "lucide-react";
+import { PlacementStudioTab } from "@/components/madrasa/PlacementStudioTab";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
@@ -2396,7 +2397,7 @@ export function MadrasaHub() {
   return (
     <div className="space-y-4">
       <Tabs defaultValue="studio" className="space-y-4">
-        <TabsList className="grid w-full max-w-2xl grid-cols-5">
+        <TabsList className="grid w-full max-w-3xl grid-cols-6">
           <TabsTrigger value="studio" className="gap-1.5 text-xs">
             <LayoutGrid className="h-3.5 w-3.5" /> Studio
           </TabsTrigger>
@@ -2409,6 +2410,9 @@ export function MadrasaHub() {
           <TabsTrigger value="classes" className="gap-1.5 text-xs">
             <GraduationCap className="h-3.5 w-3.5" /> Classes
           </TabsTrigger>
+          <TabsTrigger value="placement" className="gap-1.5 text-xs">
+            <Move className="h-3.5 w-3.5" /> Placement
+          </TabsTrigger>
           <TabsTrigger value="parametres" className="gap-1.5 text-xs">
             <Settings2 className="h-3.5 w-3.5" /> Paramètres
           </TabsTrigger>
@@ -2417,6 +2421,11 @@ export function MadrasaHub() {
         {/* 0. Studio */}
         <TabsContent value="studio">
           <StudioSection />
+        </TabsContent>
+
+        {/* 0b. Placement Studio */}
+        <TabsContent value="placement">
+          <PlacementStudioTab />
         </TabsContent>
 
         {/* 1. Pilotage */}
