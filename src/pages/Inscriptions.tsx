@@ -4,6 +4,7 @@ import { fr } from "date-fns/locale";
 import {
   ClipboardList, PlusCircle, Loader2, Check, ChevronRight, ChevronLeft,
   User, Users, Receipt, Search, GraduationCap, AlertCircle, UserPlus, Clock,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
