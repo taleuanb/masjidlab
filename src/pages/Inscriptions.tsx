@@ -1062,13 +1062,20 @@ const Inscriptions = () => {
       if (statusTab === "active" && !(e.statut === "place" && e.classe !== null)) return false;
       if (statusTab === "suspended" && e.statut !== "annule") return false;
 
-      // Level filter
-      if (filterLevel !== "__all__" && e.student?.niveau !== filterLevel) return false;
+      // Level filter (match by level label from allLevels)
+      if (filterLevel !== "__all__") {
+        const lvl = allLevels.find(l => l.id === filterLevel);
+        if (lvl && e.student?.niveau !== lvl.label) return false;
+        if (!lvl && e.student?.niveau !== filterLevel) return false;
+      }
 
-      // Class filter
+      // Class filter (by class ID)
       if (filterClass !== "__all__") {
         if (filterClass === "__sandbox__" && e.classe !== null) return false;
-        if (filterClass !== "__sandbox__" && e.classe?.nom !== filterClass) return false;
+        if (filterClass !== "__sandbox__") {
+          const cls = allClasses.find(c => c.id === filterClass);
+          if (!cls || e.classe?.nom !== cls.nom) return false;
+        }
       }
 
       // Search
