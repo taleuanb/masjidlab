@@ -188,7 +188,8 @@ function EnrollmentWizard({
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [parentResults, setParentResults] = useState<ParentSearchResult[]>([]);
   const [billingCycle, setBillingCycle] = useState<"mensuel" | "trimestriel">("mensuel");
-  const [duplicateWarning, setDuplicateWarning] = useState("");
+  const [duplicateWarning, setDuplicateWarning] = "";
+  const [academicYearId, setAcademicYearId] = useState<string | null>(null);
 
   const annee = getCurrentSchoolYear();
 
