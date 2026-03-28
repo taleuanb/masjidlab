@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ClipboardList, PlusCircle, Loader2, Check, ChevronRight, ChevronLeft,
-  User, Users, Receipt, Search, GraduationCap, AlertCircle, UserPlus,
+  User, Users, Receipt, Search, GraduationCap, AlertCircle, UserPlus, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,8 +13,10 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -27,11 +29,14 @@ import {
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Textarea } from "@/components/ui/textarea";
+import { ChevronDown } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────
 interface Level {
@@ -122,13 +127,17 @@ function Stepper({ current }: { current: number }) {
 
 // ── Role label mapping ──
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
-  admin: { label: "Admin", color: "bg-destructive/15 text-destructive border-destructive/30" },
-  responsable: { label: "Responsable", color: "bg-purple-100 text-purple-700 border-purple-300" },
-  enseignant: { label: "Enseignant", color: "bg-brand-cyan/15 text-brand-cyan border-brand-cyan/30" },
+  admin: { label: "Admin", color: "bg-purple-100 text-purple-700 border-purple-300" },
+  responsable: { label: "Responsable", color: "bg-amber-100 text-amber-700 border-amber-300" },
+  enseignant: { label: "Enseignant", color: "bg-sky-100 text-sky-700 border-sky-300" },
   benevole: { label: "Bénévole", color: "bg-muted text-muted-foreground border-border" },
   parent: { label: "Parent", color: "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30" },
-  super_admin: { label: "Super Admin", color: "bg-amber-100 text-amber-700 border-amber-300" },
+  super_admin: { label: "Super Admin", color: "bg-destructive/15 text-destructive border-destructive/30" },
 };
+
+const SANDBOX_VALUE = "__sandbox__";
+
+const PREF_DAYS = ["Samedi", "Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
 // ── Enrollment Dialog ────────────────────────────────────
 function EnrollmentWizard({
@@ -149,9 +158,17 @@ function EnrollmentWizard({
   // Step 1: Student
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
-  const [dateNaissance, setDateNaissance] = useState<Date | undefined>();
+  const [gender, setGender] = useState<string>("");
+  const [age, setAge] = useState<string>("");
   const [niveauId, setNiveauId] = useState("");
   const [classId, setClassId] = useState("");
+
+  // Assessment & Preferences
+  const [testScore, setTestScore] = useState("");
+  const [assessmentNotes, setAssessmentNotes] = useState("");
+  const [prefDays, setPrefDays] = useState<string[]>([]);
+  const [siblingPriority, setSiblingPriority] = useState(false);
+  const [assessmentOpen, setAssessmentOpen] = useState(false);
 
   // Step 2: Parent
   const [parentMode, setParentMode] = useState<"search" | "new">("search");
@@ -237,7 +254,6 @@ function EnrollmentWizard({
         return;
       }
 
-      // Fetch roles for these users
       const userIds = profiles.map(p => p.user_id);
       const { data: roles } = await supabase
         .from("user_roles")
@@ -250,7 +266,6 @@ function EnrollmentWizard({
         roleMap[r.user_id].push(r.role);
       }
 
-      // Check existing children for family_id
       const profileIds = profiles.map(p => p.id);
       const { data: existingChildren } = await supabase
         .from("madrasa_students")
@@ -301,6 +316,9 @@ function EnrollmentWizard({
     return () => clearTimeout(timeout);
   }, [nom, prenom, orgId]);
 
+  const isSandbox = classId === SANDBOX_VALUE;
+  const effectiveClassId = isSandbox ? null : classId;
+
   const filteredClasses = niveauId
     ? classes.filter((c) => c.level_id === niveauId || (!c.level_id && c.niveau === selectedLevel?.label))
     : classes;
@@ -310,13 +328,17 @@ function EnrollmentWizard({
   const feeAmount = billingCycle === "mensuel" ? tarifMensuel : tarifMensuel * 3;
   const totalAnnuel = billingCycle === "mensuel" ? tarifMensuel * 10 : feeAmount * 4;
 
-  const canGoStep2 = nom.trim() && prenom.trim() && classId;
-  const canGoStep3 = parentMode === "search" ? true : (newParentEmail ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newParentEmail) : true);
+  // Validation: only niveau is required (class is optional / sandbox)
+  const canGoStep2 = !!(nom.trim() && prenom.trim() && niveauId);
+  const canGoStep3 = parentMode === "search"
+    ? true
+    : (newParentPhone.trim().length > 0) && (newParentEmail ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newParentEmail) : true);
 
   const handleSelectParent = (p: ParentSearchResult) => {
     setParentId(p.id);
     setParentName(p.display_name);
     setSuggestedFamilyId(p.existingFamilyId);
+    if (p.existingFamilyId) setSiblingPriority(true);
     setParentComboOpen(false);
   };
 
@@ -327,40 +349,53 @@ function EnrollmentWizard({
         body: {
           student_nom: nom.trim(),
           student_prenom: prenom.trim(),
-          student_date_naissance: dateNaissance ? format(dateNaissance, "yyyy-MM-dd") : null,
           student_niveau: selectedLevel?.label ?? null,
+          age: age ? parseInt(age, 10) : null,
+          gender: gender || null,
+          level_id: niveauId || null,
           parent_id: parentId,
           parent_nom: parentMode === "new" ? newParentNom : null,
           parent_prenom: parentMode === "new" ? newParentPrenom : null,
           parent_email: parentMode === "new" ? newParentEmail : null,
           parent_phone: parentMode === "new" ? newParentPhone : null,
-          class_id: classId,
+          class_id: effectiveClassId,
           annee_scolaire: annee,
           tarif_mensuel: tarifMensuel,
           billing_cycle: billingCycle,
           org_id: orgId,
+          family_id: suggestedFamilyId,
+          assessment: {
+            test_score: testScore ? parseFloat(testScore) : null,
+            notes: assessmentNotes || null,
+          },
+          preferences: {
+            days: prefDays,
+            sibling_priority: siblingPriority,
+          },
         },
       });
 
       if (error) throw error;
-      const result = data as any;
+      const result = data as { success: boolean; error?: string; fees_generated?: number };
       if (!result.success) throw new Error(result.error);
 
       toast({
         title: "✅ Inscription réussie !",
-        description: `${prenom} ${nom} inscrit(e). Parent lié et ${result.fees_generated} échéances générées.`,
+        description: `${prenom} ${nom} inscrit(e).${isSandbox ? " (Sandbox — en attente d'affectation)" : ""} ${result.fees_generated ?? 0} échéances générées.`,
       });
 
       // Reset
       setStep(0);
-      setNom(""); setPrenom(""); setDateNaissance(undefined); setNiveauId(""); setClassId("");
+      setNom(""); setPrenom(""); setGender(""); setAge(""); setNiveauId(""); setClassId("");
+      setTestScore(""); setAssessmentNotes(""); setPrefDays([]); setSiblingPriority(false);
       setParentId(null); setParentName(""); setParentSearch(""); setSuggestedFamilyId(null);
       setNewParentNom(""); setNewParentPrenom(""); setNewParentEmail(""); setNewParentPhone("");
       setBillingCycle("mensuel");
       onOpenChange(false);
       onSuccess();
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      toast({ title: "Erreur", description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -405,34 +440,35 @@ function EnrollmentWizard({
               </div>
             )}
 
-            <div>
-              <label className="text-sm font-medium mb-1 block">Date de naissance</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn("w-full justify-start text-left font-normal", !dateNaissance && "text-muted-foreground")}
-                  >
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    {dateNaissance ? format(dateNaissance, "dd MMMM yyyy", { locale: fr }) : "Sélectionner une date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateNaissance}
-                    onSelect={setDateNaissance}
-                    disabled={(date) => date > new Date() || date < new Date("2000-01-01")}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Genre</label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="M">Masculin</SelectItem>
+                    <SelectItem value="F">Féminin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Âge</label>
+                <Input
+                  type="number"
+                  min={3}
+                  max={99}
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="Ex: 12"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium mb-1 block">Niveau</label>
+                <label className="text-sm font-medium mb-1 block">Niveau *</label>
                 <Select value={niveauId} onValueChange={setNiveauId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choisir un niveau">
@@ -468,12 +504,19 @@ function EnrollmentWizard({
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">Classe *</label>
+                <label className="text-sm font-medium mb-1 block">Classe</label>
                 <Select value={classId} onValueChange={setClassId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choisir une classe" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={SANDBOX_VALUE}>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 text-amber-500" />
+                        <span className="text-amber-600 font-medium">Mettre en attente (Sandbox)</span>
+                      </span>
+                    </SelectItem>
+                    <Separator className="my-1" />
                     {filteredClasses.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.nom} {c.niveau ? `(${c.niveau})` : ""}
@@ -483,6 +526,72 @@ function EnrollmentWizard({
                 </Select>
               </div>
             </div>
+
+            {/* Assessment & Preferences collapsible */}
+            <Collapsible open={assessmentOpen} onOpenChange={setAssessmentOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                  <span className="text-xs font-medium">📋 Évaluation & Préférences</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", assessmentOpen && "rotate-180")} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2">
+                {/* Assessment */}
+                <div className="rounded-lg border border-border p-3 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Évaluation initiale</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Note du test</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        step={0.5}
+                        value={testScore}
+                        onChange={(e) => setTestScore(e.target.value)}
+                        placeholder="/ 20"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-sm font-medium mb-1 block">Observations</label>
+                      <Textarea
+                        value={assessmentNotes}
+                        onChange={(e) => setAssessmentNotes(e.target.value)}
+                        placeholder="Remarques sur le niveau de l'élève…"
+                        className="min-h-[60px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preferences */}
+                <div className="rounded-lg border border-border p-3 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Préférences</p>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Créneaux souhaités</label>
+                    <div className="flex flex-wrap gap-2">
+                      {PREF_DAYS.map((day) => (
+                        <label key={day} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={prefDays.includes(day)}
+                            onCheckedChange={(checked) => {
+                              setPrefDays(prev =>
+                                checked ? [...prev, day] : prev.filter(d => d !== day)
+                              );
+                            }}
+                          />
+                          {day}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Priorité fratrie</label>
+                    <Switch checked={siblingPriority} onCheckedChange={setSiblingPriority} />
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             <div className="flex justify-end pt-2">
               <Button onClick={() => setStep(1)} disabled={!canGoStep2}>
@@ -521,8 +630,8 @@ function EnrollmentWizard({
                     <Check className="h-4 w-4 text-primary" />
                     <span>Parent sélectionné : <strong>{parentName}</strong></span>
                     {suggestedFamilyId && (
-                      <Badge variant="outline" className="ml-auto text-[10px] bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30">
-                        Fratrie détectée
+                      <Badge variant="outline" className="text-[10px] bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30">
+                        👨‍👩‍👧‍👦 Fratrie détectée
                       </Badge>
                     )}
                     <Button variant="ghost" size="sm" className="ml-auto h-6 px-2 text-xs" onClick={() => { setParentId(null); setParentName(""); setSuggestedFamilyId(null); }}>
@@ -577,14 +686,14 @@ function EnrollmentWizard({
                                       const cfg = ROLE_LABELS[r];
                                       if (!cfg) return null;
                                       return (
-                                        <Badge key={r} variant="outline" className={cn("text-[9px] px-1.5 py-0", cfg.color)}>
+                                        <Badge key={r} variant="outline" className={cn("text-[9px] px-1.5 py-0 font-semibold", cfg.color)}>
                                           {cfg.label}
                                         </Badge>
                                       );
                                     })}
                                     {p.existingFamilyId && (
                                       <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30 ml-auto">
-                                        Fratrie
+                                        👨‍👩‍👧‍👦 Fratrie
                                       </Badge>
                                     )}
                                   </div>
@@ -620,8 +729,11 @@ function EnrollmentWizard({
                   )}
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Téléphone</label>
+                  <label className="text-sm font-medium mb-1 block">Téléphone *</label>
                   <Input value={newParentPhone} onChange={(e) => setNewParentPhone(e.target.value)} placeholder="+33…" />
+                  {!newParentPhone.trim() && (
+                    <p className="text-xs text-muted-foreground mt-1">Obligatoire pour un nouveau parent</p>
+                  )}
                 </div>
               </div>
             )}
@@ -644,13 +756,32 @@ function EnrollmentWizard({
               <CardContent className="p-4 space-y-2 text-sm">
                 <div className="grid grid-cols-[120px_1fr] gap-y-1.5">
                   <span className="text-muted-foreground">Élève</span>
-                  <span className="font-medium">{prenom} {nom}</span>
-                  <span className="text-muted-foreground">Date naiss.</span>
-                  <span>{dateNaissance ? format(dateNaissance, "dd/MM/yyyy") : "—"}</span>
+                  <span className="font-medium">
+                    {prenom} {nom}
+                    {gender && (
+                      <Badge variant="outline" className={cn("ml-2 text-[10px]", gender === "M" ? "bg-sky-100 text-sky-700 border-sky-300" : "bg-pink-100 text-pink-700 border-pink-300")}>
+                        {gender}
+                      </Badge>
+                    )}
+                  </span>
+                  {age && (
+                    <>
+                      <span className="text-muted-foreground">Âge</span>
+                      <span>{age} ans</span>
+                    </>
+                  )}
                   <span className="text-muted-foreground">Niveau</span>
                   <span>{selectedLevelDisplay ?? "—"}</span>
                   <span className="text-muted-foreground">Classe</span>
-                  <span>{classes.find((c) => c.id === classId)?.nom ?? "—"}</span>
+                  <span>
+                    {isSandbox ? (
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-400/30 text-[10px]">
+                        <Clock className="h-3 w-3 mr-1" /> Sandbox (en attente)
+                      </Badge>
+                    ) : (
+                      classes.find((c) => c.id === classId)?.nom ?? "—"
+                    )}
+                  </span>
                   <span className="text-muted-foreground">Parent</span>
                   <span>
                     {parentId ? parentName : parentMode === "new" && newParentPrenom
@@ -660,8 +791,28 @@ function EnrollmentWizard({
                     <>
                       <span className="text-muted-foreground">Fratrie</span>
                       <Badge variant="outline" className="text-[10px] w-fit bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30">
-                        Regroupement automatique
+                        👨‍👩‍👧‍👦 Regroupement automatique
                       </Badge>
+                    </>
+                  )}
+                  {(testScore || assessmentNotes) && (
+                    <>
+                      <span className="text-muted-foreground">Évaluation</span>
+                      <span>
+                        {testScore && <span className="font-medium">{testScore}/20</span>}
+                        {testScore && assessmentNotes && " — "}
+                        {assessmentNotes && <span className="text-muted-foreground">{assessmentNotes.substring(0, 60)}{assessmentNotes.length > 60 ? "…" : ""}</span>}
+                      </span>
+                    </>
+                  )}
+                  {prefDays.length > 0 && (
+                    <>
+                      <span className="text-muted-foreground">Créneaux</span>
+                      <span className="flex flex-wrap gap-1">
+                        {prefDays.map(d => (
+                          <Badge key={d} variant="outline" className="text-[10px]">{d}</Badge>
+                        ))}
+                      </span>
                     </>
                   )}
                   <span className="text-muted-foreground">Année</span>
@@ -674,7 +825,7 @@ function EnrollmentWizard({
 
             <div>
               <label className="text-sm font-medium mb-1.5 block">Cycle de facturation</label>
-              <Select value={billingCycle} onValueChange={(v) => setBillingCycle(v as any)}>
+              <Select value={billingCycle} onValueChange={(v) => setBillingCycle(v as "mensuel" | "trimestriel")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -722,6 +873,7 @@ function EnrollmentWizard({
     </Dialog>
   );
 }
+
 // ── Status badge colors ──
 const STATUS_COLORS: Record<string, string> = {
   Actif: "bg-green-500/10 text-green-700 border-green-400/30",
@@ -754,13 +906,17 @@ const Inscriptions = () => {
         .limit(200);
 
       if (error) throw error;
-      setEnrollments((data ?? []).map((d: any) => ({
-        ...d,
-        student: d.student ?? null,
-        classe: d.classe ?? null,
-      })));
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      setEnrollments((data ?? []).map((d: unknown) => {
+        const row = d as Record<string, unknown>;
+        return {
+          ...row,
+          student: row.student ?? null,
+          classe: row.classe ?? null,
+        } as EnrollmentRow;
+      }));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      toast({ title: "Erreur", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -796,7 +952,7 @@ const Inscriptions = () => {
             <p className="text-sm text-muted-foreground">Gestion des inscriptions scolaires — {getCurrentSchoolYear()}</p>
           </div>
           <div className="flex-1" />
-          <Button onClick={() => setWizardOpen(true)}>
+          <Button onClick={() => setWizardOpen(true)} className="bg-brand-navy hover:bg-brand-navy/90">
             <PlusCircle className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Nouvelle inscription</span>
             <span className="sm:hidden">Inscrire</span>
@@ -813,7 +969,7 @@ const Inscriptions = () => {
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-green-600">{stats.actif}</p>
+              <p className="text-2xl font-bold text-brand-emerald">{stats.actif}</p>
               <p className="text-xs text-muted-foreground">Actives</p>
             </CardContent>
           </Card>
@@ -865,11 +1021,11 @@ const Inscriptions = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((e) => (
-                    <TableRow key={e.id}>
+                    <TableRow key={e.id} className="hover:bg-muted/40">
                       <TableCell className="font-medium">
                         {e.student ? `${e.student.prenom} ${e.student.nom}` : "—"}
                       </TableCell>
-                      <TableCell>{e.classe?.nom ?? "—"}</TableCell>
+                      <TableCell>{e.classe?.nom ?? <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-400/30">Sandbox</Badge>}</TableCell>
                       <TableCell>
                         {e.student?.niveau ? (
                           <Badge variant="outline" className="text-[10px]">{e.student.niveau}</Badge>

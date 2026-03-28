@@ -10,21 +10,27 @@ interface EnrollmentRequest {
   // Student
   student_nom: string;
   student_prenom: string;
-  student_date_naissance: string | null;
   student_niveau: string | null;
+  age: number | null;
+  gender: string | null;
+  level_id: string | null;
   // Parent
-  parent_id: string | null; // existing parent profile id (user_id)
+  parent_id: string | null;
   parent_nom: string | null;
   parent_prenom: string | null;
   parent_email: string | null;
   parent_phone: string | null;
   // Enrollment
-  class_id: string;
+  class_id: string | null; // null = sandbox
   annee_scolaire: string;
   // Billing
   tarif_mensuel: number;
   billing_cycle: "mensuel" | "trimestriel";
   org_id: string;
+  // Enriched
+  family_id: string | null;
+  assessment: { test_score: number | null; notes: string | null } | null;
+  preferences: { days: string[]; sibling_priority: boolean } | null;
 }
 
 serve(async (req) => {
@@ -53,15 +59,14 @@ serve(async (req) => {
     if (!body.student_nom?.trim() || !body.student_prenom?.trim()) {
       throw new Error("Nom et prénom de l'élève requis");
     }
-    if (!body.class_id || !body.org_id || !body.annee_scolaire) {
-      throw new Error("Classe, organisation et année scolaire requis");
+    if (!body.org_id || !body.annee_scolaire) {
+      throw new Error("Organisation et année scolaire requis");
     }
 
     // 1. Resolve or create parent
     let parentId: string | null = body.parent_id;
 
     if (!parentId && body.parent_email) {
-      // Check if a profile exists with this email
       const { data: existingProfile } = await supabase
         .from("profiles")
         .select("user_id")
@@ -72,7 +77,6 @@ serve(async (req) => {
       if (existingProfile) {
         parentId = existingProfile.user_id;
       }
-      // If no existing profile found, parent_id stays null (no ghost profile creation)
     }
 
     // 2. Check for duplicate enrollment
@@ -84,7 +88,7 @@ serve(async (req) => {
       .eq("org_id", body.org_id)
       .maybeSingle();
 
-    if (existingStudent) {
+    if (existingStudent && body.class_id) {
       const { data: existingEnroll } = await supabase
         .from("madrasa_enrollments")
         .select("id")
@@ -98,17 +102,24 @@ serve(async (req) => {
       }
     }
 
-    // 3. Insert student
+    // 3. Insert or update student
     const studentId = existingStudent?.id;
     let finalStudentId: string;
 
     if (studentId) {
       finalStudentId = studentId;
-      // Update parent if needed
-      if (parentId) {
+      const updatePayload: Record<string, unknown> = {};
+      if (parentId) updatePayload.parent_id = parentId;
+      if (body.student_niveau) updatePayload.niveau = body.student_niveau;
+      if (body.age != null) updatePayload.age = body.age;
+      if (body.gender) updatePayload.gender = body.gender;
+      if (body.family_id) updatePayload.family_id = body.family_id;
+      if (body.assessment) updatePayload.current_assessment = body.assessment;
+
+      if (Object.keys(updatePayload).length > 0) {
         await supabase
           .from("madrasa_students")
-          .update({ parent_id: parentId, niveau: body.student_niveau })
+          .update(updatePayload)
           .eq("id", finalStudentId);
       }
     } else {
@@ -117,10 +128,13 @@ serve(async (req) => {
         .insert({
           nom: body.student_nom.trim(),
           prenom: body.student_prenom.trim(),
-          date_naissance: body.student_date_naissance || null,
           niveau: body.student_niveau || null,
+          age: body.age ?? null,
+          gender: body.gender || null,
           parent_id: parentId,
           org_id: body.org_id,
+          family_id: body.family_id || undefined,
+          current_assessment: body.assessment ? body.assessment : {},
         })
         .select("id")
         .single();
@@ -129,26 +143,39 @@ serve(async (req) => {
       finalStudentId = newStudent.id;
     }
 
-    // 4. Insert enrollment
+    // 4. Determine enrollment status
+    const isSandbox = !body.class_id;
+    const enrollmentStatut = isSandbox ? "En attente" : "Actif";
+    const pedagogicalStatus = isSandbox ? "waiting_placement" : "placed";
+    const academicStatus = isSandbox ? "pre_registered" : "enrolled";
+
+    // 5. Insert enrollment
     const { data: enrollment, error: enrollErr } = await supabase
       .from("madrasa_enrollments")
       .insert({
         student_id: finalStudentId,
-        class_id: body.class_id,
+        class_id: body.class_id || null,
+        level_id: body.level_id || null,
         annee_scolaire: body.annee_scolaire,
-        statut: "Actif",
+        statut: enrollmentStatut,
+        pedagogical_status: pedagogicalStatus,
+        academic_status: academicStatus,
         org_id: body.org_id,
+        preferences: body.preferences ? {
+          days: body.preferences.days ?? [],
+          sibling_priority: body.preferences.sibling_priority ?? false,
+        } : { days: [], sibling_priority: false },
       })
       .select("id")
       .single();
 
     if (enrollErr) throw new Error(`Erreur création inscription: ${enrollErr.message}`);
 
-    // 5. Generate fees
-    const nbFees = body.billing_cycle === "mensuel" ? 10 : 4; // 10 months or 4 quarters
+    // 6. Generate fees
+    const nbFees = body.billing_cycle === "mensuel" ? 10 : 4;
     const feeAmount = body.billing_cycle === "mensuel"
       ? body.tarif_mensuel
-      : body.tarif_mensuel * 3; // quarterly = 3 months
+      : body.tarif_mensuel * 3;
 
     const fees = [];
     const startMonth = 8; // September (0-indexed: 8 = September)
@@ -179,12 +206,14 @@ serve(async (req) => {
         student_id: finalStudentId,
         enrollment_id: enrollment.id,
         fees_generated: nbFees,
+        sandbox: isSandbox,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }
