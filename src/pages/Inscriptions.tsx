@@ -1153,6 +1153,7 @@ const Inscriptions = () => {
             open={bulkImportOpen}
             onOpenChange={setBulkImportOpen}
             orgId={orgId}
+            onSuccess={fetchEnrollments}
           />
         </>
       )}
