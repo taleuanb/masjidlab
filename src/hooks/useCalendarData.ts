@@ -118,14 +118,14 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rooms")
-        .select("id, name")
+        .select("id, name, floor, features, capacity")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  // ── Profiles (teacher name resolution) ───────────────────────────────
+  // ── Profiles (teacher name + specialties resolution) ─────────────────
   const profilesQuery = useQuery({
     queryKey: ["cal-profiles", orgId],
     enabled: !!orgId,
@@ -133,7 +133,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name")
+        .select("id, display_name, teacher_specialties")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
@@ -220,8 +220,8 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     // Look-ups
     const classMap = new Map(classes.map((c) => [c.id, c]));
     const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
-    const profileMap = new Map(profiles.map((p) => [p.id, p.display_name]));
-    const roomMap = new Map(rooms.map((r) => [r.id, r.name]));
+    const profileMap = new Map(profiles.map((p) => [p.id, p]));
+    const roomMap = new Map(rooms.map((r) => [r.id, r]));
 
     // Index sessions by "classId|date" for O(1) lookup
     const sessionIndex = new Map<string, (typeof sessions)[number]>();
