@@ -103,7 +103,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("madrasa_classes")
-        .select("id, nom, niveau, prof_id, salle_id")
+        .select("id, nom, niveau, prof_id, salle_id, capacity_max")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
