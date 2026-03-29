@@ -208,6 +208,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     const classes = classesQuery.data ?? [];
     const subjects = subjectsQuery.data ?? [];
     const profiles = profilesQuery.data ?? [];
+    const rooms = roomsQuery.data ?? [];
     const holidays = calendarQuery.data ?? [];
     const sessions = sessionsQuery.data ?? [];
     const globalEvents = globalEventsQuery.data ?? [];
@@ -216,6 +217,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     const classMap = new Map(classes.map((c) => [c.id, c]));
     const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
     const profileMap = new Map(profiles.map((p) => [p.id, p.display_name]));
+    const roomMap = new Map(rooms.map((r) => [r.id, r.name]));
 
     // Index sessions by "classId|date" for O(1) lookup
     const sessionIndex = new Map<string, (typeof sessions)[number]>();
@@ -291,6 +293,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           scheduleId: sched.id,
           sessionId: session?.id ?? null,
           subjectNames,
+          roomName: cls.salle_id ? (roomMap.get(cls.salle_id) ?? null) : null,
         });
       }
     }
@@ -315,6 +318,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
         scheduleId: null,
         sessionId: null,
         subjectNames: [],
+        roomName: null,
         meta: { calendarType: h.type, affectsClasses: h.affects_classes },
       });
     }
@@ -341,6 +345,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           scheduleId: null,
           sessionId: null,
           subjectNames: [],
+          roomName: null,
           meta: { pole: ev.pole, description: ev.description },
         });
       }
@@ -354,6 +359,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     classesQuery.data,
     subjectsQuery.data,
     profilesQuery.data,
+    roomsQuery.data,
     calendarQuery.data,
     sessionsQuery.data,
     globalEventsQuery.data,
@@ -369,6 +375,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     classesQuery.isLoading ||
     subjectsQuery.isLoading ||
     profilesQuery.isLoading ||
+    roomsQuery.isLoading ||
     calendarQuery.isLoading ||
     sessionsQuery.isLoading ||
     (includeGlobalEvents && globalEventsQuery.isLoading);
