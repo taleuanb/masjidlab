@@ -590,6 +590,20 @@ export function PlacementStudioTab() {
     });
   }, [pool, search, genderFilter, levelFilter, dayFilter]);
 
+  /* ── Filtered classes for grid ── */
+
+  const filteredClasses = useMemo(() => {
+    return classes.filter((cls) => {
+      if (gridLevelFilter !== "all" && cls.levelId !== gridLevelFilter) return false;
+      if (gridDayFilter !== "all") {
+        const dayNum = parseInt(gridDayFilter, 10);
+        if (!cls.scheduleDays.includes(dayNum)) return false;
+      }
+      if (hideFullClasses && cls.enrolledCount >= cls.capacityMax) return false;
+      return true;
+    });
+  }, [classes, gridLevelFilter, gridDayFilter, hideFullClasses]);
+
   /* ── Match results for all classes against active student ── */
 
   const matchResults = useMemo(() => {
