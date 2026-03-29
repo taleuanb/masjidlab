@@ -1345,7 +1345,6 @@ function ClassesSection() {
               )}
             </>
           )}
-          )}
         </CardContent>
       </Card>
 
