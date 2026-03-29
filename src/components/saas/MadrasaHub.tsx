@@ -1254,90 +1254,97 @@ function ClassesSection() {
           </div>
         </CardHeader>
         <CardContent>
-          {!currentYear && (
-            <div className="flex items-center gap-2 mb-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              Aucune année courante définie. Rendez-vous dans l'onglet <strong>Pilotage</strong> pour en activer une.
-            </div>
-          )}
-          {isLoading ? (
-            <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
-          ) : classes.length === 0 ? (
-            <EmptyState icon={GraduationCap} message="Aucune classe configurée pour cette année." hint="Créez votre première classe ou utilisez le Studio pour une vue arborescente." />
+          {classesView === "staffing" ? (
+            <StaffingStudioTab />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40">
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Niveau</TableHead>
-                  <TableHead>Enseignant</TableHead>
-                  <TableHead>Salle</TableHead>
-                  <TableHead className="text-center">Remplissage</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {classes.map((c: any) => {
-                  const enrolled = enrollmentCounts instanceof Map ? (enrollmentCounts.get(c.id) || 0) : 0;
-                  const cap = c.capacity_max || 15;
-                  const pct = Math.min(100, Math.round((enrolled / cap) * 100));
-                  const room = c.rooms as any;
-                  const level = c.madrasa_levels as any;
-                  const prof = c.profiles as any;
-                  const schedText = scheduleSummary.get(c.id);
-
-                  return (
-                    <TableRow key={c.id} className="hover:bg-muted/30">
-                      <TableCell className="font-medium">{c.nom}</TableCell>
-                      <TableCell>
-                        {level?.label ? (
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="outline" className="text-xs">{level.label}</Badge>
-                            {level.madrasa_cycles?.nom && <span className="text-xs text-muted-foreground">({level.madrasa_cycles.nom})</span>}
-                          </div>
-                        ) : c.niveau ? (
-                          <div className="flex items-center gap-1">
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                            <span className="text-xs text-muted-foreground italic">{c.niveau}</span>
-                          </div>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <span className="text-sm">{prof?.display_name ?? "—"}</span>
-                          {schedText && (
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <Clock className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">{schedText}</span>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {room?.name ? `${room.name} - ${room.floor} (${room.capacity})` : "—"}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className={cn("h-full rounded-full transition-all", pct >= 90 ? "bg-destructive" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500")}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-muted-foreground">{enrolled}/{cap}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteClass.mutate(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
-                      </TableCell>
+            <>
+              {!currentYear && (
+                <div className="flex items-center gap-2 mb-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  Aucune année courante définie. Rendez-vous dans l'onglet <strong>Pilotage</strong> pour en activer une.
+                </div>
+              )}
+              {isLoading ? (
+                <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+              ) : classes.length === 0 ? (
+                <EmptyState icon={GraduationCap} message="Aucune classe configurée pour cette année." hint="Créez votre première classe ou utilisez le Studio pour une vue arborescente." />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Niveau</TableHead>
+                      <TableHead>Enseignant</TableHead>
+                      <TableHead>Salle</TableHead>
+                      <TableHead className="text-center">Remplissage</TableHead>
+                      <TableHead className="w-24" />
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {classes.map((c: any) => {
+                      const enrolled = enrollmentCounts instanceof Map ? (enrollmentCounts.get(c.id) || 0) : 0;
+                      const cap = c.capacity_max || 15;
+                      const pct = Math.min(100, Math.round((enrolled / cap) * 100));
+                      const room = c.rooms as any;
+                      const level = c.madrasa_levels as any;
+                      const prof = c.profiles as any;
+                      const schedText = scheduleSummary.get(c.id);
+
+                      return (
+                        <TableRow key={c.id} className="hover:bg-muted/30">
+                          <TableCell className="font-medium">{c.nom}</TableCell>
+                          <TableCell>
+                            {level?.label ? (
+                              <div className="flex items-center gap-1.5">
+                                <Badge variant="outline" className="text-xs">{level.label}</Badge>
+                                {level.madrasa_cycles?.nom && <span className="text-xs text-muted-foreground">({level.madrasa_cycles.nom})</span>}
+                              </div>
+                            ) : c.niveau ? (
+                              <div className="flex items-center gap-1">
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                <span className="text-xs text-muted-foreground italic">{c.niveau}</span>
+                              </div>
+                            ) : <span className="text-xs text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <span className="text-sm">{prof?.display_name ?? "—"}</span>
+                              {schedText && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <Clock className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">{schedText}</span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {room?.name ? `${room.name} - ${room.floor} (${room.capacity})` : "—"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={cn("h-full rounded-full transition-all", pct >= 90 ? "bg-destructive" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500")}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground">{enrolled}/{cap}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => deleteClass.mutate(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </>
+          )}
           )}
         </CardContent>
       </Card>
