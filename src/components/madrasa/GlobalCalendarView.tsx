@@ -228,7 +228,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
   }
 
   return (
-    <div className="space-y-5 bg-muted/20 -mx-6 -mb-6 px-6 pb-6 pt-2 rounded-2xl">
+    <div className="space-y-5 bg-slate-50 dark:bg-muted/20 -mx-6 -mb-6 px-6 pb-6 pt-2 rounded-2xl">
       {/* ── Navigation ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
@@ -285,17 +285,17 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
             </TabsList>
           </Tabs>
 
-          <div className="hidden lg:flex items-center gap-4 text-[11px] text-muted-foreground">
+          <div className="hidden lg:flex items-center gap-4 text-[11px] text-slate-600 dark:text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded border-l-[3px] border-primary bg-primary/5" />
+              <span className="w-3 h-3 rounded border-l-4 border-indigo-600 bg-white dark:bg-primary/5 shadow-sm" />
               Cours
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded border-l-[3px] border-violet-500 bg-violet-50" />
+              <span className="w-3 h-3 rounded border-l-4 border-violet-600 bg-white dark:bg-violet-50 shadow-sm" />
               Remplacement
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-destructive/10" />
+              <span className="w-3 h-3 rounded bg-red-100 dark:bg-destructive/10 shadow-sm" />
               Fermeture
             </span>
           </div>
@@ -312,7 +312,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="grid grid-cols-7 gap-3">
+          <div className="grid grid-cols-7 gap-0 border border-border/40 rounded-2xl overflow-hidden bg-white dark:bg-card shadow-sm">
             {weekDays.map((day) => {
               const dateStr = format(day, "yyyy-MM-dd");
               const dayEvents = byDay.get(dateStr) ?? [];
@@ -334,17 +334,17 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                   isDragOver={isDragOver}
                   hasConflict={hasConflict}
                 >
-                  {/* Day header */}
-                  <div className="px-3 py-3 text-center">
-                    <p className={`text-[11px] font-medium uppercase tracking-wider ${
-                      today ? "text-primary" : "text-muted-foreground"
+                   {/* Day header */}
+                  <div className="px-3 py-3 text-center border-b border-slate-200 dark:border-border/40 bg-slate-50/80 dark:bg-muted/30">
+                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${
+                      today ? "text-primary" : "text-slate-500 dark:text-muted-foreground"
                     }`}>
                       {format(day, "EEE", { locale: fr })}
                     </p>
                     <p className={`text-lg font-bold mt-0.5 ${
                       today
-                        ? "bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center mx-auto text-sm"
-                        : "text-foreground"
+                        ? "bg-slate-900 dark:bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto text-sm"
+                        : "text-slate-900 dark:text-foreground"
                     }`}>
                       {format(day, "d")}
                     </p>
@@ -359,7 +359,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                     </div>
                   )}
 
-                  <div className="flex-1 px-2 pb-2 space-y-1.5 overflow-y-auto relative">
+                  <div className="flex-1 px-2 pb-2 space-y-2 overflow-y-auto relative">
                     {today && timePos !== null && (
                       <div
                         className="absolute left-0 right-0 z-10 flex items-center pointer-events-none"
@@ -432,10 +432,10 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
 
       {/* ── MONTH VIEW ─────────────────────────────────────────────── */}
       {viewMode === "month" && (
-        <div className="rounded-2xl overflow-hidden bg-card">
+        <div className="rounded-2xl overflow-hidden bg-white dark:bg-card border border-border/40 shadow-sm">
           <div className="grid grid-cols-7">
             {["LUN", "MAR", "MER", "JEU", "VEN", "SAM", "DIM"].map((d) => (
-              <div key={d} className="text-center py-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground bg-muted/30">
+              <div key={d} className="text-center py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground bg-slate-50 dark:bg-muted/30 border-b border-slate-200 dark:border-border/40">
                 {d}
               </div>
             ))}
@@ -454,20 +454,20 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                 <button
                   key={dateStr}
                   onClick={() => drillToWeek(day)}
-                  className={`relative flex flex-col items-start p-2 min-h-[100px] text-left transition-colors border-b border-r border-border/10 hover:bg-accent/30 ${
+                  className={`relative flex flex-col items-start p-2 min-h-[100px] text-left transition-colors border-b border-r border-slate-200 dark:border-border/20 hover:bg-slate-50 dark:hover:bg-accent/30 ${
                     !inMonth ? "opacity-30" : ""
                   } ${
                     hasHoliday
-                      ? "bg-destructive/[0.04]"
+                      ? "bg-red-50/60 dark:bg-destructive/[0.04]"
                       : today
-                      ? "bg-primary/[0.03]"
+                      ? "bg-blue-50/50 dark:bg-primary/[0.03]"
                       : ""
                   }`}
                 >
-                  <span className={`text-xs font-semibold leading-none mb-1.5 ${
+                  <span className={`text-xs font-bold leading-none mb-1.5 ${
                     today
-                      ? "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-[11px]"
-                      : inMonth ? "text-foreground" : "text-muted-foreground"
+                      ? "bg-slate-900 dark:bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-[11px]"
+                      : inMonth ? "text-slate-900 dark:text-foreground" : "text-slate-400 dark:text-muted-foreground"
                   }`}>
                     {format(day, "d")}
                   </span>
@@ -549,16 +549,16 @@ function DroppableDayColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-2xl min-h-[240px] flex flex-col transition-all duration-200 ${
+      className={`min-h-[240px] flex flex-col transition-all duration-200 border-r border-slate-200 dark:border-border/30 last:border-r-0 ${
         isClosed
-          ? "bg-destructive/[0.04]"
+          ? "bg-red-50/50 dark:bg-destructive/[0.04]"
           : isDragOver && hasConflict
-          ? "bg-destructive/[0.08] ring-2 ring-destructive/30"
+          ? "bg-red-50 dark:bg-destructive/[0.08] ring-2 ring-destructive/30"
           : isDragOver
-          ? "bg-primary/[0.06] ring-2 ring-primary/30 scale-[1.02]"
+          ? "bg-blue-50 dark:bg-primary/[0.06] ring-2 ring-primary/30 scale-[1.01]"
           : today
-          ? "bg-primary/[0.03] ring-1 ring-primary/20"
-          : "bg-muted/30 hover:bg-muted/50"
+          ? "bg-blue-50/40 dark:bg-primary/[0.03]"
+          : "bg-white dark:bg-card hover:bg-slate-50/80 dark:hover:bg-muted/50"
       }`}
     >
       {children}
@@ -626,53 +626,43 @@ function WeekEventCardContent({
   const isPast = isBefore(ev.end, new Date()) && ev.status !== "completed";
 
   const borderColor = hasConflict
-    ? "border-l-destructive"
+    ? "border-l-red-500"
     : isCancelled
-    ? "border-l-destructive/40"
+    ? "border-l-red-400"
     : isReplacement
-    ? "border-l-violet-500"
+    ? "border-l-violet-600"
     : ev.status === "completed"
-    ? "border-l-emerald-500"
-    : "border-l-primary";
-
-  const bgColor = hasConflict
-    ? "bg-destructive/10"
-    : isCancelled
-    ? "bg-destructive/[0.04]"
-    : isReplacement
-    ? "bg-violet-50 dark:bg-violet-500/5"
-    : ev.status === "completed"
-    ? "bg-emerald-50 dark:bg-emerald-500/5"
-    : "bg-primary/[0.04]";
+    ? "border-l-emerald-600"
+    : "border-l-indigo-600";
 
   return (
     <button
       onClick={onClick}
-      className={`w-full rounded-lg border-l-[3px] ${borderColor} ${bgColor} px-3 py-2.5 text-left transition-all duration-200 hover:shadow-md hover:-translate-y-px ${
-        isPast ? "opacity-45" : ""
-      } ${isCancelled ? "opacity-45" : ""} ${
+      className={`w-full rounded-lg border-l-4 ${borderColor} bg-white dark:bg-card shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-sm px-3 py-2.5 text-left transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:-translate-y-px ${
+        isPast ? "opacity-50" : ""
+      } ${isCancelled ? "opacity-50 line-through decoration-slate-300" : ""} ${
         isGhost ? "shadow-xl ring-1 ring-border/30 rotate-1" : ""
-      } ${hasConflict ? "animate-pulse" : ""}`}
+      } ${hasConflict ? "animate-pulse bg-red-50 dark:bg-destructive/10" : ""}`}
     >
-      <p className="text-[11px] font-medium text-foreground truncate">{ev.className ?? ev.title}</p>
+      <p className="text-[11px] font-bold text-slate-900 dark:text-foreground truncate">{ev.className ?? ev.title}</p>
       {ev.subjectNames.length > 0 && (
-        <p className="text-[9px] text-muted-foreground truncate mt-0.5">{ev.subjectNames.join(", ")}</p>
+        <p className="text-[9px] text-slate-500 dark:text-muted-foreground truncate mt-0.5">{ev.subjectNames.join(", ")}</p>
       )}
-      <div className="flex items-center gap-2.5 mt-1.5 text-[9px] text-muted-foreground/70">
+      <div className="flex items-center gap-2.5 mt-1.5 text-[9px] text-slate-600 dark:text-muted-foreground">
         <span className="flex items-center gap-0.5 tabular-nums">
-          <Clock className="h-2.5 w-2.5" />
+          <Clock className="h-2.5 w-2.5 text-slate-500 dark:text-muted-foreground" />
           {format(ev.start, "HH:mm")} – {format(ev.end, "HH:mm")}
         </span>
         {ev.roomName && (
           <span className="flex items-center gap-0.5 truncate">
-            <MapPin className="h-2.5 w-2.5 shrink-0" />
+            <MapPin className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-muted-foreground" />
             <span className="truncate">{ev.roomName}</span>
           </span>
         )}
       </div>
       {ev.assignedTeacherName && (
-        <div className="flex items-center gap-1 mt-0.5 text-[9px] text-muted-foreground/70">
-          <User className="h-2.5 w-2.5 shrink-0" />
+        <div className="flex items-center gap-1 mt-0.5 text-[9px] text-slate-600 dark:text-muted-foreground">
+          <User className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-muted-foreground" />
           <span className="truncate">{ev.assignedTeacherName}</span>
         </div>
       )}
@@ -712,19 +702,19 @@ function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: 
 // ── Month compact pill ─────────────────────────────────────────────────
 function MonthEventPill({ event: ev }: { event: CalendarEvent }) {
   const dotColor = ev.status === "cancelled"
-    ? "border-l-destructive/60"
+    ? "border-l-red-400"
     : ev.isReplacement
-    ? "border-l-violet-500"
+    ? "border-l-violet-600"
     : ev.status === "completed"
-    ? "border-l-emerald-500"
-    : "border-l-primary";
+    ? "border-l-emerald-600"
+    : "border-l-indigo-600";
 
   return (
-    <div className={`flex items-center gap-1 text-[9px] truncate rounded px-1.5 py-[2px] border-l-[3px] bg-muted/40 ${dotColor}`}>
-      <span className="font-medium text-foreground truncate">
+    <div className={`flex items-center gap-1 text-[9px] truncate rounded px-1.5 py-[2px] border-l-[3px] bg-white dark:bg-muted/40 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ${dotColor}`}>
+      <span className="font-bold text-slate-900 dark:text-foreground truncate">
         {format(ev.start, "HH:mm")}
       </span>
-      <span className="truncate text-muted-foreground">
+      <span className="truncate text-slate-600 dark:text-muted-foreground">
         {ev.className}
       </span>
     </div>
