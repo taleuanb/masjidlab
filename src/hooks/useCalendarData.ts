@@ -19,21 +19,15 @@ export interface CalendarEvent {
   className: string | null;
   classNiveau: string | null;
   isReplacement: boolean;
-  /** Profile ID of the teacher who actually taught (from madrasa_sessions) */
   actualTeacherId: string | null;
-  /** Display name of the actual teacher */
   actualTeacherName: string | null;
-  /** Profile ID of the assigned teacher (from madrasa_classes) */
   assignedTeacherId: string | null;
-  /** Display name of the assigned teacher */
   assignedTeacherName: string | null;
-  /** Original schedule ID */
   scheduleId: string | null;
-  /** Session ID if completed */
   sessionId: string | null;
-  /** Subject names for this slot */
   subjectNames: string[];
-  /** Extra metadata for holidays / global events */
+  /** Room name resolved from class → salle_id → rooms */
+  roomName: string | null;
   meta?: Record<string, unknown>;
 }
 
@@ -105,7 +99,22 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("madrasa_classes")
-        .select("id, nom, niveau, prof_id")
+        .select("id, nom, niveau, prof_id, salle_id")
+        .eq("org_id", orgId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // ── Rooms (for room name resolution) ─────────────────────────────────
+  const roomsQuery = useQuery({
+    queryKey: ["cal-rooms", orgId],
+    enabled: !!orgId,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("id, name")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
@@ -199,6 +208,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     const classes = classesQuery.data ?? [];
     const subjects = subjectsQuery.data ?? [];
     const profiles = profilesQuery.data ?? [];
+    const rooms = roomsQuery.data ?? [];
     const holidays = calendarQuery.data ?? [];
     const sessions = sessionsQuery.data ?? [];
     const globalEvents = globalEventsQuery.data ?? [];
@@ -207,6 +217,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     const classMap = new Map(classes.map((c) => [c.id, c]));
     const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
     const profileMap = new Map(profiles.map((p) => [p.id, p.display_name]));
+    const roomMap = new Map(rooms.map((r) => [r.id, r.name]));
 
     // Index sessions by "classId|date" for O(1) lookup
     const sessionIndex = new Map<string, (typeof sessions)[number]>();
@@ -282,6 +293,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           scheduleId: sched.id,
           sessionId: session?.id ?? null,
           subjectNames,
+          roomName: cls.salle_id ? (roomMap.get(cls.salle_id) ?? null) : null,
         });
       }
     }
@@ -306,6 +318,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
         scheduleId: null,
         sessionId: null,
         subjectNames: [],
+        roomName: null,
         meta: { calendarType: h.type, affectsClasses: h.affects_classes },
       });
     }
@@ -332,6 +345,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           scheduleId: null,
           sessionId: null,
           subjectNames: [],
+          roomName: null,
           meta: { pole: ev.pole, description: ev.description },
         });
       }
@@ -345,6 +359,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     classesQuery.data,
     subjectsQuery.data,
     profilesQuery.data,
+    roomsQuery.data,
     calendarQuery.data,
     sessionsQuery.data,
     globalEventsQuery.data,
@@ -360,6 +375,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     classesQuery.isLoading ||
     subjectsQuery.isLoading ||
     profilesQuery.isLoading ||
+    roomsQuery.isLoading ||
     calendarQuery.isLoading ||
     sessionsQuery.isLoading ||
     (includeGlobalEvents && globalEventsQuery.isLoading);
