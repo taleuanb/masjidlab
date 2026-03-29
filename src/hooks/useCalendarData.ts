@@ -279,6 +279,10 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           !!cls.prof_id &&
           session.actual_teacher_id !== cls.prof_id;
 
+        const assignedProfile = cls.prof_id ? profileMap.get(cls.prof_id) : null;
+        const actualProfile = session?.actual_teacher_id ? profileMap.get(session.actual_teacher_id) : null;
+        const room = cls.salle_id ? roomMap.get(cls.salle_id) : null;
+
         result.push({
           id: session?.id ?? `${sched.id}_${dateStr}`,
           title: `${cls.nom}${subjectNames.length ? ` — ${subjectNames.join(", ")}` : ""}`,
@@ -289,15 +293,20 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           classId: sched.class_id,
           className: cls.nom,
           classNiveau: cls.niveau ?? null,
+          classCapacity: cls.capacity_max ?? null,
           isReplacement,
           actualTeacherId: session?.actual_teacher_id ?? null,
-          actualTeacherName: session?.actual_teacher_id ? (profileMap.get(session.actual_teacher_id) ?? null) : null,
+          actualTeacherName: actualProfile?.display_name ?? null,
           assignedTeacherId: cls.prof_id,
-          assignedTeacherName: cls.prof_id ? (profileMap.get(cls.prof_id) ?? null) : null,
+          assignedTeacherName: assignedProfile?.display_name ?? null,
+          assignedTeacherSpecialties: assignedProfile?.teacher_specialties ?? [],
           scheduleId: sched.id,
           sessionId: session?.id ?? null,
           subjectNames,
-          roomName: cls.salle_id ? (roomMap.get(cls.salle_id) ?? null) : null,
+          roomName: room?.name ?? null,
+          roomFloor: room?.floor ?? null,
+          roomFeatures: room?.features ?? [],
+          roomCapacity: room?.capacity ?? null,
         });
       }
     }
