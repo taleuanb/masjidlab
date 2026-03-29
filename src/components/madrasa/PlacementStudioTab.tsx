@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
   Search, Users, LayoutDashboard, Heart, CalendarDays, MapPin, X, GripVertical,
-  AlertTriangle, CheckCircle2,
+  AlertTriangle, CheckCircle2, Filter,
 } from "lucide-react";
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -520,6 +522,9 @@ export function PlacementStudioTab() {
   const [levelFilter, setLevelFilter] = useState("all");
   const [genderFilter, setGenderFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
+  const [gridLevelFilter, setGridLevelFilter] = useState("all");
+  const [gridDayFilter, setGridDayFilter] = useState("all");
+  const [hideFullClasses, setHideFullClasses] = useState(false);
   const [activeStudent, setActiveStudent] = useState<PoolStudent | null>(null);
   const [overClassId, setOverClassId] = useState<string | null>(null);
 
@@ -584,6 +589,20 @@ export function PlacementStudioTab() {
       return true;
     });
   }, [pool, search, genderFilter, levelFilter, dayFilter]);
+
+  /* ── Filtered classes for grid ── */
+
+  const filteredClasses = useMemo(() => {
+    return classes.filter((cls) => {
+      if (gridLevelFilter !== "all" && cls.levelId !== gridLevelFilter) return false;
+      if (gridDayFilter !== "all") {
+        const dayNum = parseInt(gridDayFilter, 10);
+        if (!cls.scheduleDays.includes(dayNum)) return false;
+      }
+      if (hideFullClasses && cls.enrolledCount >= cls.capacityMax) return false;
+      return true;
+    });
+  }, [classes, gridLevelFilter, gridDayFilter, hideFullClasses]);
 
   /* ── Match results for all classes against active student ── */
 
@@ -785,11 +804,52 @@ export function PlacementStudioTab() {
             </CardContent>
           </Card>
 
-          {classes.length === 0 ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">Aucune classe configurée.</div>
+          {/* ── Grid Toolbar ── */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={gridLevelFilter} onValueChange={setGridLevelFilter}>
+              <SelectTrigger className="h-8 text-xs w-[180px]"><SelectValue placeholder="Niveau" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les niveaux</SelectItem>
+                {levels.map((l: any) => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.label} {l.madrasa_cycles?.nom ? `(${l.madrasa_cycles.nom})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={gridDayFilter} onValueChange={setGridDayFilter}>
+              <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue placeholder="Jour" /></SelectTrigger>
+              <SelectContent>
+                {DAY_FILTER_OPTIONS.map((d) => (
+                  <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hide-full"
+                checked={hideFullClasses}
+                onCheckedChange={(v) => setHideFullClasses(v === true)}
+              />
+              <Label htmlFor="hide-full" className="text-xs cursor-pointer">
+                Masquer les classes complètes
+              </Label>
+            </div>
+            {(gridLevelFilter !== "all" || gridDayFilter !== "all" || hideFullClasses) && (
+              <Badge variant="secondary" className="text-[10px]">
+                {filteredClasses.length}/{classes.length} classes
+              </Badge>
+            )}
+          </div>
+
+          {filteredClasses.length === 0 ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+              {classes.length === 0 ? "Aucune classe configurée." : "Aucune classe ne correspond aux filtres."}
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {classes.map((cls) => (
+              {filteredClasses.map((cls) => (
                 <DroppableClassCard
                   key={cls.id} cls={cls}
                   isOver={overClassId === cls.id}
