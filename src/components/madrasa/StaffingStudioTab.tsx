@@ -255,8 +255,8 @@ export function StaffingStudioTab() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["staffing-classes", orgId] });
+      qc.invalidateQueries({ queryKey: ["staffing-teachers", orgId] });
       qc.invalidateQueries({ queryKey: ["madrasa_classes", orgId] });
-      toast({ title: "Affectation mise à jour" });
     },
     onError: (e: any) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
