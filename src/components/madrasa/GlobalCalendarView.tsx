@@ -14,6 +14,12 @@ import {
   AlertCircle,
   MapPin,
   User,
+  Building2,
+  Monitor,
+  CheckSquare,
+  XCircle,
+  Layers,
+  GraduationCap,
 } from "lucide-react";
 import {
   addDays,
@@ -378,7 +384,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
 
       {/* ── Detail Sheet ───────────────────────────────────────────── */}
       <Sheet open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
-        <SheetContent className="w-[380px] sm:w-[420px]">
+        <SheetContent className="w-[400px] sm:w-[460px] p-0 flex flex-col">
           {selectedEvent && (
             <EventDetailPanel
               event={selectedEvent}
@@ -386,6 +392,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                 setSelectedEvent(null);
                 setSummarySessionEvent(ev);
               }}
+              onClose={() => setSelectedEvent(null)}
             />
           )}
         </SheetContent>
