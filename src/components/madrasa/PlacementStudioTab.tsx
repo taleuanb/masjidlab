@@ -521,6 +521,7 @@ export function PlacementStudioTab() {
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("all");
   const [genderFilter, setGenderFilter] = useState("all");
+  const [dayFilter, setDayFilter] = useState("all");
   const [gridLevelFilter, setGridLevelFilter] = useState("all");
   const [gridDayFilter, setGridDayFilter] = useState("all");
   const [hideFullClasses, setHideFullClasses] = useState(false);
