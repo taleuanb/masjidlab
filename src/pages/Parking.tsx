@@ -34,7 +34,8 @@ export default function ParkingPage() {
         </div>
       </header>
 
-      <main className="p-6 space-y-6">
+      <main className="p-4 md:p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bento-card">
@@ -157,6 +158,7 @@ export default function ParkingPage() {
               ))}
             </div>
           </div>
+        </div>
         </div>
       </main>
     </div>

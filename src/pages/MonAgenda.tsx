@@ -386,7 +386,8 @@ export default function MonAgendaPage() {
         </div>
       </header>
 
-      <main className="p-6 space-y-4">
+      <main className="p-4 md:p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
         <Tabs defaultValue="madrasa" className="space-y-4">
           <TabsList>
             <TabsTrigger value="madrasa" className="gap-1.5">
@@ -657,6 +658,7 @@ export default function MonAgendaPage() {
             </div>
           </TabsContent>
         </Tabs>
+        </div>
       </main>
 
       {/* Reservation Dialog */}

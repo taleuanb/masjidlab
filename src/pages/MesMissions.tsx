@@ -245,7 +245,8 @@ export default function MesMissionsPage() {
         </div>
       </header>
 
-      <main className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
+      <main className="p-4 sm:p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
         {/* Upcoming */}
         {upcoming.length > 0 && (
           <section className="space-y-4">
@@ -283,6 +284,7 @@ export default function MesMissionsPage() {
             <p className="text-muted-foreground">Aucune mission assignée pour le moment.</p>
           </div>
         )}
+        </div>
       </main>
     </div>
   );

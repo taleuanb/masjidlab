@@ -331,7 +331,8 @@ const Eleves = () => {
 
   return (
     <TooltipProvider>
-      <main className="flex-1 p-4 md:p-6 space-y-6">
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <SidebarTrigger />
@@ -658,6 +659,7 @@ const Eleves = () => {
             </Table>
           </div>
         )}
+        </div>
       </main>
     </TooltipProvider>
   );

@@ -30,7 +30,8 @@ export default function EvenementsPage() {
         </div>
       </header>
 
-      <main className="p-6">
+      <main className="p-4 md:p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Event list */}
           <div className="space-y-3">
@@ -178,6 +179,7 @@ export default function EvenementsPage() {
               </div>
             </motion.div>
           )}
+        </div>
         </div>
       </main>
     </div>
