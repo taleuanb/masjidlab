@@ -20,6 +20,7 @@ import {
   XCircle,
   Layers,
   GraduationCap,
+  GripVertical,
 } from "lucide-react";
 import {
   addDays,
@@ -33,13 +34,25 @@ import {
   isBefore,
   getHours,
   getMinutes,
-  differenceInMinutes,
-  startOfDay,
 } from "date-fns";
 import { fr } from "date-fns/locale";
+import {
+  DndContext,
+  DragOverlay,
+  useDraggable,
+  useDroppable,
+  closestCenter,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { SessionSummarySheet } from "@/components/madrasa/SessionSummarySheet";
 
 import { useCalendarData, type CalendarEvent } from "@/hooks/useCalendarData";
+import { useScheduleDragDrop } from "@/hooks/useScheduleDragDrop";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -80,13 +93,12 @@ function groupByDay(events: CalendarEvent[], days: Date[]): Map<string, Calendar
   return map;
 }
 
-// ── Current time indicator position (percentage through 7h-21h range) ─
 function useCurrentTimePosition() {
   const now = new Date();
   const h = getHours(now);
   const m = getMinutes(now);
   const totalMin = (h - 7) * 60 + m;
-  const rangeMin = 14 * 60; // 7h to 21h
+  const rangeMin = 14 * 60;
   if (totalMin < 0 || totalMin > rangeMin) return null;
   return (totalMin / rangeMin) * 100;
 }
@@ -97,6 +109,9 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [summarySessionEvent, setSummarySessionEvent] = useState<CalendarEvent | null>(null);
+  const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
+  const [overDayOfWeek, setOverDayOfWeek] = useState<number | null>(null);
+  const [conflictState, setConflictState] = useState<{ room: boolean; teacher: boolean }>({ room: false, teacher: false });
 
   const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
@@ -126,6 +141,8 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
     return filtered;
   }, [rawEvents, filterNiveau, filterSubjects]);
 
+  const { handleDrop, detectConflicts, isUpdating } = useScheduleDragDrop(events);
+
   const days = viewMode === "week" ? weekDays : monthGrid;
   const byDay = useMemo(() => groupByDay(events, days), [events, days]);
 
@@ -138,6 +155,64 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
   }, []);
 
   const timePos = useCurrentTimePosition();
+
+  // ── DnD sensors & handlers ──────────────────────────────────────────
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const ev = event.active.data.current?.event as CalendarEvent | undefined;
+    if (ev && ev.type === "session" && ev.scheduleId && ev.status !== "cancelled") {
+      setActiveEvent(ev);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    if (!activeEvent || !event.over) {
+      setOverDayOfWeek(null);
+      setConflictState({ room: false, teacher: false });
+      return;
+    }
+    const targetDay = event.over.data.current?.dayOfWeek as number | undefined;
+    if (targetDay == null) return;
+
+    setOverDayOfWeek(targetDay);
+
+    // Real-time conflict detection
+    const conflicts = detectConflicts(activeEvent, targetDay);
+    setConflictState({
+      room: conflicts.hasRoomConflict,
+      teacher: conflicts.hasTeacherConflict,
+    });
+  }, [activeEvent, detectConflicts]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    if (!activeEvent || !event.over) {
+      setActiveEvent(null);
+      setOverDayOfWeek(null);
+      setConflictState({ room: false, teacher: false });
+      return;
+    }
+
+    const targetDay = event.over.data.current?.dayOfWeek as number | undefined;
+    if (targetDay != null && targetDay !== activeEvent.start.getDay()) {
+      handleDrop({
+        event: activeEvent,
+        newDayOfWeek: targetDay,
+      });
+    }
+
+    setActiveEvent(null);
+    setOverDayOfWeek(null);
+    setConflictState({ room: false, teacher: false });
+  }, [activeEvent, handleDrop]);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveEvent(null);
+    setOverDayOfWeek(null);
+    setConflictState({ room: false, teacher: false });
+  }, []);
 
   if (isLoading) {
     return (
@@ -210,7 +285,6 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
             </TabsList>
           </Tabs>
 
-          {/* Legend */}
           <div className="hidden lg:flex items-center gap-4 text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded border-l-[3px] border-primary bg-primary/5" />
@@ -228,99 +302,137 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
         </div>
       </div>
 
-      {/* ── WEEK VIEW ──────────────────────────────────────────────── */}
+      {/* ── WEEK VIEW with DnD ─────────────────────────────────────── */}
       {viewMode === "week" && (
-        <div className="grid grid-cols-7 gap-3">
-          {weekDays.map((day) => {
-            const dateStr = format(day, "yyyy-MM-dd");
-            const dayEvents = byDay.get(dateStr) ?? [];
-            const today = isToday(day);
-            const holidays = dayEvents.filter((e) => e.type === "holiday" && e.meta?.affectsClasses);
-            const isClosed = holidays.length > 0;
-            const sessions = dayEvents.filter((e) => e.type === "session");
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <div className="grid grid-cols-7 gap-3">
+            {weekDays.map((day) => {
+              const dateStr = format(day, "yyyy-MM-dd");
+              const dayEvents = byDay.get(dateStr) ?? [];
+              const today = isToday(day);
+              const holidays = dayEvents.filter((e) => e.type === "holiday" && e.meta?.affectsClasses);
+              const isClosed = holidays.length > 0;
+              const sessions = dayEvents.filter((e) => e.type === "session");
+              const dayOfWeek = day.getDay();
+              const isDragOver = overDayOfWeek === dayOfWeek && activeEvent != null;
+              const hasConflict = isDragOver && (conflictState.room || conflictState.teacher);
 
-            return (
-              <div
-                key={dateStr}
-                className={`rounded-2xl min-h-[240px] flex flex-col transition-all ${
-                  isClosed
-                    ? "bg-destructive/[0.04]"
-                    : today
-                    ? "bg-primary/[0.03] ring-1 ring-primary/20"
-                    : "bg-muted/30 hover:bg-muted/50"
-                }`}
-              >
-                {/* Day header */}
-                <div className="px-3 py-3 text-center">
-                  <p className={`text-[11px] font-medium uppercase tracking-wider ${
-                    today ? "text-primary" : "text-muted-foreground"
-                  }`}>
-                    {format(day, "EEE", { locale: fr })}
-                  </p>
-                  <p className={`text-lg font-bold mt-0.5 ${
-                    today
-                      ? "bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center mx-auto text-sm"
-                      : "text-foreground"
-                  }`}>
-                    {format(day, "d")}
-                  </p>
-                </div>
-
-                {/* Holiday banner */}
-                {isClosed && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 mx-2 rounded-lg bg-destructive/10">
-                    <Palmtree className="h-3 w-3 text-destructive/70 shrink-0" />
-                    <span className="text-[10px] font-semibold text-destructive truncate">
-                      {holidays[0].title}
-                    </span>
+              return (
+                <DroppableDayColumn
+                  key={dateStr}
+                  dayOfWeek={dayOfWeek}
+                  dateStr={dateStr}
+                  today={today}
+                  isClosed={isClosed}
+                  isDragOver={isDragOver}
+                  hasConflict={hasConflict}
+                >
+                  {/* Day header */}
+                  <div className="px-3 py-3 text-center">
+                    <p className={`text-[11px] font-medium uppercase tracking-wider ${
+                      today ? "text-primary" : "text-muted-foreground"
+                    }`}>
+                      {format(day, "EEE", { locale: fr })}
+                    </p>
+                    <p className={`text-lg font-bold mt-0.5 ${
+                      today
+                        ? "bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center mx-auto text-sm"
+                        : "text-foreground"
+                    }`}>
+                      {format(day, "d")}
+                    </p>
                   </div>
-                )}
 
-                <div className="flex-1 px-2 pb-2 space-y-1.5 overflow-y-auto relative">
-                  {/* Current time indicator for today */}
-                  {today && timePos !== null && (
-                    <div
-                      className="absolute left-0 right-0 z-10 flex items-center pointer-events-none"
-                      style={{ top: `${timePos}%` }}
-                    >
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 -ml-1 shadow-sm shadow-rose-500/40" />
-                      <span className="flex-1 h-[1.5px] bg-rose-500/70" />
+                  {isClosed && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 mx-2 rounded-lg bg-destructive/10">
+                      <Palmtree className="h-3 w-3 text-destructive/70 shrink-0" />
+                      <span className="text-[10px] font-semibold text-destructive truncate">
+                        {holidays[0].title}
+                      </span>
                     </div>
                   )}
 
-                  {!isClosed && dayEvents.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground/30 py-8">
-                      <CalendarOff className="h-5 w-5 mb-1" />
-                      <span className="text-[10px]">Aucun cours</span>
-                    </div>
-                  )}
-                  {isClosed && sessions.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-destructive/25 py-8">
-                      <CalendarOff className="h-5 w-5 mb-1" />
-                      <span className="text-[10px]">École fermée</span>
-                    </div>
-                  )}
-                  {sessions.map((ev) => (
-                    <div key={ev.id} className={isClosed ? "opacity-25 pointer-events-none" : ""}>
-                      <WeekEventCard event={ev} onClick={() => !isClosed && setSelectedEvent(ev)} />
-                    </div>
-                  ))}
-                  {dayEvents
-                    .filter((e) => e.type !== "session" && e.type !== "holiday")
-                    .map((ev) => (
-                      <WeekEventCard key={ev.id} event={ev} onClick={() => setSelectedEvent(ev)} />
+                  <div className="flex-1 px-2 pb-2 space-y-1.5 overflow-y-auto relative">
+                    {today && timePos !== null && (
+                      <div
+                        className="absolute left-0 right-0 z-10 flex items-center pointer-events-none"
+                        style={{ top: `${timePos}%` }}
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 -ml-1 shadow-sm shadow-rose-500/40" />
+                        <span className="flex-1 h-[1.5px] bg-rose-500/70" />
+                      </div>
+                    )}
+
+                    {!isClosed && dayEvents.length === 0 && (
+                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground/30 py-8">
+                        <CalendarOff className="h-5 w-5 mb-1" />
+                        <span className="text-[10px]">Aucun cours</span>
+                      </div>
+                    )}
+                    {isClosed && sessions.length === 0 && (
+                      <div className="flex flex-col items-center justify-center h-full text-destructive/25 py-8">
+                        <CalendarOff className="h-5 w-5 mb-1" />
+                        <span className="text-[10px]">École fermée</span>
+                      </div>
+                    )}
+                    {sessions.map((ev) => (
+                      <div key={ev.id} className={isClosed ? "opacity-25 pointer-events-none" : ""}>
+                        <DraggableEventCard
+                          event={ev}
+                          onClick={() => !isClosed && setSelectedEvent(ev)}
+                          isDragging={activeEvent?.id === ev.id}
+                        />
+                      </div>
                     ))}
-                </div>
+                    {dayEvents
+                      .filter((e) => e.type !== "session" && e.type !== "holiday")
+                      .map((ev) => (
+                        <WeekEventCard key={ev.id} event={ev} onClick={() => setSelectedEvent(ev)} />
+                      ))}
+
+                    {/* Conflict indicator during drag-over */}
+                    {isDragOver && hasConflict && (
+                      <div className="absolute inset-x-2 bottom-2 rounded-lg bg-destructive/10 border border-destructive/20 px-2 py-1.5 text-center animate-in fade-in duration-200">
+                        <p className="text-[10px] font-medium text-destructive">
+                          {conflictState.room ? "🚫 Salle occupée" : "⚠️ Prof indisponible"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </DroppableDayColumn>
+              );
+            })}
+          </div>
+
+          {/* Drag overlay (ghost card) */}
+          <DragOverlay dropAnimation={null}>
+            {activeEvent && (
+              <div className={`w-44 opacity-90 ${
+                conflictState.room || conflictState.teacher
+                  ? "scale-105"
+                  : ""
+              }`}>
+                <WeekEventCardContent
+                  event={activeEvent}
+                  isGhost
+                  hasConflict={conflictState.room || conflictState.teacher}
+                />
               </div>
-            );
-          })}
-        </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {/* ── MONTH VIEW ─────────────────────────────────────────────── */}
       {viewMode === "month" && (
         <div className="rounded-2xl overflow-hidden bg-card">
-          {/* Day headers */}
           <div className="grid grid-cols-7">
             {["LUN", "MAR", "MER", "JEU", "VEN", "SAM", "DIM"].map((d) => (
               <div key={d} className="text-center py-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground bg-muted/30">
@@ -361,7 +473,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                   </span>
                   <div className="w-full space-y-0.5 overflow-hidden">
                     {hasHoliday && (
-                      <div className="flex items-center gap-0.5 text-[9px] text-destructive font-medium truncate px-1 py-0.5 rounded bg-destructive/10">
+                      <div className="flex items-center gap-0.5 text-[9px] text-destructive font-medium truncate px-1.5 py-[2px] rounded bg-destructive/10">
                         <Palmtree className="h-2.5 w-2.5 shrink-0" />
                         <span className="truncate">{holidays[0].title}</span>
                       </div>
@@ -411,57 +523,111 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
   );
 }
 
-// ── Month compact pill ─────────────────────────────────────────────────
-function MonthEventPill({ event: ev }: { event: CalendarEvent }) {
-  const dotColor = ev.status === "cancelled"
-    ? "border-l-destructive/60"
-    : ev.isReplacement
-    ? "border-l-violet-500"
-    : ev.status === "completed"
-    ? "border-l-emerald-500"
-    : "border-l-primary";
+// ── Droppable day column ───────────────────────────────────────────────
+function DroppableDayColumn({
+  dayOfWeek,
+  dateStr,
+  today,
+  isClosed,
+  isDragOver,
+  hasConflict,
+  children,
+}: {
+  dayOfWeek: number;
+  dateStr: string;
+  today: boolean;
+  isClosed: boolean;
+  isDragOver: boolean;
+  hasConflict: boolean;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `day-${dateStr}`,
+    data: { dayOfWeek },
+  });
 
   return (
-    <div className={`flex items-center gap-1 text-[9px] truncate rounded px-1.5 py-[2px] border-l-[3px] bg-muted/40 ${dotColor}`}>
-      <span className="font-medium text-foreground truncate">
-        {format(ev.start, "HH:mm")}
-      </span>
-      <span className="truncate text-muted-foreground">
-        {ev.className}
-      </span>
+    <div
+      ref={setNodeRef}
+      className={`rounded-2xl min-h-[240px] flex flex-col transition-all duration-200 ${
+        isClosed
+          ? "bg-destructive/[0.04]"
+          : isDragOver && hasConflict
+          ? "bg-destructive/[0.08] ring-2 ring-destructive/30"
+          : isDragOver
+          ? "bg-primary/[0.06] ring-2 ring-primary/30 scale-[1.02]"
+          : today
+          ? "bg-primary/[0.03] ring-1 ring-primary/20"
+          : "bg-muted/30 hover:bg-muted/50"
+      }`}
+    >
+      {children}
     </div>
   );
 }
 
-// ── Week event card (pastel + left border) ─────────────────────────────
-function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: () => void }) {
-  if (ev.type === "holiday") {
-    return (
-      <button
-        onClick={onClick}
-        className="w-full rounded-xl px-3 py-2 text-left bg-destructive/[0.06] hover:bg-destructive/10 transition-colors"
-      >
-        <div className="flex items-center gap-1.5">
-          <Palmtree className="h-3 w-3 text-destructive/60 shrink-0" />
-          <span className="text-[10px] font-medium text-destructive truncate">{ev.title}</span>
+// ── Draggable event card wrapper ───────────────────────────────────────
+function DraggableEventCard({
+  event,
+  onClick,
+  isDragging,
+}: {
+  event: CalendarEvent;
+  onClick: () => void;
+  isDragging: boolean;
+}) {
+  const canDrag = event.type === "session" && !!event.scheduleId && event.status !== "cancelled";
+
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: event.id,
+    data: { event },
+    disabled: !canDrag,
+  });
+
+  const style = transform
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative group ${isDragging ? "opacity-30" : ""}`}
+    >
+      {/* Drag handle */}
+      {canDrag && (
+        <div
+          {...listeners}
+          {...attributes}
+          className="absolute -left-0.5 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-60 hover:!opacity-100 cursor-grab active:cursor-grabbing transition-opacity p-0.5"
+        >
+          <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
-      </button>
-    );
-  }
+      )}
+      <WeekEventCardContent event={event} onClick={onClick} />
+    </div>
+  );
+}
 
-  if (ev.type === "global_event") {
-    return (
-      <button onClick={onClick} className="w-full rounded-xl bg-muted/40 px-3 py-2 text-left hover:bg-muted/60 transition-colors">
-        <span className="text-[10px] text-muted-foreground truncate block">{ev.title}</span>
-      </button>
-    );
-  }
-
+// ── Event card content (shared between real + overlay) ─────────────────
+function WeekEventCardContent({
+  event: ev,
+  onClick,
+  isGhost = false,
+  hasConflict = false,
+}: {
+  event: CalendarEvent;
+  onClick?: () => void;
+  isGhost?: boolean;
+  hasConflict?: boolean;
+}) {
   const isCancelled = ev.status === "cancelled";
   const isReplacement = ev.isReplacement;
   const isPast = isBefore(ev.end, new Date()) && ev.status !== "completed";
 
-  const borderColor = isCancelled
+  const borderColor = hasConflict
+    ? "border-l-destructive"
+    : isCancelled
     ? "border-l-destructive/40"
     : isReplacement
     ? "border-l-violet-500"
@@ -469,7 +635,9 @@ function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: 
     ? "border-l-emerald-500"
     : "border-l-primary";
 
-  const bgColor = isCancelled
+  const bgColor = hasConflict
+    ? "bg-destructive/10"
+    : isCancelled
     ? "bg-destructive/[0.04]"
     : isReplacement
     ? "bg-violet-50 dark:bg-violet-500/5"
@@ -482,7 +650,9 @@ function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: 
       onClick={onClick}
       className={`w-full rounded-lg border-l-[3px] ${borderColor} ${bgColor} px-3 py-2.5 text-left transition-all duration-200 hover:shadow-md hover:-translate-y-px ${
         isPast ? "opacity-45" : ""
-      } ${isCancelled ? "opacity-45" : ""}`}
+      } ${isCancelled ? "opacity-45" : ""} ${
+        isGhost ? "shadow-xl ring-1 ring-border/30 rotate-1" : ""
+      } ${hasConflict ? "animate-pulse" : ""}`}
     >
       <p className="text-[11px] font-medium text-foreground truncate">{ev.className ?? ev.title}</p>
       {ev.subjectNames.length > 0 && (
@@ -513,6 +683,51 @@ function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: 
         </Badge>
       )}
     </button>
+  );
+}
+
+// ── Non-draggable event card (holidays, global events) ─────────────────
+function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: () => void }) {
+  if (ev.type === "holiday") {
+    return (
+      <button
+        onClick={onClick}
+        className="w-full rounded-xl px-3 py-2 text-left bg-destructive/[0.06] hover:bg-destructive/10 transition-colors"
+      >
+        <div className="flex items-center gap-1.5">
+          <Palmtree className="h-3 w-3 text-destructive/60 shrink-0" />
+          <span className="text-[10px] font-medium text-destructive truncate">{ev.title}</span>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <button onClick={onClick} className="w-full rounded-xl bg-muted/40 px-3 py-2 text-left hover:bg-muted/60 transition-colors">
+      <span className="text-[10px] text-muted-foreground truncate block">{ev.title}</span>
+    </button>
+  );
+}
+
+// ── Month compact pill ─────────────────────────────────────────────────
+function MonthEventPill({ event: ev }: { event: CalendarEvent }) {
+  const dotColor = ev.status === "cancelled"
+    ? "border-l-destructive/60"
+    : ev.isReplacement
+    ? "border-l-violet-500"
+    : ev.status === "completed"
+    ? "border-l-emerald-500"
+    : "border-l-primary";
+
+  return (
+    <div className={`flex items-center gap-1 text-[9px] truncate rounded px-1.5 py-[2px] border-l-[3px] bg-muted/40 ${dotColor}`}>
+      <span className="font-medium text-foreground truncate">
+        {format(ev.start, "HH:mm")}
+      </span>
+      <span className="truncate text-muted-foreground">
+        {ev.className}
+      </span>
+    </div>
   );
 }
 
@@ -565,7 +780,6 @@ function EventDetailPanel({
     },
   });
 
-  // Fetch enrollment count for the class
   const { data: enrollmentCount } = useQuery({
     queryKey: ["class-enrollment-count", ev.classId],
     enabled: isSession && !!ev.classId,
@@ -592,7 +806,6 @@ function EventDetailPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── Premium Header ──────────────────────────────────────── */}
       <div className="px-6 pt-6 pb-5 border-b border-border/50 bg-muted/20">
         <SheetHeader className="space-y-3">
           <div>
@@ -624,9 +837,7 @@ function EventDetailPanel({
         </SheetHeader>
       </div>
 
-      {/* ── Scrollable Content ──────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-        {/* Time */}
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-muted">
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -639,7 +850,6 @@ function EventDetailPanel({
           </div>
         </div>
 
-        {/* ── Enseignant ────────────────────────────────────────── */}
         {isSession && (
           <div className="space-y-3">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -688,7 +898,6 @@ function EventDetailPanel({
           </div>
         )}
 
-        {/* ── Localisation ──────────────────────────────────────── */}
         {ev.roomName && (
           <div className="space-y-3">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -724,7 +933,6 @@ function EventDetailPanel({
           </div>
         )}
 
-        {/* ── Statistiques rapides ──────────────────────────────── */}
         {isSession && (
           <div className="space-y-3">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -754,7 +962,6 @@ function EventDetailPanel({
           </div>
         )}
 
-        {/* ── Matières ──────────────────────────────────────────── */}
         {ev.subjectNames.length > 0 && (
           <div className="space-y-2">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -771,7 +978,6 @@ function EventDetailPanel({
           </div>
         )}
 
-        {/* ── Bilan (completed) ─────────────────────────────────── */}
         {isSession && ev.status === "completed" && sessionData && (
           <div className="space-y-3">
             <Separator />
@@ -791,7 +997,6 @@ function EventDetailPanel({
           </div>
         )}
 
-        {/* ── Holiday meta ──────────────────────────────────────── */}
         {ev.type === "holiday" && ev.meta && (
           <div className="space-y-2">
             <Separator />
@@ -805,7 +1010,6 @@ function EventDetailPanel({
         )}
       </div>
 
-      {/* ── Sticky Action Footer ────────────────────────────────── */}
       {isSession && ev.status !== "cancelled" && (
         <div className="border-t border-border/50 bg-background px-6 py-4 space-y-2 shrink-0">
           {ev.status === "completed" && ev.sessionId ? (
