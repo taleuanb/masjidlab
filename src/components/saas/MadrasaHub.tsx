@@ -10,6 +10,7 @@ import {
   Sparkles, RefreshCw, Tag, Inbox, Move,
 } from "lucide-react";
 import { PlacementStudioTab } from "@/components/madrasa/PlacementStudioTab";
+import { StaffingStudioTab } from "@/components/madrasa/StaffingStudioTab";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
@@ -978,6 +979,7 @@ function ClassesSection() {
   const { orgId } = useOrganization();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [classesView, setClassesView] = useState<"tableau" | "staffing">("tableau");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState({ nom: "", levelId: "", salleId: "", capacityMax: "15", profId: "" });
@@ -1223,9 +1225,33 @@ function ClassesSection() {
               Gestion des classes rattachées à l'année {currentYear?.label ?? "—"}.
             </CardDescription>
           </div>
-          <Button size="sm" onClick={openAdd} className="bg-brand-navy hover:bg-brand-navy/90 text-white">
-            <Plus className="h-4 w-4 mr-1" /> Nouvelle classe
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center rounded-md bg-muted p-0.5 text-muted-foreground">
+              <button
+                onClick={() => setClassesView("tableau")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all",
+                  classesView === "tableau" ? "bg-background text-foreground shadow-sm" : "hover:text-foreground"
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Tableau
+              </button>
+              <button
+                onClick={() => setClassesView("staffing")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all",
+                  classesView === "staffing" ? "bg-background text-foreground shadow-sm" : "hover:text-foreground"
+                )}
+              >
+                <Users className="h-3.5 w-3.5" /> Staffing
+              </button>
+            </div>
+            {classesView === "tableau" && (
+              <Button size="sm" onClick={openAdd} className="bg-brand-navy hover:bg-brand-navy/90 text-white">
+                <Plus className="h-4 w-4 mr-1" /> Nouvelle classe
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {!currentYear && (
