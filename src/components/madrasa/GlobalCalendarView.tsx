@@ -147,7 +147,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 bg-muted/20 -mx-6 -mb-6 px-6 pb-6 pt-2 rounded-2xl">
       {/* ── Navigation ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
@@ -277,8 +277,8 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                       className="absolute left-0 right-0 z-10 flex items-center pointer-events-none"
                       style={{ top: `${timePos}%` }}
                     >
-                      <span className="w-2 h-2 rounded-full bg-destructive shrink-0 -ml-1" />
-                      <span className="flex-1 h-[1.5px] bg-destructive" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 -ml-1 shadow-sm shadow-rose-500/40" />
+                      <span className="flex-1 h-[1.5px] bg-rose-500/70" />
                     </div>
                   )}
 
@@ -473,15 +473,15 @@ function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: 
   return (
     <button
       onClick={onClick}
-      className={`w-full rounded-xl border-l-4 ${borderColor} ${bgColor} px-3 py-2 text-left transition-all hover:shadow-md hover:scale-[1.01] ${
-        isPast ? "opacity-50" : ""
-      } ${isCancelled ? "opacity-50" : ""}`}
+      className={`w-full rounded-lg border-l-[3px] ${borderColor} ${bgColor} px-3 py-2.5 text-left transition-all duration-200 hover:shadow-md hover:-translate-y-px ${
+        isPast ? "opacity-45" : ""
+      } ${isCancelled ? "opacity-45" : ""}`}
     >
-      <p className="text-[11px] font-semibold text-foreground truncate">{ev.className ?? ev.title}</p>
+      <p className="text-[11px] font-medium text-foreground truncate">{ev.className ?? ev.title}</p>
       {ev.subjectNames.length > 0 && (
         <p className="text-[9px] text-muted-foreground truncate mt-0.5">{ev.subjectNames.join(", ")}</p>
       )}
-      <div className="flex items-center gap-2 mt-1.5 text-[9px] text-muted-foreground">
+      <div className="flex items-center gap-2.5 mt-1.5 text-[9px] text-muted-foreground/70">
         <span className="flex items-center gap-0.5 tabular-nums">
           <Clock className="h-2.5 w-2.5" />
           {format(ev.start, "HH:mm")} – {format(ev.end, "HH:mm")}
@@ -489,12 +489,12 @@ function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: 
         {ev.roomName && (
           <span className="flex items-center gap-0.5 truncate">
             <MapPin className="h-2.5 w-2.5 shrink-0" />
-            {ev.roomName}
+            <span className="truncate">{ev.roomName}</span>
           </span>
         )}
       </div>
       {ev.assignedTeacherName && (
-        <div className="flex items-center gap-1 mt-1 text-[9px] text-muted-foreground">
+        <div className="flex items-center gap-1 mt-0.5 text-[9px] text-muted-foreground/70">
           <User className="h-2.5 w-2.5 shrink-0" />
           <span className="truncate">{ev.assignedTeacherName}</span>
         </div>
