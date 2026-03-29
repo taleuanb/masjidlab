@@ -116,23 +116,20 @@ export function useScheduleDragDrop(allEvents: CalendarEvent[]) {
 
       const undoData = undoRef.current;
 
+      const undoCopy = undoData ? { ...undoData } : null;
+
       toast({
         title: "✅ Créneau déplacé",
         description: "Le planning a été mis à jour.",
+        action: undoCopy ? React.createElement(
+          "button",
+          {
+            className: "text-xs font-semibold text-primary hover:underline whitespace-nowrap px-3 py-1.5 rounded-md border border-primary/20 bg-primary/5",
+            onClick: () => handleUndo(undoCopy),
+          },
+          "Annuler"
+        ) as any : undefined,
       });
-
-      // Show undo toast separately if we have undo data
-      if (undoData) {
-        setTimeout(() => {
-          toast({
-            title: "↩️ Annuler ?",
-            description: "Cliquez pour restaurer l'ancien créneau.",
-          });
-        }, 100);
-        // Store undo for 10s
-        const timer = setTimeout(() => { undoRef.current = null; }, 10000);
-        return () => clearTimeout(timer);
-      }
     },
     onError: (err: any) => {
       // Rollback optimistic update by invalidating
