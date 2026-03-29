@@ -755,6 +755,10 @@ export function PlacementStudioTab() {
         )
       );
     }
+    // Optimistic: set classId back to null in pool data
+    queryClient.setQueryData(["placement_pool", orgId], (old: any[] | undefined) =>
+      (old ?? []).map((e: any) => e.enrollmentId === enrollmentId ? { ...e, classId: null } : e)
+    );
     unplaceMutation.mutate(enrollmentId);
   };
 
