@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
   Search, Users, LayoutDashboard, Heart, CalendarDays, MapPin, X, GripVertical,
-  AlertTriangle, CheckCircle2,
+  AlertTriangle, CheckCircle2, Filter,
 } from "lucide-react";
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
