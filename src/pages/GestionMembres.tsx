@@ -358,7 +358,7 @@ export default function GestionMembresPage() {
   // ─── Render ────────────────────────────────────────────────────────
   return (
     <main className="flex-1 overflow-y-auto">
-      <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+      <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">

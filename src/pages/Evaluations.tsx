@@ -217,7 +217,7 @@ const Evaluations = () => {
     const maxPts = selectedEval.max_points ?? 20;
     return (
       <main className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-6 space-y-5 max-w-4xl mx-auto">
+        <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
           <div className="flex items-center gap-3 flex-wrap">
             <Button variant="ghost" size="icon" onClick={() => setSelectedEvalId(null)}>
               <ArrowLeft className="h-4 w-4" />
@@ -306,7 +306,7 @@ const Evaluations = () => {
   if (selectedClassId && selectedClass) {
     return (
       <main className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-6 space-y-5 max-w-4xl mx-auto">
+        <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
           <div className="flex items-center gap-3 flex-wrap">
             <Button variant="ghost" size="icon" onClick={() => setSelectedClassId(null)}>
               <ArrowLeft className="h-4 w-4" />
