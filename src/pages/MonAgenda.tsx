@@ -658,6 +658,7 @@ export default function MonAgendaPage() {
             </div>
           </TabsContent>
         </Tabs>
+        </div>
       </main>
 
       {/* Reservation Dialog */}

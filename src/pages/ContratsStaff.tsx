@@ -124,6 +124,7 @@ const ContratsStaff = () => {
           ))}
         </div>
       )}
+      </div>
     </main>
   );
 };

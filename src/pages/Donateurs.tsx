@@ -130,6 +130,7 @@ const Donateurs = () => {
           </Table>
         </div>
       )}
+      </div>
     </main>
   );
 };

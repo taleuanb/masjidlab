@@ -12,6 +12,7 @@ const Documents = () => (
     <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
       Module Documents — en cours de développement
     </div>
+    </div>
   </main>
 );
 

@@ -178,6 +178,7 @@ const RecusFiscaux = () => {
           </Table>
         </div>
       )}
+      </div>
     </main>
   );
 };

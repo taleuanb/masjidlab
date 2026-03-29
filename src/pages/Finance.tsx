@@ -216,6 +216,7 @@ export default function FinancePage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </SidebarInset>
   );
 }

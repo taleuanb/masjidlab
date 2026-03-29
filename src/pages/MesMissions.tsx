@@ -284,6 +284,7 @@ export default function MesMissionsPage() {
             <p className="text-muted-foreground">Aucune mission assignée pour le moment.</p>
           </div>
         )}
+        </div>
       </main>
     </div>
   );

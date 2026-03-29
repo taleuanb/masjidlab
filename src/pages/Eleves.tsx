@@ -659,6 +659,7 @@ const Eleves = () => {
             </Table>
           </div>
         )}
+        </div>
       </main>
     </TooltipProvider>
   );

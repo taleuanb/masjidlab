@@ -180,6 +180,7 @@ export default function EvenementsPage() {
             </motion.div>
           )}
         </div>
+        </div>
       </main>
     </div>
   );

@@ -295,6 +295,7 @@ export default function PlanningPage() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </main>
     </div>
   );

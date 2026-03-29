@@ -130,6 +130,7 @@ export default function Dashboard() {
             <p className="text-xs mt-1">Contactez l'administrateur pour accéder aux fonctionnalités.</p>
           </div>
         )}
+        </div>
       </main>
 
       <QuickActions />

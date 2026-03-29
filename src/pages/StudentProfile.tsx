@@ -205,6 +205,7 @@ const StudentProfile = () => {
           <StudentResultsTab grades={grades} />
         </TabsContent>
       </Tabs>
+      </div>
     </main>
   );
 };
