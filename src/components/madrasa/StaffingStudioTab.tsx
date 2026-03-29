@@ -274,11 +274,29 @@ export function StaffingStudioTab() {
     const teacherId = e.active.id as string;
     const classId = e.over?.id as string | undefined;
     if (classId && teacherId) {
-      assignTeacher.mutate({ classId, profId: teacherId });
+      const targetClass = classes.find((c) => c.id === classId);
+      const newTeacher = teachersList.find((t) => t.id === teacherId);
+      const oldProfName = targetClass?.profName;
+
+      assignTeacher.mutate({ classId, profId: teacherId }, {
+        onSuccess: () => {
+          if (oldProfName && newTeacher) {
+            toast({
+              title: "Enseignant remplacé",
+              description: `${oldProfName} a été remplacé par ${newTeacher.displayName}.`,
+            });
+          } else if (newTeacher) {
+            toast({
+              title: "Enseignant assigné",
+              description: `${newTeacher.displayName} affecté à ${targetClass?.nom ?? "la classe"}.`,
+            });
+          }
+        },
+      });
     }
     setDraggedTeacherId(null);
     setOverClassId(null);
-  }, [assignTeacher]);
+  }, [assignTeacher, classes, teachersList]);
 
   const handleDragCancel = useCallback(() => {
     setDraggedTeacherId(null);
