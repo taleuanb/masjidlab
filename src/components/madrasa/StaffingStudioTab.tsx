@@ -402,7 +402,9 @@ export function StaffingStudioTab() {
                       hasConflict={hasConflict}
                       isOver={isOver}
                       draggedTeacher={draggedTeacher}
-                      onUnassign={() => assignTeacher.mutate({ classId: cls.id, profId: null })}
+                      onUnassign={() => assignTeacher.mutate({ classId: cls.id, profId: null }, {
+                        onSuccess: () => toast({ title: "Enseignant retiré", description: `${cls.profName} retiré de ${cls.nom}.` }),
+                      })}
                       isPending={assignTeacher.isPending}
                     />
                   );
