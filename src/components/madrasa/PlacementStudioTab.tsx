@@ -57,6 +57,25 @@ interface PoolStudent {
   siblingPriority: boolean;
 }
 
+interface StudentEnrollment {
+  enrollmentId: string;
+  levelId: string | null;
+  levelLabel: string | null;
+  classId: string | null;
+  preferredDays: number[];
+  siblingPriority: boolean;
+}
+
+interface GroupedPoolStudent {
+  studentId: string;
+  nom: string;
+  prenom: string;
+  genre: string | null;
+  age: number | null;
+  familyId: string | null;
+  enrollments: StudentEnrollment[];
+}
+
 interface PlacedStudent {
   enrollmentId: string;
   studentId: string;
@@ -140,29 +159,29 @@ function usePlacementData(orgId: string | null) {
       const { data, error } = await supabase
         .from("madrasa_enrollments")
         .select(`
-          id, student_id, level_id, preferences,
+          id, student_id, level_id, class_id, preferences,
           madrasa_students!madrasa_enrollments_student_id_fkey(nom, prenom, gender, age, family_id),
           madrasa_levels!madrasa_enrollments_level_id_fkey(label, madrasa_cycles(nom))
         `)
-        .eq("org_id", orgId!)
-        .eq("statut", "en_attente");
+        .eq("org_id", orgId!);
       if (error) throw error;
-      return (data ?? []).map((e: any): PoolStudent => {
+      return (data ?? []).map((e: any) => {
         const prefs = (e.preferences as any) ?? {};
         const days: number[] = Array.isArray(prefs.days) ? prefs.days : [];
         return {
-          enrollmentId: e.id,
-          studentId: e.student_id,
-          nom: e.madrasa_students?.nom ?? "",
-          prenom: e.madrasa_students?.prenom ?? "",
-          genre: e.madrasa_students?.gender ?? null,
-          age: e.madrasa_students?.age ?? null,
-          levelId: e.level_id,
-          levelLabel: e.madrasa_levels?.label ?? null,
-          cycleName: e.madrasa_levels?.madrasa_cycles?.nom ?? null,
-          familyId: e.madrasa_students?.family_id ?? null,
+          enrollmentId: e.id as string,
+          studentId: e.student_id as string,
+          classId: (e.class_id as string | null),
+          nom: (e.madrasa_students?.nom ?? "") as string,
+          prenom: (e.madrasa_students?.prenom ?? "") as string,
+          genre: (e.madrasa_students?.gender ?? null) as string | null,
+          age: (e.madrasa_students?.age ?? null) as number | null,
+          levelId: e.level_id as string | null,
+          levelLabel: (e.madrasa_levels?.label ?? null) as string | null,
+          cycleName: (e.madrasa_levels?.madrasa_cycles?.nom ?? null) as string | null,
+          familyId: (e.madrasa_students?.family_id ?? null) as string | null,
           preferredDays: days,
-          preferredTimeSlot: prefs.time_slot ?? null,
+          preferredTimeSlot: (prefs.time_slot ?? null) as string | null,
           siblingPriority: prefs.sibling_priority === true,
         };
       });
@@ -260,10 +279,31 @@ function usePlacementData(orgId: string | null) {
 
 /* ── Draggable Student Card ── */
 
-function DraggableStudentCard({ student }: { student: PoolStudent }) {
+function DraggableGroupedCard({ grouped }: { grouped: GroupedPoolStudent }) {
+  // Use the first unplaced enrollment for drag data
+  const firstUnplaced = grouped.enrollments.find((e) => !e.classId);
+  const poolStudent: PoolStudent | null = firstUnplaced
+    ? {
+        enrollmentId: firstUnplaced.enrollmentId,
+        studentId: grouped.studentId,
+        nom: grouped.nom,
+        prenom: grouped.prenom,
+        genre: grouped.genre,
+        age: grouped.age,
+        levelId: firstUnplaced.levelId,
+        levelLabel: firstUnplaced.levelLabel,
+        cycleName: null,
+        familyId: grouped.familyId,
+        preferredDays: firstUnplaced.preferredDays,
+        preferredTimeSlot: null,
+        siblingPriority: firstUnplaced.siblingPriority,
+      }
+    : null;
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `student-${student.enrollmentId}`,
-    data: { type: "student", student },
+    id: `student-${firstUnplaced?.enrollmentId ?? grouped.studentId}`,
+    data: poolStudent ? { type: "student", student: poolStudent } : undefined,
+    disabled: !poolStudent,
   });
 
   const style: React.CSSProperties = {
@@ -283,51 +323,54 @@ function DraggableStudentCard({ student }: { student: PoolStudent }) {
       {...attributes}
       {...listeners}
     >
-      <CardContent className="p-3 space-y-1.5">
+      <CardContent className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
             <p className="font-semibold text-sm truncate">
-              {student.prenom} {student.nom}
+              {grouped.prenom} {grouped.nom}
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {student.siblingPriority && (
-              <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
-            )}
-            {student.genre && (
+            {grouped.genre && (
               <Badge
                 variant="outline"
                 className={cn(
                   "text-[10px] px-1.5 py-0",
-                  student.genre === "M"
+                  grouped.genre === "M"
                     ? "bg-sky-500/10 text-sky-700 border-sky-400/30"
                     : "bg-pink-500/10 text-pink-700 border-pink-400/30",
                 )}
               >
-                {student.genre === "M" ? "G" : "F"}
+                {grouped.genre === "M" ? "G" : "F"}
               </Badge>
             )}
-            {student.age != null && (
-              <span className="text-[11px] text-muted-foreground">{student.age}a</span>
+            {grouped.age != null && (
+              <span className="text-[11px] text-muted-foreground">{grouped.age}a</span>
             )}
           </div>
         </div>
-        {student.levelLabel && (
-          <Badge variant="secondary" className="text-[10px]">
-            {student.levelLabel}
-          </Badge>
-        )}
-        {student.preferredDays.length > 0 && (
-          <div className="flex items-center gap-1 flex-wrap">
-            <CalendarDays className="h-3 w-3 text-muted-foreground shrink-0" />
-            {student.preferredDays.map((d) => (
-              <Badge key={d} variant="outline" className="text-[9px] px-1 py-0 font-normal">
-                {DAY_LABELS[d] ?? d}
+        {/* Enrollment chips */}
+        <div className="space-y-1">
+          <p className="text-[10px] text-muted-foreground font-medium">Inscriptions :</p>
+          <div className="flex flex-wrap gap-1">
+            {grouped.enrollments.map((enr) => (
+              <Badge
+                key={enr.enrollmentId}
+                variant={enr.classId ? "default" : "secondary"}
+                className={cn(
+                  "text-[10px] px-1.5 py-0.5 gap-1",
+                  enr.classId
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                    : "",
+                )}
+              >
+                {enr.classId && <CheckCircle2 className="h-3 w-3" />}
+                {enr.levelLabel ?? "Sans niveau"}
               </Badge>
             ))}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -523,12 +566,45 @@ export function PlacementStudioTab() {
   const [activeStudent, setActiveStudent] = useState<PoolStudent | null>(null);
   const [overClassId, setOverClassId] = useState<string | null>(null);
 
-  const pool = poolQuery.data ?? [];
+  const rawEnrollments = poolQuery.data ?? [];
   const classes = classesQuery.data ?? [];
   const levels = levelsQuery.data ?? [];
   const isLoading = poolQuery.isLoading || classesQuery.isLoading;
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  /* ── Group enrollments by student ── */
+
+  const groupedStudents = useMemo(() => {
+    const map = new Map<string, GroupedPoolStudent>();
+    for (const e of rawEnrollments) {
+      let group = map.get(e.studentId);
+      if (!group) {
+        group = {
+          studentId: e.studentId,
+          nom: e.nom,
+          prenom: e.prenom,
+          genre: e.genre,
+          age: e.age,
+          familyId: e.familyId,
+          enrollments: [],
+        };
+        map.set(e.studentId, group);
+      }
+      group.enrollments.push({
+        enrollmentId: e.enrollmentId,
+        levelId: e.levelId,
+        levelLabel: e.levelLabel,
+        classId: e.classId,
+        preferredDays: e.preferredDays,
+        siblingPriority: e.siblingPriority,
+      });
+    }
+    // Only keep students with at least one unplaced enrollment
+    return Array.from(map.values()).filter((g) =>
+      g.enrollments.some((enr) => !enr.classId)
+    );
+  }, [rawEnrollments]);
 
   /* ── Mutations ── */
 
@@ -572,18 +648,19 @@ export function PlacementStudioTab() {
   /* ── Filters ── */
 
   const filteredStudents = useMemo(() => {
-    return pool.filter((s) => {
+    return groupedStudents.filter((g) => {
       const q = search.toLowerCase();
-      if (q && !`${s.prenom} ${s.nom}`.toLowerCase().includes(q)) return false;
-      if (genderFilter !== "all" && s.genre !== genderFilter) return false;
-      if (levelFilter !== "all" && s.levelId !== levelFilter) return false;
+      if (q && !`${g.prenom} ${g.nom}`.toLowerCase().includes(q)) return false;
+      if (genderFilter !== "all" && g.genre !== genderFilter) return false;
+      if (levelFilter !== "all" && !g.enrollments.some((enr) => enr.levelId === levelFilter)) return false;
       if (dayFilter !== "all") {
         const dayNum = parseInt(dayFilter, 10);
-        if (s.preferredDays.length > 0 && !s.preferredDays.includes(dayNum)) return false;
+        const hasDay = g.enrollments.some((enr) => enr.preferredDays.length === 0 || enr.preferredDays.includes(dayNum));
+        if (!hasDay) return false;
       }
       return true;
     });
-  }, [pool, search, genderFilter, levelFilter, dayFilter]);
+  }, [groupedStudents, search, genderFilter, levelFilter, dayFilter]);
 
   /* ── Match results for all classes against active student ── */
 
@@ -639,8 +716,8 @@ export function PlacementStudioTab() {
     }
 
     // Optimistic update
-    queryClient.setQueryData(["placement_pool", orgId], (old: PoolStudent[] | undefined) =>
-      (old ?? []).filter((s) => s.enrollmentId !== student.enrollmentId)
+    queryClient.setQueryData(["placement_pool", orgId], (old: any[] | undefined) =>
+      (old ?? []).map((e: any) => e.enrollmentId === student.enrollmentId ? { ...e, classId: classId } : e)
     );
     queryClient.setQueryData(["placement_classes", orgId], (old: StudioClass[] | undefined) =>
       (old ?? []).map((c) =>
@@ -678,6 +755,10 @@ export function PlacementStudioTab() {
         )
       );
     }
+    // Optimistic: set classId back to null in pool data
+    queryClient.setQueryData(["placement_pool", orgId], (old: any[] | undefined) =>
+      (old ?? []).map((e: any) => e.enrollmentId === enrollmentId ? { ...e, classId: null } : e)
+    );
     unplaceMutation.mutate(enrollmentId);
   };
 
@@ -713,7 +794,9 @@ export function PlacementStudioTab() {
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
               <h3 className="font-semibold text-sm">Élèves à placer</h3>
-              <Badge variant="secondary" className="ml-auto text-xs">{filteredStudents.length}</Badge>
+              <Badge variant="secondary" className="ml-auto text-xs">
+                {filteredStudents.reduce((n, g) => n + g.enrollments.filter((e) => !e.classId).length, 0)}
+              </Badge>
             </div>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -752,10 +835,10 @@ export function PlacementStudioTab() {
           <ScrollArea className="flex-1 p-3">
             {filteredStudents.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-8">
-                {pool.length === 0 ? "Aucun élève en attente de placement." : "Aucun élève ne correspond aux filtres."}
+                {groupedStudents.length === 0 ? "Aucun élève en attente de placement." : "Aucun élève ne correspond aux filtres."}
               </p>
             ) : (
-              filteredStudents.map((s) => <DraggableStudentCard key={s.enrollmentId} student={s} />)
+              filteredStudents.map((g) => <DraggableGroupedCard key={g.studentId} grouped={g} />)
             )}
           </ScrollArea>
         </div>
