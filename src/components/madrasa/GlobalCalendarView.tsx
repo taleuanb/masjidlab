@@ -14,6 +14,12 @@ import {
   AlertCircle,
   MapPin,
   User,
+  Building2,
+  Monitor,
+  CheckSquare,
+  XCircle,
+  Layers,
+  GraduationCap,
 } from "lucide-react";
 import {
   addDays,
@@ -378,7 +384,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
 
       {/* ── Detail Sheet ───────────────────────────────────────────── */}
       <Sheet open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
-        <SheetContent className="w-[380px] sm:w-[420px]">
+        <SheetContent className="w-[400px] sm:w-[460px] p-0 flex flex-col">
           {selectedEvent && (
             <EventDetailPanel
               event={selectedEvent}
@@ -386,6 +392,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                 setSelectedEvent(null);
                 setSummarySessionEvent(ev);
               }}
+              onClose={() => setSelectedEvent(null)}
             />
           )}
         </SheetContent>
@@ -513,9 +520,11 @@ function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: 
 function EventDetailPanel({
   event: ev,
   onViewBilan,
+  onClose,
 }: {
   event: CalendarEvent;
   onViewBilan: (ev: CalendarEvent) => void;
+  onClose: () => void;
 }) {
   const isSession = ev.type === "session";
   const isReplacement = ev.isReplacement;
@@ -556,146 +565,236 @@ function EventDetailPanel({
     },
   });
 
+  // Fetch enrollment count for the class
+  const { data: enrollmentCount } = useQuery({
+    queryKey: ["class-enrollment-count", ev.classId],
+    enabled: isSession && !!ev.classId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("madrasa_enrollments")
+        .select("*", { count: "exact", head: true })
+        .eq("class_id", ev.classId!)
+        .eq("statut", "Actif");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const statusBadge = (() => {
+    if (ev.status === "completed") return { label: "Terminée", icon: CheckCircle2, className: "bg-emerald-500/10 border-emerald-500/20 text-emerald-700" };
+    if (isPastUnopened) return { label: "Non ouverte", icon: AlertCircle, className: "bg-destructive/10 border-destructive/20 text-destructive" };
+    if (ev.status === "cancelled") return { label: "Annulée", icon: Palmtree, className: "bg-destructive/10 border-destructive/20 text-destructive" };
+    return { label: "Planifiée", icon: Clock, className: "bg-primary/10 border-primary/20 text-primary" };
+  })();
+
+  const StatusIcon = statusBadge.icon;
+
   return (
-    <div className="space-y-5 pt-2">
-      <SheetHeader>
-        <div className="space-y-1">
-          <SheetTitle className="text-lg leading-tight">
-            {ev.className ?? ev.title}
-          </SheetTitle>
-          {isSession && ev.classNiveau && (
-            <Badge variant="secondary" className="text-[10px] font-normal">
-              {ev.classNiveau}
-            </Badge>
-          )}
-          <SheetDescription>
-            {format(ev.start, "EEEE d MMMM yyyy", { locale: fr })}
-          </SheetDescription>
-        </div>
-      </SheetHeader>
-
-      <div className="flex items-center gap-2">
-        {ev.status === "completed" && (
-          <Badge variant="outline" className="text-xs bg-emerald-500/10 border-emerald-500/20 text-emerald-700">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Session validée
-          </Badge>
-        )}
-        {ev.status === "scheduled" && !isPastUnopened && (
-          <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20 text-primary">
-            <Clock className="h-3 w-3 mr-1" />
-            Planifié
-          </Badge>
-        )}
-        {isPastUnopened && (
-          <Badge variant="outline" className="text-xs bg-destructive/10 border-destructive/20 text-destructive">
-            <AlertCircle className="h-3 w-3 mr-1" />
-            Session non ouverte
-          </Badge>
-        )}
-        {ev.status === "cancelled" && (
-          <Badge variant="outline" className="text-xs bg-destructive/10 border-destructive/20 text-destructive">
-            <Palmtree className="h-3 w-3 mr-1" />
-            Fermé
-          </Badge>
-        )}
-      </div>
-
-      <Separator />
-
-      <div className="flex items-center gap-3 text-sm">
-        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="font-medium tabular-nums">
-          {format(ev.start, "HH:mm")} – {format(ev.end, "HH:mm")}
-        </span>
-      </div>
-
-      {ev.roomName && (
-        <div className="flex items-center gap-3 text-sm">
-          <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="font-medium">{ev.roomName}</span>
-        </div>
-      )}
-
-      {isSession && (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Équipe pédagogique
-          </p>
-          {ev.assignedTeacherId && (
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">
-                <Users className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground">Oustaz titulaire</p>
-                <p className="text-sm font-medium">{ev.assignedTeacherName ?? "Non assigné"}</p>
-              </div>
-            </div>
-          )}
-          {isReplacement && ev.actualTeacherId && (
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center h-8 w-8 rounded-full bg-violet-500/10">
-                <Handshake className="h-4 w-4 text-violet-500" />
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground">Remplacé par</p>
-                <p className="text-sm font-medium text-violet-700">{ev.actualTeacherName ?? "Inconnu"}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {ev.subjectNames.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Matières</p>
-          <div className="flex flex-wrap gap-1.5">
-            {ev.subjectNames.map((name, i) => (
-              <Badge key={i} variant="secondary" className="text-xs">
-                <BookOpen className="h-3 w-3 mr-1" />
-                {name}
+    <div className="flex flex-col h-full">
+      {/* ── Premium Header ──────────────────────────────────────── */}
+      <div className="px-6 pt-6 pb-5 border-b border-border/50 bg-muted/20">
+        <SheetHeader className="space-y-3">
+          <div>
+            <SheetTitle className="text-xl font-bold tracking-tight leading-tight">
+              {ev.className ?? ev.title}
+            </SheetTitle>
+            <SheetDescription className="mt-1">
+              {format(ev.start, "EEEE d MMMM yyyy", { locale: fr })}
+            </SheetDescription>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isSession && ev.classNiveau && (
+              <Badge variant="secondary" className="text-[11px] font-medium">
+                <GraduationCap className="h-3 w-3 mr-1" />
+                {ev.classNiveau}
               </Badge>
-            ))}
+            )}
+            <Badge variant="outline" className={`text-[11px] ${statusBadge.className}`}>
+              <StatusIcon className="h-3 w-3 mr-1" />
+              {statusBadge.label}
+            </Badge>
+            {isReplacement && (
+              <Badge variant="outline" className="text-[11px] bg-violet-500/10 border-violet-500/20 text-violet-700">
+                <Handshake className="h-3 w-3 mr-1" />
+                Remplacement
+              </Badge>
+            )}
+          </div>
+        </SheetHeader>
+      </div>
+
+      {/* ── Scrollable Content ──────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+        {/* Time */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-muted">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Horaire</p>
+            <p className="text-sm font-semibold tabular-nums">
+              {format(ev.start, "HH:mm")} – {format(ev.end, "HH:mm")}
+            </p>
           </div>
         </div>
-      )}
 
-      {isSession && ev.status === "completed" && (
-        <>
-          <Separator />
+        {/* ── Enseignant ────────────────────────────────────────── */}
+        {isSession && (
           <div className="space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bilan rapide</p>
-            {sessionData && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Moyenne</span>
-                <span className="font-medium tabular-nums">⭐ {sessionData.average_rating ?? 0}/5</span>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <User className="h-3.5 w-3.5" />
+              Enseignant
+            </p>
+            {ev.assignedTeacherId ? (
+              <div className="rounded-xl bg-muted/30 p-3.5 space-y-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary/10 shrink-0">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{ev.assignedTeacherName ?? "Non assigné"}</p>
+                    <p className="text-[10px] text-muted-foreground">Oustaz titulaire</p>
+                  </div>
+                </div>
+                {ev.assignedTeacherSpecialties.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {ev.assignedTeacherSpecialties.map((spec, i) => (
+                      <Badge key={i} variant="secondary" className="text-[10px] h-5 px-2 font-normal">
+                        {spec}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border p-3 text-center">
+                <p className="text-xs text-muted-foreground">Aucun enseignant assigné</p>
               </div>
             )}
-            {attendanceStats && attendanceStats.total > 0 && (
-              <div className="space-y-1.5">
+            {isReplacement && ev.actualTeacherId && (
+              <div className="rounded-xl bg-violet-500/5 border border-violet-500/15 p-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-violet-500/10 shrink-0">
+                    <Handshake className="h-5 w-5 text-violet-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-violet-700">{ev.actualTeacherName ?? "Inconnu"}</p>
+                    <p className="text-[10px] text-muted-foreground">Remplaçant</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Localisation ──────────────────────────────────────── */}
+        {ev.roomName && (
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5" />
+              Localisation
+            </p>
+            <div className="rounded-xl bg-muted/30 p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-accent shrink-0">
+                  <Building2 className="h-5 w-5 text-accent-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{ev.roomName}</p>
+                  {ev.roomFloor && (
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <Layers className="h-2.5 w-2.5" />
+                      Étage : {ev.roomFloor}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {ev.roomFeatures.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border/30">
+                  {ev.roomFeatures.map((feat, i) => (
+                    <Badge key={i} variant="outline" className="text-[10px] h-5 px-2 font-normal gap-1">
+                      <Monitor className="h-2.5 w-2.5" />
+                      {feat}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Statistiques rapides ──────────────────────────────── */}
+        {isSession && (
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              Statistiques
+            </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="rounded-xl bg-muted/30 p-3 text-center">
+                <p className="text-lg font-bold tabular-nums">{enrollmentCount ?? "–"}</p>
+                <p className="text-[10px] text-muted-foreground">Inscrits</p>
+              </div>
+              <div className="rounded-xl bg-muted/30 p-3 text-center">
+                <p className="text-lg font-bold tabular-nums">{ev.classCapacity ?? ev.roomCapacity ?? "–"}</p>
+                <p className="text-[10px] text-muted-foreground">Places max</p>
+              </div>
+            </div>
+            {ev.status === "completed" && attendanceStats && attendanceStats.total > 0 && (
+              <div className="rounded-xl bg-muted/30 p-3.5 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Présence</span>
-                  <span className="font-medium tabular-nums">👥 {attendanceStats.present} / {attendanceStats.total}</span>
+                  <span className="font-semibold tabular-nums">{attendanceStats.present} / {attendanceStats.total}</span>
                 </div>
                 <Progress value={attendanceStats.percentage} className="h-2" />
                 <p className="text-[10px] text-muted-foreground text-right tabular-nums">{attendanceStats.percentage}%</p>
               </div>
             )}
-            {sessionData?.summary_note && (
-              <div className="rounded-xl bg-muted/50 p-3">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Résumé du Prof</p>
+          </div>
+        )}
+
+        {/* ── Matières ──────────────────────────────────────────── */}
+        {ev.subjectNames.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              Matières
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {ev.subjectNames.map((name, i) => (
+                <Badge key={i} variant="secondary" className="text-xs">
+                  {name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Bilan (completed) ─────────────────────────────────── */}
+        {isSession && ev.status === "completed" && sessionData && (
+          <div className="space-y-3">
+            <Separator />
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Bilan rapide</p>
+            {sessionData.average_rating != null && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Moyenne</span>
+                <span className="font-semibold tabular-nums">⭐ {sessionData.average_rating}/5</span>
+              </div>
+            )}
+            {sessionData.summary_note && (
+              <div className="rounded-xl bg-muted/40 p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Résumé</p>
                 <p className="text-sm italic text-muted-foreground leading-relaxed">{sessionData.summary_note}</p>
               </div>
             )}
           </div>
-        </>
-      )}
+        )}
 
-      {ev.type === "holiday" && ev.meta && (
-        <>
-          <Separator />
-          <div className="space-y-1">
+        {/* ── Holiday meta ──────────────────────────────────────── */}
+        {ev.type === "holiday" && ev.meta && (
+          <div className="space-y-2">
+            <Separator />
             <p className="text-xs text-muted-foreground">
               Type : {(ev.meta.calendarType as string) === "holiday" ? "Vacances" : (ev.meta.calendarType as string) === "exam" ? "Examens" : "Pédagogique"}
             </p>
@@ -703,20 +802,36 @@ function EventDetailPanel({
               <p className="text-xs text-destructive">Affecte les cours — classes fermées</p>
             )}
           </div>
-        </>
-      )}
+        )}
+      </div>
 
-      <Separator />
-
-      {isSession && ev.sessionId && ev.status === "completed" && (
-        <Button className="w-full" onClick={() => onViewBilan(ev)}>
-          📊 Voir le Bilan de Séance
-        </Button>
-      )}
-      {isSession && ev.sessionId && ev.status !== "completed" && ev.status !== "cancelled" && (
-        <p className="text-xs text-muted-foreground italic text-center py-2">
-          Le bilan sera disponible après clôture de la séance.
-        </p>
+      {/* ── Sticky Action Footer ────────────────────────────────── */}
+      {isSession && ev.status !== "cancelled" && (
+        <div className="border-t border-border/50 bg-background px-6 py-4 space-y-2 shrink-0">
+          {ev.status === "completed" && ev.sessionId ? (
+            <Button className="w-full" onClick={() => onViewBilan(ev)}>
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Voir le Bilan de Séance
+            </Button>
+          ) : (
+            <>
+              <Button className="w-full" size="sm">
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Faire l'appel
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1">
+                  <Clock className="h-3.5 w-3.5 mr-1.5" />
+                  Modifier le créneau
+                </Button>
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                  Annuler
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

@@ -18,16 +18,20 @@ export interface CalendarEvent {
   classId: string | null;
   className: string | null;
   classNiveau: string | null;
+  classCapacity: number | null;
   isReplacement: boolean;
   actualTeacherId: string | null;
   actualTeacherName: string | null;
   assignedTeacherId: string | null;
   assignedTeacherName: string | null;
+  assignedTeacherSpecialties: string[];
   scheduleId: string | null;
   sessionId: string | null;
   subjectNames: string[];
-  /** Room name resolved from class → salle_id → rooms */
   roomName: string | null;
+  roomFloor: string | null;
+  roomFeatures: string[];
+  roomCapacity: number | null;
   meta?: Record<string, unknown>;
 }
 
@@ -99,7 +103,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("madrasa_classes")
-        .select("id, nom, niveau, prof_id, salle_id")
+        .select("id, nom, niveau, prof_id, salle_id, capacity_max")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
@@ -114,14 +118,14 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rooms")
-        .select("id, name")
+        .select("id, name, floor, features, capacity")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  // ── Profiles (teacher name resolution) ───────────────────────────────
+  // ── Profiles (teacher name + specialties resolution) ─────────────────
   const profilesQuery = useQuery({
     queryKey: ["cal-profiles", orgId],
     enabled: !!orgId,
@@ -129,7 +133,7 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name")
+        .select("id, display_name, teacher_specialties")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
@@ -216,8 +220,8 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     // Look-ups
     const classMap = new Map(classes.map((c) => [c.id, c]));
     const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
-    const profileMap = new Map(profiles.map((p) => [p.id, p.display_name]));
-    const roomMap = new Map(rooms.map((r) => [r.id, r.name]));
+    const profileMap = new Map(profiles.map((p) => [p.id, p]));
+    const roomMap = new Map(rooms.map((r) => [r.id, r]));
 
     // Index sessions by "classId|date" for O(1) lookup
     const sessionIndex = new Map<string, (typeof sessions)[number]>();
@@ -275,6 +279,10 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           !!cls.prof_id &&
           session.actual_teacher_id !== cls.prof_id;
 
+        const assignedProfile = cls.prof_id ? profileMap.get(cls.prof_id) : null;
+        const actualProfile = session?.actual_teacher_id ? profileMap.get(session.actual_teacher_id) : null;
+        const room = cls.salle_id ? roomMap.get(cls.salle_id) : null;
+
         result.push({
           id: session?.id ?? `${sched.id}_${dateStr}`,
           title: `${cls.nom}${subjectNames.length ? ` — ${subjectNames.join(", ")}` : ""}`,
@@ -285,15 +293,20 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           classId: sched.class_id,
           className: cls.nom,
           classNiveau: cls.niveau ?? null,
+          classCapacity: cls.capacity_max ?? null,
           isReplacement,
           actualTeacherId: session?.actual_teacher_id ?? null,
-          actualTeacherName: session?.actual_teacher_id ? (profileMap.get(session.actual_teacher_id) ?? null) : null,
+          actualTeacherName: actualProfile?.display_name ?? null,
           assignedTeacherId: cls.prof_id,
-          assignedTeacherName: cls.prof_id ? (profileMap.get(cls.prof_id) ?? null) : null,
+          assignedTeacherName: assignedProfile?.display_name ?? null,
+          assignedTeacherSpecialties: assignedProfile?.teacher_specialties ?? [],
           scheduleId: sched.id,
           sessionId: session?.id ?? null,
           subjectNames,
-          roomName: cls.salle_id ? (roomMap.get(cls.salle_id) ?? null) : null,
+          roomName: room?.name ?? null,
+          roomFloor: room?.floor ?? null,
+          roomFeatures: room?.features ?? [],
+          roomCapacity: room?.capacity ?? null,
         });
       }
     }
@@ -310,15 +323,20 @@ export function useCalendarData(options: UseCalendarDataOptions) {
         classId: null,
         className: null,
         classNiveau: null,
+        classCapacity: null,
         isReplacement: false,
         actualTeacherId: null,
         actualTeacherName: null,
         assignedTeacherId: null,
         assignedTeacherName: null,
+        assignedTeacherSpecialties: [],
         scheduleId: null,
         sessionId: null,
         subjectNames: [],
         roomName: null,
+        roomFloor: null,
+        roomFeatures: [],
+        roomCapacity: null,
         meta: { calendarType: h.type, affectsClasses: h.affects_classes },
       });
     }
@@ -337,15 +355,20 @@ export function useCalendarData(options: UseCalendarDataOptions) {
           classId: null,
           className: null,
           classNiveau: null,
+          classCapacity: null,
           isReplacement: false,
           actualTeacherId: null,
           actualTeacherName: null,
           assignedTeacherId: null,
           assignedTeacherName: null,
+          assignedTeacherSpecialties: [],
           scheduleId: null,
           sessionId: null,
           subjectNames: [],
           roomName: null,
+          roomFloor: null,
+          roomFeatures: [],
+          roomCapacity: null,
           meta: { pole: ev.pole, description: ev.description },
         });
       }
