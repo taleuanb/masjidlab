@@ -109,7 +109,8 @@ export default function Dashboard() {
       </header>
 
       {/* ── Widget Grid ── */}
-      <main className="p-6 space-y-6">
+      <main className="p-4 md:p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
         {sections.map((section) => (
           <section key={section.name} className="space-y-4">
             {section.name !== "Vue d'ensemble" && (
