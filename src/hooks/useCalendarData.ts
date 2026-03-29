@@ -18,16 +18,20 @@ export interface CalendarEvent {
   classId: string | null;
   className: string | null;
   classNiveau: string | null;
+  classCapacity: number | null;
   isReplacement: boolean;
   actualTeacherId: string | null;
   actualTeacherName: string | null;
   assignedTeacherId: string | null;
   assignedTeacherName: string | null;
+  assignedTeacherSpecialties: string[];
   scheduleId: string | null;
   sessionId: string | null;
   subjectNames: string[];
-  /** Room name resolved from class → salle_id → rooms */
   roomName: string | null;
+  roomFloor: string | null;
+  roomFeatures: string[];
+  roomCapacity: number | null;
   meta?: Record<string, unknown>;
 }
 
