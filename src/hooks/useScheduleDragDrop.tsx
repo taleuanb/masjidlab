@@ -119,17 +119,20 @@ export function useScheduleDragDrop(allEvents: CalendarEvent[]) {
       toast({
         title: "✅ Créneau déplacé",
         description: "Le planning a été mis à jour.",
-        action: undoData
-          ? (
-            <button
-              className="text-xs font-semibold text-primary hover:underline whitespace-nowrap"
-              onClick={() => handleUndo(undoData)}
-            >
-              Annuler
-            </button>
-          ) as any
-          : undefined,
       });
+
+      // Show undo toast separately if we have undo data
+      if (undoData) {
+        setTimeout(() => {
+          toast({
+            title: "↩️ Annuler ?",
+            description: "Cliquez pour restaurer l'ancien créneau.",
+          });
+        }, 100);
+        // Store undo for 10s
+        const timer = setTimeout(() => { undoRef.current = null; }, 10000);
+        return () => clearTimeout(timer);
+      }
     },
     onError: (err: any) => {
       // Rollback optimistic update by invalidating
