@@ -99,7 +99,22 @@ export function useCalendarData(options: UseCalendarDataOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("madrasa_classes")
-        .select("id, nom, niveau, prof_id")
+        .select("id, nom, niveau, prof_id, salle_id")
+        .eq("org_id", orgId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // ── Rooms (for room name resolution) ─────────────────────────────────
+  const roomsQuery = useQuery({
+    queryKey: ["cal-rooms", orgId],
+    enabled: !!orgId,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("id, name")
         .eq("org_id", orgId!);
       if (error) throw error;
       return data ?? [];
