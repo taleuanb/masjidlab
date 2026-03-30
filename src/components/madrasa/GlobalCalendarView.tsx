@@ -228,14 +228,13 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
   }
 
   return (
-    <div className="space-y-5 bg-slate-50 dark:bg-muted/20 -mx-6 -mb-6 px-6 pb-6 pt-2 rounded-2xl">
+    <div className="space-y-5">
       {/* ── Navigation ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="rounded-full h-9 w-9 hover:bg-muted"
             onClick={() => (viewMode === "week" ? navigateWeek(-1) : navigateMonth(-1))}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -243,27 +242,26 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
           <Button
             variant="ghost"
             size="sm"
-            className="rounded-full text-xs font-medium hover:bg-muted"
+            className="text-xs"
             onClick={goToToday}
           >
             Aujourd'hui
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="rounded-full h-9 w-9 hover:bg-muted"
             onClick={() => (viewMode === "week" ? navigateWeek(1) : navigateMonth(1))}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        <h3 className="text-lg font-bold tracking-tight text-foreground capitalize">
+        <h3 className="text-sm font-semibold text-foreground capitalize">
           {viewMode === "week" ? (
             <>
               {format(weekStart, "MMMM yyyy", { locale: fr })}
-              <span className="text-sm font-normal text-muted-foreground ml-2">
-                Sem. {format(weekStart, "d", { locale: fr })} – {format(weekEnd, "d MMM", { locale: fr })}
+              <span className="text-muted-foreground font-normal ml-2">
+                — Sem. du {format(weekStart, "d", { locale: fr })} au {format(weekEnd, "d MMM", { locale: fr })}
               </span>
             </>
           ) : (
@@ -271,31 +269,31 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
           )}
         </h3>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-            <TabsList className="h-9 rounded-full bg-muted/60 p-1">
-              <TabsTrigger value="week" className="text-xs gap-1.5 px-3 h-7 rounded-full data-[state=active]:shadow-sm">
-                <LayoutGrid className="h-3.5 w-3.5" />
+            <TabsList className="h-8">
+              <TabsTrigger value="week" className="text-xs gap-1 px-2.5 h-6">
+                <LayoutGrid className="h-3 w-3" />
                 Semaine
               </TabsTrigger>
-              <TabsTrigger value="month" className="text-xs gap-1.5 px-3 h-7 rounded-full data-[state=active]:shadow-sm">
-                <CalendarIcon className="h-3.5 w-3.5" />
+              <TabsTrigger value="month" className="text-xs gap-1 px-2.5 h-6">
+                <CalendarIcon className="h-3 w-3" />
                 Mois
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <div className="hidden lg:flex items-center gap-4 text-[11px] text-slate-600 dark:text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded border-l-4 border-indigo-600 bg-white dark:bg-primary/5 shadow-sm" />
+          <div className="hidden lg:flex items-center gap-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-sm border-l-[3px] border-primary bg-card" />
               Cours
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded border-l-4 border-violet-600 bg-white dark:bg-violet-50 shadow-sm" />
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-sm border-l-[3px] border-violet-500 bg-card" />
               Remplacement
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-red-100 dark:bg-destructive/10 shadow-sm" />
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-sm bg-destructive/15" />
               Fermeture
             </span>
           </div>
@@ -312,7 +310,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="grid grid-cols-7 gap-0 border border-border/40 rounded-2xl overflow-hidden bg-white dark:bg-card shadow-sm">
+          <div className="grid grid-cols-7 gap-2">
             {weekDays.map((day) => {
               const dateStr = format(day, "yyyy-MM-dd");
               const dayEvents = byDay.get(dateStr) ?? [];
@@ -335,31 +333,31 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                   hasConflict={hasConflict}
                 >
                    {/* Day header */}
-                  <div className="px-3 py-3 text-center border-b border-slate-200 dark:border-border/40 bg-slate-50/80 dark:bg-muted/30">
-                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${
-                      today ? "text-primary" : "text-slate-500 dark:text-muted-foreground"
+                  <div className={`px-3 py-2 border-b text-center ${today ? "border-primary/20" : "border-border/50"}`}>
+                    <p className={`text-[10px] font-medium uppercase tracking-wider ${
+                      today ? "text-primary" : "text-muted-foreground"
                     }`}>
                       {format(day, "EEE", { locale: fr })}
                     </p>
-                    <p className={`text-lg font-bold mt-0.5 ${
+                    <p className={`text-base font-bold mt-0.5 ${
                       today
-                        ? "bg-slate-900 dark:bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto text-sm"
-                        : "text-slate-900 dark:text-foreground"
+                        ? "bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center mx-auto text-sm"
+                        : "text-foreground"
                     }`}>
                       {format(day, "d")}
                     </p>
                   </div>
 
                   {isClosed && (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 mx-2 rounded-lg bg-destructive/10">
-                      <Palmtree className="h-3 w-3 text-destructive/70 shrink-0" />
-                      <span className="text-[10px] font-semibold text-destructive truncate">
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 mx-1.5 mt-1.5 rounded-lg bg-destructive/5 border border-destructive/20">
+                      <Palmtree className="h-3.5 w-3.5 text-destructive/70 shrink-0" />
+                      <span className="text-[10px] font-medium text-destructive truncate">
                         {holidays[0].title}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex-1 px-2 pb-2 space-y-2 overflow-y-auto relative">
+                  <div className="flex-1 p-1.5 space-y-1.5 overflow-y-auto relative">
                     {today && timePos !== null && (
                       <div
                         className="absolute left-0 right-0 z-10 flex items-center pointer-events-none"
@@ -371,13 +369,13 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                     )}
 
                     {!isClosed && dayEvents.length === 0 && (
-                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground/30 py-8">
+                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground/40 py-6">
                         <CalendarOff className="h-5 w-5 mb-1" />
                         <span className="text-[10px]">Aucun cours</span>
                       </div>
                     )}
                     {isClosed && sessions.length === 0 && (
-                      <div className="flex flex-col items-center justify-center h-full text-destructive/25 py-8">
+                      <div className="flex flex-col items-center justify-center h-full text-destructive/25 py-6">
                         <CalendarOff className="h-5 w-5 mb-1" />
                         <span className="text-[10px]">École fermée</span>
                       </div>
@@ -431,11 +429,12 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
       )}
 
       {/* ── MONTH VIEW ─────────────────────────────────────────────── */}
+      {/* ── MONTH VIEW ─────────────────────────────────────────────── */}
       {viewMode === "month" && (
-        <div className="rounded-2xl overflow-hidden bg-white dark:bg-card border border-border/40 shadow-sm">
-          <div className="grid grid-cols-7">
-            {["LUN", "MAR", "MER", "JEU", "VEN", "SAM", "DIM"].map((d) => (
-              <div key={d} className="text-center py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground bg-slate-50 dark:bg-muted/30 border-b border-slate-200 dark:border-border/40">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="grid grid-cols-7 border-b bg-muted/30">
+            {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((d) => (
+              <div key={d} className="text-center py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 {d}
               </div>
             ))}
@@ -454,36 +453,36 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                 <button
                   key={dateStr}
                   onClick={() => drillToWeek(day)}
-                  className={`relative flex flex-col items-start p-2 min-h-[100px] text-left transition-colors border-b border-r border-slate-200 dark:border-border/20 hover:bg-slate-50 dark:hover:bg-accent/30 ${
-                    !inMonth ? "opacity-30" : ""
-                  } ${
-                    hasHoliday
-                      ? "bg-red-50/60 dark:bg-destructive/[0.04]"
-                      : today
-                      ? "bg-blue-50/50 dark:bg-primary/[0.03]"
-                      : ""
+                  className={`relative flex flex-col items-start border-b border-r border-border/30 p-1.5 min-h-[72px] text-left transition-colors hover:bg-accent/50 ${
+                    !inMonth ? "opacity-40" : ""
+                  } ${today ? "bg-primary/[0.04]" : ""} ${
+                    hasHoliday ? "bg-destructive/[0.04]" : ""
                   }`}
                 >
-                  <span className={`text-xs font-bold leading-none mb-1.5 ${
+                  <span className={`text-xs font-medium leading-none ${
                     today
-                      ? "bg-slate-900 dark:bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-[11px]"
-                      : inMonth ? "text-slate-900 dark:text-foreground" : "text-slate-400 dark:text-muted-foreground"
+                      ? "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
+                      : inMonth
+                      ? "text-foreground"
+                      : "text-muted-foreground"
                   }`}>
                     {format(day, "d")}
                   </span>
-                  <div className="w-full space-y-0.5 overflow-hidden">
+                  <div className="mt-1 space-y-0.5 w-full overflow-hidden">
                     {hasHoliday && (
-                      <div className="flex items-center gap-0.5 text-[9px] text-destructive font-medium truncate px-1.5 py-[2px] rounded bg-destructive/10">
+                      <div className="flex items-center gap-0.5 text-[9px] text-destructive truncate">
                         <Palmtree className="h-2.5 w-2.5 shrink-0" />
                         <span className="truncate">{holidays[0].title}</span>
                       </div>
                     )}
                     <div className={hasHoliday ? "opacity-25" : ""}>
-                      {sessions.slice(0, 3).map((ev) => (
+                      {sessions.slice(0, 2).map((ev) => (
                         <MonthEventPill key={ev.id} event={ev} />
                       ))}
-                      {sessions.length > 3 && (
-                        <span className="text-[9px] text-muted-foreground font-medium pl-1">+{sessions.length - 3}</span>
+                      {sessions.length > 2 && (
+                        <span className="text-[9px] text-muted-foreground pl-3">
+                          +{sessions.length - 2}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -549,16 +548,16 @@ function DroppableDayColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[240px] flex flex-col transition-all duration-200 border-r border-slate-200 dark:border-border/30 last:border-r-0 ${
+      className={`rounded-xl border min-h-[220px] flex flex-col transition-all duration-200 ${
         isClosed
-          ? "bg-red-50/50 dark:bg-destructive/[0.04]"
+          ? "border-destructive/20 bg-destructive/[0.03]"
           : isDragOver && hasConflict
-          ? "bg-red-50 dark:bg-destructive/[0.08] ring-2 ring-destructive/30"
+          ? "border-destructive/40 bg-destructive/[0.06] ring-2 ring-destructive/30"
           : isDragOver
-          ? "bg-blue-50 dark:bg-primary/[0.06] ring-2 ring-primary/30 scale-[1.01]"
+          ? "border-primary/40 bg-primary/[0.05] ring-2 ring-primary/30"
           : today
-          ? "bg-blue-50/40 dark:bg-primary/[0.03]"
-          : "bg-white dark:bg-card hover:bg-slate-50/80 dark:hover:bg-muted/50"
+          ? "border-primary/30 bg-primary/[0.03]"
+          : "border-border bg-card"
       }`}
     >
       {children}
@@ -625,52 +624,57 @@ function WeekEventCardContent({
   const isReplacement = ev.isReplacement;
   const isPast = isBefore(ev.end, new Date()) && ev.status !== "completed";
 
-  const borderColor = hasConflict
-    ? "border-l-red-500"
+  const borderClass = hasConflict
+    ? "border-destructive/40 bg-destructive/5"
     : isCancelled
-    ? "border-l-red-400"
+    ? "border-destructive/20 bg-destructive/5 opacity-60"
     : isReplacement
-    ? "border-l-violet-600"
+    ? "border-violet-500/30 bg-violet-500/5 border-l-[3px] border-l-violet-500"
     : ev.status === "completed"
-    ? "border-l-emerald-600"
-    : "border-l-indigo-600";
+    ? "border-emerald-500/20 bg-card border-l-[3px] border-l-emerald-500"
+    : "border-border bg-card border-l-[3px] border-l-primary";
 
   return (
     <button
       onClick={onClick}
-      className={`w-full rounded-lg border-l-4 ${borderColor} bg-white dark:bg-card shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-sm px-3 py-2.5 text-left transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:-translate-y-px ${
-        isPast ? "opacity-50" : ""
-      } ${isCancelled ? "opacity-50 line-through decoration-slate-300" : ""} ${
+      className={`w-full rounded-lg border px-3 py-2 text-left transition-shadow hover:shadow-sm ${borderClass} ${
+        isPast && !ev.status?.includes("completed") ? "opacity-50" : ""
+      } ${isCancelled ? "line-through decoration-muted-foreground/30" : ""} ${
         isGhost ? "shadow-xl ring-1 ring-border/30 rotate-1" : ""
-      } ${hasConflict ? "animate-pulse bg-red-50 dark:bg-destructive/10" : ""}`}
+      } ${hasConflict ? "animate-pulse" : ""}`}
     >
-      <p className="text-[11px] font-bold text-slate-900 dark:text-foreground truncate">{ev.className ?? ev.title}</p>
+      <div className="flex items-start gap-1.5">
+        <BookOpen className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+        <p className="text-[11px] font-semibold text-foreground leading-tight truncate">{ev.className ?? ev.title}</p>
+      </div>
       {ev.subjectNames.length > 0 && (
-        <p className="text-[9px] text-slate-500 dark:text-muted-foreground truncate mt-0.5">{ev.subjectNames.join(", ")}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5 truncate pl-[18px]">{ev.subjectNames.join(", ")}</p>
       )}
-      <div className="flex items-center gap-2.5 mt-1.5 text-[9px] text-slate-600 dark:text-muted-foreground">
-        <span className="flex items-center gap-0.5 tabular-nums">
-          <Clock className="h-2.5 w-2.5 text-slate-500 dark:text-muted-foreground" />
+      <div className="flex items-center gap-1 mt-1 pl-[18px]">
+        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-[10px] text-muted-foreground tabular-nums">
           {format(ev.start, "HH:mm")} – {format(ev.end, "HH:mm")}
         </span>
-        {ev.roomName && (
-          <span className="flex items-center gap-0.5 truncate">
-            <MapPin className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-muted-foreground" />
-            <span className="truncate">{ev.roomName}</span>
-          </span>
-        )}
       </div>
+      {ev.roomName && (
+        <div className="flex items-center gap-1 mt-0.5 pl-[18px]">
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground truncate">{ev.roomName}</span>
+        </div>
+      )}
       {ev.assignedTeacherName && (
-        <div className="flex items-center gap-1 mt-0.5 text-[9px] text-slate-600 dark:text-muted-foreground">
-          <User className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-muted-foreground" />
-          <span className="truncate">{ev.assignedTeacherName}</span>
+        <div className="flex items-center gap-1 mt-0.5 pl-[18px]">
+          <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground truncate">{ev.assignedTeacherName}</span>
         </div>
       )}
       {isReplacement && (
-        <Badge variant="outline" className="text-[8px] h-3.5 px-1.5 mt-1 bg-violet-500/10 border-violet-500/20 text-violet-700">
-          <Handshake className="h-2 w-2 mr-0.5" />
-          Remplacement
-        </Badge>
+        <div className="pl-[18px] mt-1">
+          <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-violet-500/10 border-violet-500/20 text-violet-700">
+            <Handshake className="h-2 w-2 mr-0.5" />
+            Remplacement
+          </Badge>
+        </div>
       )}
     </button>
   );
@@ -699,23 +703,21 @@ function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: 
   );
 }
 
-// ── Month compact pill ─────────────────────────────────────────────────
+// ── Month compact pill (dot style like MonAgenda) ──────────────────────
 function MonthEventPill({ event: ev }: { event: CalendarEvent }) {
   const dotColor = ev.status === "cancelled"
-    ? "border-l-red-400"
+    ? "bg-destructive/60"
     : ev.isReplacement
-    ? "border-l-violet-600"
+    ? "bg-violet-500"
     : ev.status === "completed"
-    ? "border-l-emerald-600"
-    : "border-l-indigo-600";
+    ? "bg-emerald-500"
+    : "bg-primary";
 
   return (
-    <div className={`flex items-center gap-1 text-[9px] truncate rounded px-1.5 py-[2px] border-l-[3px] bg-white dark:bg-muted/40 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ${dotColor}`}>
-      <span className="font-bold text-slate-900 dark:text-foreground truncate">
-        {format(ev.start, "HH:mm")}
-      </span>
-      <span className="truncate text-slate-600 dark:text-muted-foreground">
-        {ev.className}
+    <div className="flex items-center gap-1 text-[9px] truncate">
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
+      <span className="truncate text-muted-foreground">
+        {format(ev.start, "HH:mm")} {ev.className}
       </span>
     </div>
   );
