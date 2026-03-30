@@ -703,23 +703,21 @@ function WeekEventCard({ event: ev, onClick }: { event: CalendarEvent; onClick: 
   );
 }
 
-// ── Month compact pill ─────────────────────────────────────────────────
+// ── Month compact pill (dot style like MonAgenda) ──────────────────────
 function MonthEventPill({ event: ev }: { event: CalendarEvent }) {
   const dotColor = ev.status === "cancelled"
-    ? "border-l-red-400"
+    ? "bg-destructive/60"
     : ev.isReplacement
-    ? "border-l-violet-600"
+    ? "bg-violet-500"
     : ev.status === "completed"
-    ? "border-l-emerald-600"
-    : "border-l-indigo-600";
+    ? "bg-emerald-500"
+    : "bg-primary";
 
   return (
-    <div className={`flex items-center gap-1 text-[9px] truncate rounded px-1.5 py-[2px] border-l-[3px] bg-white dark:bg-muted/40 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ${dotColor}`}>
-      <span className="font-bold text-slate-900 dark:text-foreground truncate">
-        {format(ev.start, "HH:mm")}
-      </span>
-      <span className="truncate text-slate-600 dark:text-muted-foreground">
-        {ev.className}
+    <div className="flex items-center gap-1 text-[9px] truncate">
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
+      <span className="truncate text-muted-foreground">
+        {format(ev.start, "HH:mm")} {ev.className}
       </span>
     </div>
   );
