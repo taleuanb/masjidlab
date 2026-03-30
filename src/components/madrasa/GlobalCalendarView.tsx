@@ -624,52 +624,57 @@ function WeekEventCardContent({
   const isReplacement = ev.isReplacement;
   const isPast = isBefore(ev.end, new Date()) && ev.status !== "completed";
 
-  const borderColor = hasConflict
-    ? "border-l-red-500"
+  const borderClass = hasConflict
+    ? "border-destructive/40 bg-destructive/5"
     : isCancelled
-    ? "border-l-red-400"
+    ? "border-destructive/20 bg-destructive/5 opacity-60"
     : isReplacement
-    ? "border-l-violet-600"
+    ? "border-violet-500/30 bg-violet-500/5 border-l-[3px] border-l-violet-500"
     : ev.status === "completed"
-    ? "border-l-emerald-600"
-    : "border-l-indigo-600";
+    ? "border-emerald-500/20 bg-card border-l-[3px] border-l-emerald-500"
+    : "border-border bg-card border-l-[3px] border-l-primary";
 
   return (
     <button
       onClick={onClick}
-      className={`w-full rounded-lg border-l-4 ${borderColor} bg-white dark:bg-card shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-sm px-3 py-2.5 text-left transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:-translate-y-px ${
-        isPast ? "opacity-50" : ""
-      } ${isCancelled ? "opacity-50 line-through decoration-slate-300" : ""} ${
+      className={`w-full rounded-lg border px-3 py-2 text-left transition-shadow hover:shadow-sm ${borderClass} ${
+        isPast && !ev.status?.includes("completed") ? "opacity-50" : ""
+      } ${isCancelled ? "line-through decoration-muted-foreground/30" : ""} ${
         isGhost ? "shadow-xl ring-1 ring-border/30 rotate-1" : ""
-      } ${hasConflict ? "animate-pulse bg-red-50 dark:bg-destructive/10" : ""}`}
+      } ${hasConflict ? "animate-pulse" : ""}`}
     >
-      <p className="text-[11px] font-bold text-slate-900 dark:text-foreground truncate">{ev.className ?? ev.title}</p>
+      <div className="flex items-start gap-1.5">
+        <BookOpen className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+        <p className="text-[11px] font-semibold text-foreground leading-tight truncate">{ev.className ?? ev.title}</p>
+      </div>
       {ev.subjectNames.length > 0 && (
-        <p className="text-[9px] text-slate-500 dark:text-muted-foreground truncate mt-0.5">{ev.subjectNames.join(", ")}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5 truncate pl-[18px]">{ev.subjectNames.join(", ")}</p>
       )}
-      <div className="flex items-center gap-2.5 mt-1.5 text-[9px] text-slate-600 dark:text-muted-foreground">
-        <span className="flex items-center gap-0.5 tabular-nums">
-          <Clock className="h-2.5 w-2.5 text-slate-500 dark:text-muted-foreground" />
+      <div className="flex items-center gap-1 mt-1 pl-[18px]">
+        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-[10px] text-muted-foreground tabular-nums">
           {format(ev.start, "HH:mm")} – {format(ev.end, "HH:mm")}
         </span>
-        {ev.roomName && (
-          <span className="flex items-center gap-0.5 truncate">
-            <MapPin className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-muted-foreground" />
-            <span className="truncate">{ev.roomName}</span>
-          </span>
-        )}
       </div>
+      {ev.roomName && (
+        <div className="flex items-center gap-1 mt-0.5 pl-[18px]">
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground truncate">{ev.roomName}</span>
+        </div>
+      )}
       {ev.assignedTeacherName && (
-        <div className="flex items-center gap-1 mt-0.5 text-[9px] text-slate-600 dark:text-muted-foreground">
-          <User className="h-2.5 w-2.5 shrink-0 text-slate-500 dark:text-muted-foreground" />
-          <span className="truncate">{ev.assignedTeacherName}</span>
+        <div className="flex items-center gap-1 mt-0.5 pl-[18px]">
+          <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground truncate">{ev.assignedTeacherName}</span>
         </div>
       )}
       {isReplacement && (
-        <Badge variant="outline" className="text-[8px] h-3.5 px-1.5 mt-1 bg-violet-500/10 border-violet-500/20 text-violet-700">
-          <Handshake className="h-2 w-2 mr-0.5" />
-          Remplacement
-        </Badge>
+        <div className="pl-[18px] mt-1">
+          <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-violet-500/10 border-violet-500/20 text-violet-700">
+            <Handshake className="h-2 w-2 mr-0.5" />
+            Remplacement
+          </Badge>
+        </div>
       )}
     </button>
   );
