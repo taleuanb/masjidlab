@@ -228,14 +228,13 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
   }
 
   return (
-    <div className="space-y-5 bg-slate-50 dark:bg-muted/20 -mx-6 -mb-6 px-6 pb-6 pt-2 rounded-2xl">
+    <div className="space-y-5">
       {/* ── Navigation ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="rounded-full h-9 w-9 hover:bg-muted"
             onClick={() => (viewMode === "week" ? navigateWeek(-1) : navigateMonth(-1))}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -243,27 +242,26 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
           <Button
             variant="ghost"
             size="sm"
-            className="rounded-full text-xs font-medium hover:bg-muted"
+            className="text-xs"
             onClick={goToToday}
           >
             Aujourd'hui
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="rounded-full h-9 w-9 hover:bg-muted"
             onClick={() => (viewMode === "week" ? navigateWeek(1) : navigateMonth(1))}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        <h3 className="text-lg font-bold tracking-tight text-foreground capitalize">
+        <h3 className="text-sm font-semibold text-foreground capitalize">
           {viewMode === "week" ? (
             <>
               {format(weekStart, "MMMM yyyy", { locale: fr })}
-              <span className="text-sm font-normal text-muted-foreground ml-2">
-                Sem. {format(weekStart, "d", { locale: fr })} – {format(weekEnd, "d MMM", { locale: fr })}
+              <span className="text-muted-foreground font-normal ml-2">
+                — Sem. du {format(weekStart, "d", { locale: fr })} au {format(weekEnd, "d MMM", { locale: fr })}
               </span>
             </>
           ) : (
@@ -271,31 +269,31 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
           )}
         </h3>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-            <TabsList className="h-9 rounded-full bg-muted/60 p-1">
-              <TabsTrigger value="week" className="text-xs gap-1.5 px-3 h-7 rounded-full data-[state=active]:shadow-sm">
-                <LayoutGrid className="h-3.5 w-3.5" />
+            <TabsList className="h-8">
+              <TabsTrigger value="week" className="text-xs gap-1 px-2.5 h-6">
+                <LayoutGrid className="h-3 w-3" />
                 Semaine
               </TabsTrigger>
-              <TabsTrigger value="month" className="text-xs gap-1.5 px-3 h-7 rounded-full data-[state=active]:shadow-sm">
-                <CalendarIcon className="h-3.5 w-3.5" />
+              <TabsTrigger value="month" className="text-xs gap-1 px-2.5 h-6">
+                <CalendarIcon className="h-3 w-3" />
                 Mois
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <div className="hidden lg:flex items-center gap-4 text-[11px] text-slate-600 dark:text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded border-l-4 border-indigo-600 bg-white dark:bg-primary/5 shadow-sm" />
+          <div className="hidden lg:flex items-center gap-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-sm border-l-[3px] border-indigo-600 bg-card" />
               Cours
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded border-l-4 border-violet-600 bg-white dark:bg-violet-50 shadow-sm" />
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-sm border-l-[3px] border-violet-500 bg-card" />
               Remplacement
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-red-100 dark:bg-destructive/10 shadow-sm" />
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-sm bg-destructive/15" />
               Fermeture
             </span>
           </div>
@@ -312,7 +310,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="grid grid-cols-7 gap-0 border border-border/40 rounded-2xl overflow-hidden bg-white dark:bg-card shadow-sm">
+          <div className="grid grid-cols-7 gap-2">
             {weekDays.map((day) => {
               const dateStr = format(day, "yyyy-MM-dd");
               const dayEvents = byDay.get(dateStr) ?? [];
@@ -335,31 +333,31 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                   hasConflict={hasConflict}
                 >
                    {/* Day header */}
-                  <div className="px-3 py-3 text-center border-b border-slate-200 dark:border-border/40 bg-slate-50/80 dark:bg-muted/30">
-                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${
-                      today ? "text-primary" : "text-slate-500 dark:text-muted-foreground"
+                  <div className={`px-3 py-2 border-b text-center ${today ? "border-primary/20" : "border-border/50"}`}>
+                    <p className={`text-[10px] font-medium uppercase tracking-wider ${
+                      today ? "text-primary" : "text-muted-foreground"
                     }`}>
                       {format(day, "EEE", { locale: fr })}
                     </p>
-                    <p className={`text-lg font-bold mt-0.5 ${
+                    <p className={`text-base font-bold mt-0.5 ${
                       today
-                        ? "bg-slate-900 dark:bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto text-sm"
-                        : "text-slate-900 dark:text-foreground"
+                        ? "bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center mx-auto text-sm"
+                        : "text-foreground"
                     }`}>
                       {format(day, "d")}
                     </p>
                   </div>
 
                   {isClosed && (
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 mx-2 rounded-lg bg-destructive/10">
-                      <Palmtree className="h-3 w-3 text-destructive/70 shrink-0" />
-                      <span className="text-[10px] font-semibold text-destructive truncate">
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 mx-1.5 mt-1.5 rounded-lg bg-destructive/5 border border-destructive/20">
+                      <Palmtree className="h-3.5 w-3.5 text-destructive/70 shrink-0" />
+                      <span className="text-[10px] font-medium text-destructive truncate">
                         {holidays[0].title}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex-1 px-2 pb-2 space-y-2 overflow-y-auto relative">
+                  <div className="flex-1 p-1.5 space-y-1.5 overflow-y-auto relative">
                     {today && timePos !== null && (
                       <div
                         className="absolute left-0 right-0 z-10 flex items-center pointer-events-none"
@@ -371,13 +369,13 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                     )}
 
                     {!isClosed && dayEvents.length === 0 && (
-                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground/30 py-8">
+                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground/40 py-6">
                         <CalendarOff className="h-5 w-5 mb-1" />
                         <span className="text-[10px]">Aucun cours</span>
                       </div>
                     )}
                     {isClosed && sessions.length === 0 && (
-                      <div className="flex flex-col items-center justify-center h-full text-destructive/25 py-8">
+                      <div className="flex flex-col items-center justify-center h-full text-destructive/25 py-6">
                         <CalendarOff className="h-5 w-5 mb-1" />
                         <span className="text-[10px]">École fermée</span>
                       </div>
