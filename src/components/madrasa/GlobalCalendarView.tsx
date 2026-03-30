@@ -548,16 +548,16 @@ function DroppableDayColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[240px] flex flex-col transition-all duration-200 border-r border-slate-200 dark:border-border/30 last:border-r-0 ${
+      className={`rounded-xl border min-h-[220px] flex flex-col transition-all duration-200 ${
         isClosed
-          ? "bg-red-50/50 dark:bg-destructive/[0.04]"
+          ? "border-destructive/20 bg-destructive/[0.03]"
           : isDragOver && hasConflict
-          ? "bg-red-50 dark:bg-destructive/[0.08] ring-2 ring-destructive/30"
+          ? "border-destructive/40 bg-destructive/[0.06] ring-2 ring-destructive/30"
           : isDragOver
-          ? "bg-blue-50 dark:bg-primary/[0.06] ring-2 ring-primary/30 scale-[1.01]"
+          ? "border-primary/40 bg-primary/[0.05] ring-2 ring-primary/30"
           : today
-          ? "bg-blue-50/40 dark:bg-primary/[0.03]"
-          : "bg-white dark:bg-card hover:bg-slate-50/80 dark:hover:bg-muted/50"
+          ? "border-primary/30 bg-primary/[0.03]"
+          : "border-border bg-card"
       }`}
     >
       {children}
