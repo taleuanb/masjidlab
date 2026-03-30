@@ -285,7 +285,7 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
 
           <div className="hidden lg:flex items-center gap-3 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm border-l-[3px] border-indigo-600 bg-card" />
+              <span className="w-2.5 h-2.5 rounded-sm border-l-[3px] border-primary bg-card" />
               Cours
             </span>
             <span className="flex items-center gap-1">
