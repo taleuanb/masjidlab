@@ -429,11 +429,12 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
       )}
 
       {/* ── MONTH VIEW ─────────────────────────────────────────────── */}
+      {/* ── MONTH VIEW ─────────────────────────────────────────────── */}
       {viewMode === "month" && (
-        <div className="rounded-2xl overflow-hidden bg-white dark:bg-card border border-border/40 shadow-sm">
-          <div className="grid grid-cols-7">
-            {["LUN", "MAR", "MER", "JEU", "VEN", "SAM", "DIM"].map((d) => (
-              <div key={d} className="text-center py-3 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground bg-slate-50 dark:bg-muted/30 border-b border-slate-200 dark:border-border/40">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="grid grid-cols-7 border-b bg-muted/30">
+            {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map((d) => (
+              <div key={d} className="text-center py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 {d}
               </div>
             ))}
@@ -452,36 +453,36 @@ export default function GlobalCalendarView({ filterNiveau, filterSubjects }: Pro
                 <button
                   key={dateStr}
                   onClick={() => drillToWeek(day)}
-                  className={`relative flex flex-col items-start p-2 min-h-[100px] text-left transition-colors border-b border-r border-slate-200 dark:border-border/20 hover:bg-slate-50 dark:hover:bg-accent/30 ${
-                    !inMonth ? "opacity-30" : ""
-                  } ${
-                    hasHoliday
-                      ? "bg-red-50/60 dark:bg-destructive/[0.04]"
-                      : today
-                      ? "bg-blue-50/50 dark:bg-primary/[0.03]"
-                      : ""
+                  className={`relative flex flex-col items-start border-b border-r border-border/30 p-1.5 min-h-[72px] text-left transition-colors hover:bg-accent/50 ${
+                    !inMonth ? "opacity-40" : ""
+                  } ${today ? "bg-primary/[0.04]" : ""} ${
+                    hasHoliday ? "bg-destructive/[0.04]" : ""
                   }`}
                 >
-                  <span className={`text-xs font-bold leading-none mb-1.5 ${
+                  <span className={`text-xs font-medium leading-none ${
                     today
-                      ? "bg-slate-900 dark:bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-[11px]"
-                      : inMonth ? "text-slate-900 dark:text-foreground" : "text-slate-400 dark:text-muted-foreground"
+                      ? "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
+                      : inMonth
+                      ? "text-foreground"
+                      : "text-muted-foreground"
                   }`}>
                     {format(day, "d")}
                   </span>
-                  <div className="w-full space-y-0.5 overflow-hidden">
+                  <div className="mt-1 space-y-0.5 w-full overflow-hidden">
                     {hasHoliday && (
-                      <div className="flex items-center gap-0.5 text-[9px] text-destructive font-medium truncate px-1.5 py-[2px] rounded bg-destructive/10">
+                      <div className="flex items-center gap-0.5 text-[9px] text-destructive truncate">
                         <Palmtree className="h-2.5 w-2.5 shrink-0" />
                         <span className="truncate">{holidays[0].title}</span>
                       </div>
                     )}
                     <div className={hasHoliday ? "opacity-25" : ""}>
-                      {sessions.slice(0, 3).map((ev) => (
+                      {sessions.slice(0, 2).map((ev) => (
                         <MonthEventPill key={ev.id} event={ev} />
                       ))}
-                      {sessions.length > 3 && (
-                        <span className="text-[9px] text-muted-foreground font-medium pl-1">+{sessions.length - 3}</span>
+                      {sessions.length > 2 && (
+                        <span className="text-[9px] text-muted-foreground pl-3">
+                          +{sessions.length - 2}
+                        </span>
                       )}
                     </div>
                   </div>
