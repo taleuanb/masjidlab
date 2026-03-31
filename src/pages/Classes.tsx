@@ -94,7 +94,7 @@ const Classes = () => {
   const [filterSubjects, setFilterSubjects] = useState<string[]>([]);
   const [progressClassId, setProgressClassId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const isEditing = !!editingClass;
 
