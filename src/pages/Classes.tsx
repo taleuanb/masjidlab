@@ -70,9 +70,9 @@ const BOARD_COLUMNS = [
   { id: "completed", label: "Terminée", color: "bg-brand-cyan/10" },
 ] as const;
 
-type ViewMode = "grid" | "list" | "board";
+type ViewMode = "list" | "grid" | "kanban";
 
-// Derive a simple status for board view
+// Derive a simple status for tabs/board
 function deriveClassStatus(c: ClassRow, enrolled: number): "planned" | "active" | "completed" {
   if (enrolled === 0 && !c.prof_id) return "planned";
   if (c.scheduleSlots.length === 0 && enrolled === 0) return "planned";
