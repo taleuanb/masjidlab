@@ -6,12 +6,12 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Pencil, TrendingUp,
   Clock, CalendarDays, School, Search, LayoutGrid, List, Columns3, MapPin,
-  MoreVertical, FileText, PhoneCall,
+  MoreVertical, FileText, PhoneCall, AlertTriangle, DoorOpen, MoreHorizontal,
 } from "lucide-react";
 import { ClassCard } from "@/components/madrasa/ClassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
