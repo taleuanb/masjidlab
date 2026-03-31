@@ -380,6 +380,41 @@ const Classes = () => {
     return grouped;
   }, [filteredClasses, enrollmentCounts]);
 
+  // ── Grid: group by cycle ──
+  const cycleGroups = useMemo(() => {
+    // Build level_id -> cycle_id map
+    const levelToCycle: Record<string, string> = {};
+    levels.forEach((l) => { if (l.cycle_id) levelToCycle[l.id] = l.cycle_id; });
+
+    // Build cycle_id -> cycle name map
+    const cycleNames: Record<string, string> = {};
+    cycles.forEach((cy) => { cycleNames[cy.id] = cy.nom; });
+
+    const groups: { cycleId: string; cycleName: string; classes: ClassRow[] }[] = [];
+    const groupMap = new Map<string, ClassRow[]>();
+
+    filteredClasses.forEach((c) => {
+      const cycleId = c.level_id ? (levelToCycle[c.level_id] ?? "__other") : "__other";
+      if (!groupMap.has(cycleId)) groupMap.set(cycleId, []);
+      groupMap.get(cycleId)!.push(c);
+    });
+
+    // Named cycles first, then "Non classé"
+    for (const [cycleId, items] of groupMap.entries()) {
+      if (cycleId !== "__other") {
+        groups.push({ cycleId, cycleName: cycleNames[cycleId] ?? cycleId, classes: items });
+      }
+    }
+    groups.sort((a, b) => a.cycleName.localeCompare(b.cycleName));
+
+    const other = groupMap.get("__other");
+    if (other && other.length > 0) {
+      groups.push({ cycleId: "__other", cycleName: "Non classé", classes: other });
+    }
+
+    return groups;
+  }, [filteredClasses, levels, cycles]);
+
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
