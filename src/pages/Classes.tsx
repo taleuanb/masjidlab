@@ -385,7 +385,7 @@ const Classes = () => {
                         name={c.nom}
                         level={c.niveau ?? ""}
                         enrolled={enrollmentCounts[c.id] ?? 0}
-                        capacityMax={30}
+                        capacityMax={c.capacity_max ?? 30}
                         teacherName={c.prof?.display_name ?? null}
                         roomName={c.salle?.name ?? null}
                         scheduleDays={scheduleDaysLabels}
