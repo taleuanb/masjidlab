@@ -44,6 +44,7 @@ type ClassRow = {
   id: string;
   nom: string;
   niveau: string | null;
+  level_id: string | null;
   capacity_max: number | null;
   prof_id: string | null;
   salle_id: string | null;
