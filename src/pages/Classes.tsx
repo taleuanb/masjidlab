@@ -6,12 +6,12 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Pencil, TrendingUp,
   Clock, CalendarDays, School, Search, LayoutGrid, List, Columns3, MapPin,
-  MoreVertical, FileText, PhoneCall,
+  MoreVertical, FileText, PhoneCall, AlertTriangle, DoorOpen, MoreHorizontal,
 } from "lucide-react";
 import { ClassCard } from "@/components/madrasa/ClassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -70,9 +70,9 @@ const BOARD_COLUMNS = [
   { id: "completed", label: "Terminée", color: "bg-brand-cyan/10" },
 ] as const;
 
-type ViewMode = "grid" | "list" | "board";
+type ViewMode = "list" | "grid" | "kanban";
 
-// Derive a simple status for board view
+// Derive a simple status for tabs/board
 function deriveClassStatus(c: ClassRow, enrolled: number): "planned" | "active" | "completed" {
   if (enrolled === 0 && !c.prof_id) return "planned";
   if (c.scheduleSlots.length === 0 && enrolled === 0) return "planned";
@@ -94,7 +94,7 @@ const Classes = () => {
   const [filterSubjects, setFilterSubjects] = useState<string[]>([]);
   const [progressClassId, setProgressClassId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const isEditing = !!editingClass;
 
@@ -369,16 +369,115 @@ const Classes = () => {
     return grouped;
   }, [filteredClasses, enrollmentCounts]);
 
+  // ── KPI Stats ──
+  const totalClasses = classes.length;
+  const totalEnrolled = useMemo(() => Object.values(enrollmentCounts).reduce((s, v) => s + v, 0), [enrollmentCounts]);
+  const roomsUsed = useMemo(() => new Set(classes.filter((c) => c.salle_id).map((c) => c.salle_id)).size, [classes]);
+  const capacityAlerts = useMemo(
+    () => classes.filter((c) => {
+      const enrolled = enrollmentCounts[c.id] ?? 0;
+      const max = c.capacity_max ?? 30;
+      return max > 0 && (enrolled / max) >= 0.85;
+    }).length,
+    [classes, enrollmentCounts]
+  );
+
+  // ── Status tab filter ──
+  const [statusTab, setStatusTab] = useState("all");
+
+  const tabFilteredClasses = useMemo(() => {
+    return filteredClasses.filter((c) => {
+      if (statusTab === "all") return true;
+      const status = deriveClassStatus(c, enrollmentCounts[c.id] ?? 0);
+      return status === statusTab;
+    });
+  }, [filteredClasses, statusTab, enrollmentCounts]);
+
+  // ── Tab counts ──
+  const tabCounts = useMemo(() => {
+    const counts = { all: filteredClasses.length, planned: 0, active: 0, completed: 0 };
+    filteredClasses.forEach((c) => {
+      const status = deriveClassStatus(c, enrollmentCounts[c.id] ?? 0);
+      counts[status]++;
+    });
+    return counts;
+  }, [filteredClasses, enrollmentCounts]);
+
   return (
     <main className="flex-1 overflow-y-auto">
-      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
-        <div className="flex items-center gap-3 mb-1">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3">
           <SidebarTrigger />
+          <BookOpen className="h-5 w-5 text-brand-cyan" />
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-foreground">Classes</h1>
+            <p className="text-sm text-muted-foreground">Gestion des classes et du planning</p>
+          </div>
+          <div className="flex-1" />
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(v) => { if (v) setViewMode(v as ViewMode); }}
+            className="shrink-0"
+          >
+            <ToggleGroupItem value="list" aria-label="Liste" className="h-9 w-9 p-0">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="grid" aria-label="Grille" className="h-9 w-9 p-0">
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="kanban" aria-label="Kanban" className="h-9 w-9 p-0">
+              <Columns3 className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <Button onClick={openCreate} className="bg-brand-navy hover:bg-brand-navy/90">
+            <Plus className="h-4 w-4 mr-1.5" />
+            <span className="hidden sm:inline">Nouvelle classe</span>
+            <span className="sm:hidden">Créer</span>
+          </Button>
         </div>
 
-        <Tabs defaultValue="liste" className="w-full">
+        {/* ── KPI Cards ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs font-medium mb-1">
+                <School className="h-3.5 w-3.5" /> Total Classes
+              </div>
+              <p className="text-2xl font-bold text-foreground">{isLoading ? "—" : totalClasses}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs font-medium mb-1">
+                <DoorOpen className="h-3.5 w-3.5" /> Salles Occupées
+              </div>
+              <p className="text-2xl font-bold text-brand-cyan">{isLoading ? "—" : roomsUsed}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs font-medium mb-1">
+                <Users className="h-3.5 w-3.5" /> Effectif Total
+              </div>
+              <p className="text-2xl font-bold text-brand-emerald">{isLoading ? "—" : totalEnrolled}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs font-medium mb-1">
+                <AlertTriangle className="h-3.5 w-3.5" /> Alertes Capacité
+              </div>
+              <p className="text-2xl font-bold text-destructive">{isLoading ? "—" : capacityAlerts}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── Tabs (like Inscriptions) ── */}
+        <Tabs defaultValue="classes" className="w-full">
           <TabsList>
-            <TabsTrigger value="liste" className="gap-1.5">
+            <TabsTrigger value="classes" className="gap-1.5">
               <BookOpen className="h-3.5 w-3.5" />
               Liste des classes
             </TabsTrigger>
@@ -392,198 +491,139 @@ const Classes = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="liste" className="mt-4 space-y-5">
-            {/* ── Header ── */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-foreground">Classes</h1>
-                <Badge variant="secondary" className="text-xs font-medium bg-muted text-muted-foreground">
-                  {filteredClasses.length}
-                </Badge>
-              </div>
-              <Button size="sm" className="gradient-positive border-0" onClick={openCreate}>
-                <Plus className="h-4 w-4" /> Nouvelle classe
-              </Button>
-            </div>
+          <TabsContent value="classes" className="mt-4 space-y-4">
+            {/* ── Quick Filters (status tabs) ── */}
+            <Tabs value={statusTab} onValueChange={setStatusTab}>
+              <TabsList>
+                <TabsTrigger value="all">Toutes ({tabCounts.all})</TabsTrigger>
+                <TabsTrigger value="planned">🟡 Planifiées ({tabCounts.planned})</TabsTrigger>
+                <TabsTrigger value="active">🟢 Actives ({tabCounts.active})</TabsTrigger>
+                <TabsTrigger value="completed">🔵 Terminées ({tabCounts.completed})</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-            {/* ── Unified Toolbar ── */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              {/* Search */}
-              <div className="relative w-full sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  placeholder="Rechercher une classe…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-9 text-sm"
-                />
-              </div>
-
-              {/* Filter: Niveau */}
-              <Select value={filterNiveau} onValueChange={setFilterNiveau}>
-                <SelectTrigger className="h-9 w-full sm:w-[160px] text-sm">
-                  <SelectValue placeholder="Niveau" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les niveaux</SelectItem>
-                  {uniqueLevels.map((l) => (
-                    <SelectItem key={l} value={l}>{l}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Filter: Matière */}
-              <Select value={filterSubject} onValueChange={setFilterSubject}>
-                <SelectTrigger className="h-9 w-full sm:w-[170px] text-sm">
-                  <SelectValue placeholder="Matière" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Toutes les matières</SelectItem>
-                  {uniqueSubjects.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* View Mode Toggle */}
-              <ToggleGroup
-                type="single"
-                value={viewMode}
-                onValueChange={(v) => { if (v) setViewMode(v as ViewMode); }}
-                className="shrink-0 ml-auto"
-              >
-                <ToggleGroupItem value="grid" aria-label="Grille" className="h-9 w-9 p-0">
-                  <LayoutGrid className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="list" aria-label="Liste" className="h-9 w-9 p-0">
-                  <List className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="board" aria-label="Board" className="h-9 w-9 p-0">
-                  <Columns3 className="h-4 w-4" />
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            {/* ── Content ── */}
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-56 rounded-lg" />
-                ))}
-              </div>
-            ) : filteredClasses.length === 0 && classes.length === 0 ? (
-              <EmptyState
-                icon={School}
-                title="Aucune classe créée"
-                description="Commencez par configurer les niveaux et matières dans Configuration > Madrassa, puis créez votre première classe."
-                action={
-                  <Button className="gradient-positive border-0" onClick={openCreate}>
-                    <Plus className="h-4 w-4" /> Créer une classe
-                  </Button>
-                }
-              />
-            ) : filteredClasses.length === 0 ? (
-              <EmptyState
-                icon={GraduationCap}
-                title="Aucun résultat"
-                description="Aucune classe ne correspond à votre recherche ou filtre actuel."
-              />
-            ) : viewMode === "grid" ? (
-              /* ══════ GRID VIEW ══════ */
-              <AnimatePresence mode="popLayout">
-                <motion.div
-                  layout
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                >
-                  {filteredClasses.map((c) => {
-                    const { days, time } = getScheduleInfo(c);
-                    return (
-                      <motion.div
-                        key={c.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <ClassCard
-                          id={c.id}
-                          name={c.nom}
-                          level={c.niveau ?? ""}
-                          enrolled={enrollmentCounts[c.id] ?? 0}
-                          capacityMax={c.capacity_max ?? 30}
-                          teacherName={c.prof?.display_name ?? null}
-                          roomName={c.salle?.name ?? null}
-                          scheduleDays={days}
-                          scheduleTime={time}
-                          onClick={() => openEdit(c)}
-                          onEdit={() => openEdit(c)}
-                        />
-                      </motion.div>
-                    );
-                  })}
-                </motion.div>
-              </AnimatePresence>
-            ) : viewMode === "list" ? (
-              /* ══════ LIST VIEW (Table, Eleves-style) ══════ */
-              <div className="rounded-lg border overflow-hidden shadow-sm">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40">
-                      <TableHead>Nom</TableHead>
-                      <TableHead>Enseignant</TableHead>
-                      <TableHead className="hidden md:table-cell">Salle</TableHead>
-                      <TableHead className="hidden sm:table-cell">Niveau</TableHead>
-                      <TableHead>Effectif</TableHead>
-                      <TableHead className="text-right w-[100px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredClasses.map((c) => {
-                      const enrolled = enrollmentCounts[c.id] ?? 0;
-                      const max = c.capacity_max ?? 30;
-                      return (
-                        <TableRow
-                          key={c.id}
-                          className="cursor-pointer hover:bg-muted/40 border-b"
-                          onClick={() => openEdit(c)}
-                        >
-                          <TableCell>
-                            <span className="font-semibold text-sm">{c.nom}</span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-7 w-7">
-                                <AvatarFallback className="text-[10px] bg-muted">
-                                  {c.prof?.display_name ? c.prof.display_name.charAt(0) : "?"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm text-foreground truncate max-w-[140px]">
-                                {c.prof?.display_name ?? "Non assigné"}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                            {c.salle?.name ?? "—"}
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <Badge variant="secondary" className="text-[10px] font-normal">
-                              {c.niveau || "—"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{getEffectifBadge(enrolled, max)}</TableCell>
-                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => openEdit(c)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
+            {/* ── Search + Filters + Content (Card wrapper like Inscriptions) ── */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Rechercher une classe, un enseignant…"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 h-9"
+                    />
+                  </div>
+                  <Select value={filterNiveau} onValueChange={setFilterNiveau}>
+                    <SelectTrigger className="w-[180px] h-9">
+                      <SelectValue placeholder="Tous les niveaux" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les niveaux</SelectItem>
+                      {uniqueLevels.map((l) => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterSubject} onValueChange={setFilterSubject}>
+                    <SelectTrigger className="w-[200px] h-9">
+                      <SelectValue placeholder="Toutes les matières" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les matières</SelectItem>
+                      {uniqueSubjects.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {isLoading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : tabFilteredClasses.length === 0 && classes.length === 0 ? (
+                  <div className="p-6">
+                    <EmptyState
+                      icon={School}
+                      title="Aucune classe créée"
+                      description="Commencez par configurer les niveaux et matières dans Configuration > Madrassa, puis créez votre première classe."
+                      action={
+                        <Button className="bg-brand-navy hover:bg-brand-navy/90" onClick={openCreate}>
+                          <Plus className="h-4 w-4 mr-1" /> Créer une classe
+                        </Button>
+                      }
+                    />
+                  </div>
+                ) : tabFilteredClasses.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm font-medium">Aucune classe ne correspond aux filtres actuels.</p>
+                    <p className="text-xs mt-1">Essayez de modifier vos critères de recherche.</p>
+                  </div>
+                ) : viewMode === "list" ? (
+                  /* ══════ LIST VIEW (Table — default, Inscriptions-style) ══════ */
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Classe</TableHead>
+                        <TableHead>Enseignant</TableHead>
+                        <TableHead className="hidden md:table-cell">Niveau</TableHead>
+                        <TableHead className="hidden md:table-cell">Salle</TableHead>
+                        <TableHead>Effectif</TableHead>
+                        <TableHead className="w-[50px]" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tabFilteredClasses.map((c) => {
+                        const enrolled = enrollmentCounts[c.id] ?? 0;
+                        const max = c.capacity_max ?? 30;
+                        return (
+                          <TableRow key={c.id} className="hover:bg-muted/40 cursor-pointer" onClick={() => openEdit(c)}>
+                            <TableCell>
+                              <div className="flex items-center gap-2.5">
+                                <div className="h-8 w-8 rounded-md bg-brand-navy/10 flex items-center justify-center shrink-0">
+                                  <BookOpen className="h-4 w-4 text-brand-navy" />
+                                </div>
+                                <span className="font-medium text-sm">{c.nom}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-7 w-7">
+                                  <AvatarFallback className="text-[10px] bg-muted">
+                                    {c.prof?.display_name ? c.prof.display_name.charAt(0) : "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm truncate max-w-[140px]">
+                                  {c.prof?.display_name ?? "Non assigné"}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {c.niveau ? (
+                                <Badge variant="outline" className="text-[10px]">{c.niveau}</Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                              {c.salle?.name ?? "—"}
+                            </TableCell>
+                            <TableCell>{getEffectifBadge(enrolled, max)}</TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                                    <MoreVertical className="h-3.5 w-3.5" />
+                                    <MoreHorizontal className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => openEdit(c)}>
+                                    <Pencil className="h-3.5 w-3.5 mr-2" /> Modifier
+                                  </DropdownMenuItem>
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                       <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
@@ -605,83 +645,120 @@ const Classes = () => {
                                   </AlertDialog>
                                 </DropdownMenuContent>
                               </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              /* ══════ BOARD VIEW (Kanban) ══════ */
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {BOARD_COLUMNS.map((col) => (
-                  <div key={col.id} className={`rounded-lg ${col.color} p-3 min-h-[200px]`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-foreground">{col.label}</h3>
-                      <Badge variant="outline" className="text-[10px]">
-                        {boardColumns[col.id]?.length ?? 0}
-                      </Badge>
-                    </div>
-                    <div className="space-y-2.5">
-                      <AnimatePresence>
-                        {(boardColumns[col.id] ?? []).map((c) => {
-                          const enrolled = enrollmentCounts[c.id] ?? 0;
-                          const max = c.capacity_max ?? 30;
-                          const { rate, isFull, isWarning } = getFillInfo(enrolled, max);
-                          const progressColor = isFull
-                            ? "hsl(var(--destructive))"
-                            : isWarning
-                              ? "hsl(45 93% 47%)"
-                              : "hsl(var(--brand-emerald, 160 84% 39%))";
-
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                ) : viewMode === "grid" ? (
+                  /* ══════ GRID VIEW ══════ */
+                  <div className="p-4">
+                    <AnimatePresence mode="popLayout">
+                      <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {tabFilteredClasses.map((c) => {
+                          const { days, time } = getScheduleInfo(c);
                           return (
                             <motion.div
                               key={c.id}
                               layout
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              transition={{ duration: 0.15 }}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              transition={{ duration: 0.2 }}
                             >
-                              <Card
-                                className="group cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
+                              <ClassCard
+                                id={c.id}
+                                name={c.nom}
+                                level={c.niveau ?? ""}
+                                enrolled={enrollmentCounts[c.id] ?? 0}
+                                capacityMax={c.capacity_max ?? 30}
+                                teacherName={c.prof?.display_name ?? null}
+                                roomName={c.salle?.name ?? null}
+                                scheduleDays={days}
+                                scheduleTime={time}
                                 onClick={() => openEdit(c)}
-                              >
-                                <div className="p-3 space-y-2">
-                                  <div className="flex items-start justify-between gap-1">
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-semibold text-foreground truncate">{c.nom}</p>
-                                      <p className="text-[11px] text-muted-foreground truncate">{c.prof?.display_name ?? "Non assigné"}</p>
-                                    </div>
-                                    {getEffectifBadge(enrolled, max)}
-                                  </div>
-                                  <Progress
-                                    value={Math.min(rate, 100)}
-                                    className="h-1"
-                                    style={{ "--progress-color": progressColor } as React.CSSProperties}
-                                  />
-                                  {c.salle?.name && (
-                                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                      <MapPin className="h-3 w-3" />
-                                      {c.salle.name}
-                                    </div>
-                                  )}
-                                </div>
-                              </Card>
+                                onEdit={() => openEdit(c)}
+                              />
                             </motion.div>
                           );
                         })}
-                      </AnimatePresence>
-                      {(boardColumns[col.id] ?? []).length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center py-6 italic">Aucune classe</p>
-                      )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  /* ══════ KANBAN VIEW ══════ */
+                  <div className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {BOARD_COLUMNS.map((col) => (
+                        <div key={col.id} className={`rounded-lg ${col.color} p-3 min-h-[200px]`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-foreground">{col.label}</h3>
+                            <Badge variant="outline" className="text-[10px]">
+                              {boardColumns[col.id]?.length ?? 0}
+                            </Badge>
+                          </div>
+                          <div className="space-y-2.5">
+                            <AnimatePresence>
+                              {(boardColumns[col.id] ?? []).map((c) => {
+                                const enrolled = enrollmentCounts[c.id] ?? 0;
+                                const max = c.capacity_max ?? 30;
+                                const { rate, isFull, isWarning } = getFillInfo(enrolled, max);
+                                const progressColor = isFull
+                                  ? "hsl(var(--destructive))"
+                                  : isWarning
+                                    ? "hsl(45 93% 47%)"
+                                    : "hsl(var(--brand-emerald, 160 84% 39%))";
+
+                                return (
+                                  <motion.div
+                                    key={c.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.15 }}
+                                  >
+                                    <Card
+                                      className="group cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
+                                      onClick={() => openEdit(c)}
+                                    >
+                                      <div className="p-3 space-y-2">
+                                        <div className="flex items-start justify-between gap-1">
+                                          <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-foreground truncate">{c.nom}</p>
+                                            <p className="text-[11px] text-muted-foreground truncate">{c.prof?.display_name ?? "Non assigné"}</p>
+                                          </div>
+                                          {getEffectifBadge(enrolled, max)}
+                                        </div>
+                                        <Progress
+                                          value={Math.min(rate, 100)}
+                                          className="h-1"
+                                          style={{ "--progress-color": progressColor } as React.CSSProperties}
+                                        />
+                                        {c.salle?.name && (
+                                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                            <MapPin className="h-3 w-3" />
+                                            {c.salle.name}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </Card>
+                                  </motion.div>
+                                );
+                              })}
+                            </AnimatePresence>
+                            {(boardColumns[col.id] ?? []).length === 0 && (
+                              <p className="text-xs text-muted-foreground text-center py-6 italic">Aucune classe</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="progression" className="mt-4 space-y-4">
@@ -859,7 +936,7 @@ const Classes = () => {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => { setDialogOpen(false); resetForm(); }} className="text-muted-foreground">Annuler</Button>
-            <Button onClick={() => saveClass.mutate()} disabled={saveClass.isPending || !form.nom.trim()} className="gradient-positive border-0">
+            <Button onClick={() => saveClass.mutate()} disabled={saveClass.isPending || !form.nom.trim()} className="bg-brand-navy hover:bg-brand-navy/90">
               {saveClass.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEditing ? "Enregistrer" : "Créer"}
             </Button>
