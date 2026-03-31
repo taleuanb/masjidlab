@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Filter, Pencil, TrendingUp, Clock, CalendarDays } from "lucide-react";
+import { ClassCard } from "@/components/madrasa/ClassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ type ClassRow = {
   id: string;
   nom: string;
   niveau: string | null;
+  capacity_max: number | null;
   prof_id: string | null;
   salle_id: string | null;
   prof: { display_name: string } | null;
@@ -117,6 +119,25 @@ const Classes = () => {
       const { data, error } = await supabase.from("madrasa_subjects").select("*").eq("org_id", orgId!).order("name");
       if (error) throw error;
       return data as Tables<"madrasa_subjects">[];
+    },
+  });
+
+  // ── Enrollment counts per class ──
+  const { data: enrollmentCounts = {} } = useQuery({
+    queryKey: ["madrasa_enrollment_counts", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_enrollments")
+        .select("class_id")
+        .eq("org_id", orgId!)
+        .eq("statut", "active");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        if (row.class_id) counts[row.class_id] = (counts[row.class_id] || 0) + 1;
+      }
+      return counts;
     },
   });
 
@@ -340,7 +361,7 @@ const Classes = () => {
                 <p className="text-xs text-muted-foreground/60 mt-1">Commencez par configurer les niveaux et matières dans Configuration &gt; Madrassa.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {classes
                   .filter((c) => filterNiveau === "all" || c.niveau === filterNiveau)
                   .filter((c) => {
@@ -349,76 +370,29 @@ const Classes = () => {
                     return filterSubjects.some((sid) => classSubjectIds.has(sid));
                   })
                   .map((c) => {
-                    // Compute next/first schedule slot for display
-                    const nextSlot = c.scheduleSlots[0];
-                    const extraSlots = c.scheduleSlots.length - 1;
+                    const scheduleDaysLabels = c.scheduleSlots.map(
+                      (s) => (DAY_LABELS[s.day_of_week] ?? "").slice(0, 3)
+                    );
+                    const firstSlot = c.scheduleSlots[0];
+                    const scheduleTime = firstSlot
+                      ? `${firstSlot.start_time.slice(0, 5)} – ${firstSlot.end_time.slice(0, 5)}`
+                      : "";
 
                     return (
-                  <Card key={c.id} className="group relative cursor-pointer hover:border-primary/30 transition-colors" onClick={() => openEdit(c)}>
-                    {/* Schedule banner */}
-                    {nextSlot && (
-                      <div className="flex items-center gap-1.5 px-4 pt-3 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3 shrink-0" />
-                        <span>
-                          {DAY_LABELS[nextSlot.day_of_week]} {nextSlot.start_time.slice(0, 5)} – {nextSlot.end_time.slice(0, 5)}
-                        </span>
-                        {extraSlots > 0 && (
-                          <Badge variant="secondary" className="text-[10px] font-normal ml-1 px-1.5 py-0">
-                            +{extraSlots}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                    <CardHeader className={nextSlot ? "pb-2 pt-1.5" : "pb-2"}>
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-base">{c.nom}</CardTitle>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); openEdit(c); }}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={(e) => e.stopPropagation()}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Supprimer « {c.nom} » ?</AlertDialogTitle>
-                                <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="text-muted-foreground">Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteClass.mutate(c.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {c.niveau && <Badge variant="outline" className="text-xs">{c.niveau}</Badge>}
-                      {c.prof?.display_name && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Users className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">{c.prof.display_name}</span>
-                        </div>
-                      )}
-                      {c.subjects.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {c.subjects.slice(0, 3).map((s) => (
-                            <Badge key={s.id} variant="secondary" className="text-[10px] font-normal max-w-[100px] truncate">{s.name}</Badge>
-                          ))}
-                          {c.subjects.length > 3 && (
-                            <Badge variant="secondary" className="text-[10px] font-normal">+{c.subjects.length - 3}</Badge>
-                          )}
-                        </div>
-                      )}
-                      {!c.niveau && !c.prof?.display_name && c.subjects.length === 0 && c.scheduleSlots.length === 0 && (
-                        <p className="text-xs text-muted-foreground/50 italic">Aucun détail configuré</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                      <ClassCard
+                        key={c.id}
+                        id={c.id}
+                        name={c.nom}
+                        level={c.niveau ?? ""}
+                        enrolled={enrollmentCounts[c.id] ?? 0}
+                        capacityMax={c.capacity_max ?? 30}
+                        teacherName={c.prof?.display_name ?? null}
+                        roomName={c.salle?.name ?? null}
+                        scheduleDays={scheduleDaysLabels}
+                        scheduleTime={scheduleTime}
+                        onClick={() => openEdit(c)}
+                        onEdit={() => openEdit(c)}
+                      />
                     );
                   })}
               </div>
