@@ -121,6 +121,25 @@ const Classes = () => {
     },
   });
 
+  // ── Enrollment counts per class ──
+  const { data: enrollmentCounts = {} } = useQuery({
+    queryKey: ["madrasa_enrollment_counts", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("madrasa_enrollments")
+        .select("class_id")
+        .eq("org_id", orgId!)
+        .eq("statut", "active");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        if (row.class_id) counts[row.class_id] = (counts[row.class_id] || 0) + 1;
+      }
+      return counts;
+    },
+  });
+
   // ── Fix: Fetch all active profiles in the org (teachers) ──
   const { data: teachers = [] } = useQuery({
     queryKey: ["org_profiles_teachers", orgId],
