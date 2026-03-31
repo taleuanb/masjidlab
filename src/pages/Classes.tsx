@@ -67,6 +67,9 @@ const Classes = () => {
   const [filterNiveau, setFilterNiveau] = useState<string>("all");
   const [filterSubjects, setFilterSubjects] = useState<string[]>([]);
   const [progressClassId, setProgressClassId] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const isEditing = !!editingClass;
 
