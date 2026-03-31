@@ -395,25 +395,6 @@ const Classes = () => {
                     );
                   })}
               </div>
-                      )}
-                      {c.subjects.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {c.subjects.slice(0, 3).map((s) => (
-                            <Badge key={s.id} variant="secondary" className="text-[10px] font-normal max-w-[100px] truncate">{s.name}</Badge>
-                          ))}
-                          {c.subjects.length > 3 && (
-                            <Badge variant="secondary" className="text-[10px] font-normal">+{c.subjects.length - 3}</Badge>
-                          )}
-                        </div>
-                      )}
-                      {!c.niveau && !c.prof?.display_name && c.subjects.length === 0 && c.scheduleSlots.length === 0 && (
-                        <p className="text-xs text-muted-foreground/50 italic">Aucun détail configuré</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                    );
-                  })}
-              </div>
             )}
           </TabsContent>
 
