@@ -285,6 +285,30 @@ const Classes = () => {
     setDialogOpen(true);
   };
 
+  // ── Derived: level tabs for ListingLayout ──
+  const levelTabs = useMemo(() => {
+    const uniqueLevels = [...new Set(classes.map((c) => c.niveau).filter(Boolean))] as string[];
+    return [
+      { id: "all", label: "Toutes" },
+      ...uniqueLevels.map((l) => ({ id: l, label: l })),
+    ];
+  }, [classes]);
+
+  // ── Derived: filtered classes ──
+  const filteredClasses = useMemo(() => {
+    return classes
+      .filter((c) => activeTab === "all" || c.niveau === activeTab)
+      .filter((c) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          c.nom.toLowerCase().includes(q) ||
+          (c.niveau ?? "").toLowerCase().includes(q) ||
+          (c.prof?.display_name ?? "").toLowerCase().includes(q)
+        );
+      });
+  }, [classes, activeTab, searchQuery]);
+
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
