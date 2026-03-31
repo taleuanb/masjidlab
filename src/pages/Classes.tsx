@@ -145,6 +145,16 @@ const Classes = () => {
     },
   });
 
+  const { data: cycles = [] } = useQuery({
+    queryKey: ["madrasa_cycles", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_cycles").select("id, nom").eq("org_id", orgId!).order("nom");
+      if (error) throw error;
+      return data as { id: string; nom: string }[];
+    },
+  });
+
   const { data: subjects = [] } = useQuery({
     queryKey: ["madrasa_subjects", orgId],
     enabled: !!orgId,
