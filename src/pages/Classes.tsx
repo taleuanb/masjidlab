@@ -535,41 +535,53 @@ const Classes = () => {
                 description="Aucune classe ne correspond à votre recherche ou filtre actuel."
               />
             ) : viewMode === "grid" ? (
-              /* ══════ GRID VIEW ══════ */
-              <AnimatePresence mode="popLayout">
-                <motion.div
-                  layout
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                >
-                  {filteredClasses.map((c) => {
-                    const { days, time } = getScheduleInfo(c);
-                    return (
+              /* ══════ GRID VIEW — grouped by cycle ══════ */
+              <div className="space-y-8">
+                {cycleGroups.map((group) => (
+                  <section key={group.cycleId}>
+                    <div className="flex items-center gap-3 mb-4 border-l-4 border-primary pl-3">
+                      <h2 className="text-xl font-semibold text-foreground">{group.cycleName}</h2>
+                      <Badge variant="secondary" className="text-xs font-medium">
+                        {group.classes.length}
+                      </Badge>
+                    </div>
+                    <AnimatePresence mode="popLayout">
                       <motion.div
-                        key={c.id}
                         layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.2 }}
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                       >
-                        <ClassCard
-                          id={c.id}
-                          name={c.nom}
-                          level={c.niveau ?? ""}
-                          enrolled={enrollmentCounts[c.id] ?? 0}
-                          capacityMax={c.capacity_max ?? 30}
-                          teacherName={c.prof?.display_name ?? null}
-                          roomName={c.salle?.name ?? null}
-                          scheduleDays={days}
-                          scheduleTime={time}
-                          onClick={() => openEdit(c)}
-                          onEdit={() => openEdit(c)}
-                        />
+                        {group.classes.map((c) => {
+                          const { days, time } = getScheduleInfo(c);
+                          return (
+                            <motion.div
+                              key={c.id}
+                              layout
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <ClassCard
+                                id={c.id}
+                                name={c.nom}
+                                level={c.niveau ?? ""}
+                                enrolled={enrollmentCounts[c.id] ?? 0}
+                                capacityMax={c.capacity_max ?? 30}
+                                teacherName={c.prof?.display_name ?? null}
+                                roomName={c.salle?.name ?? null}
+                                scheduleDays={days}
+                                scheduleTime={time}
+                                onClick={() => openEdit(c)}
+                                onEdit={() => openEdit(c)}
+                              />
+                            </motion.div>
+                          );
+                        })}
                       </motion.div>
-                    );
-                  })}
-                </motion.div>
-              </AnimatePresence>
+                    </AnimatePresence>
+                  </section>
+                ))}
+              </div>
             ) : viewMode === "list" ? (
               /* ══════ LIST VIEW (Table, Eleves-style) ══════ */
               <div className="rounded-lg border overflow-hidden shadow-sm">
