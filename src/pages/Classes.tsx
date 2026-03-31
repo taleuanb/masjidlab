@@ -287,16 +287,9 @@ const Classes = () => {
 
   return (
     <main className="flex-1 overflow-y-auto">
-      <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
+        <div className="flex items-center gap-3 mb-1">
           <SidebarTrigger />
-          <BookOpen className="h-5 w-5 text-accent" />
-          <h1 className="text-xl font-bold text-foreground">Classes</h1>
-          <Badge variant="secondary" className="ml-1">{classes.length}</Badge>
-          <Button size="sm" className="ml-auto gradient-positive border-0" onClick={openCreate}>
-            <Plus className="h-4 w-4" /> Nouvelle classe
-          </Button>
         </div>
 
         <Tabs defaultValue="liste" className="w-full">
@@ -315,102 +308,103 @@ const Classes = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="liste" className="mt-4 space-y-4">
-            {/* Filter */}
-            {classes.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <Select value={filterNiveau} onValueChange={setFilterNiveau}>
-                  <SelectTrigger className="h-9 w-48"><SelectValue placeholder="Filtrer par niveau" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous les niveaux</SelectItem>
-                    {levels.map((l) => (<SelectItem key={l.id} value={l.label}>{l.label}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-                {subjects.length > 0 && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 gap-1.5 text-sm font-normal">
-                        <BookOpen className="h-3.5 w-3.5" />
-                        {filterSubjects.length === 0 ? "Toutes les matières" : `${filterSubjects.length} matière(s)`}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-2" align="start">
-                      <div className="space-y-1 max-h-48 overflow-y-auto">
-                        {subjects.map((s) => (
-                          <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-accent">
-                            <Checkbox
-                              checked={filterSubjects.includes(s.id)}
-                              onCheckedChange={() => setFilterSubjects((prev) => prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id])}
-                            />
-                            <span className="truncate">{s.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                      {filterSubjects.length > 0 && (
-                        <Button variant="ghost" size="sm" className="w-full mt-1 text-xs text-muted-foreground" onClick={() => setFilterSubjects([])}>
-                          Réinitialiser
-                        </Button>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </div>
-            )}
+          <TabsContent value="liste" className="mt-4">
+            <ListingLayout
+              title="Classes"
+              count={filteredClasses.length}
+              searchPlaceholder="Rechercher une classe…"
+              onSearch={setSearchQuery}
+              tabs={levelTabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              addAction={
+                <Button size="sm" className="gradient-positive border-0" onClick={openCreate}>
+                  <Plus className="h-4 w-4" /> Nouvelle classe
+                </Button>
+              }
+            >
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-56 rounded-lg" />
+                  ))}
+                </div>
+              ) : filteredClasses.length === 0 && classes.length === 0 ? (
+                <EmptyState
+                  icon={School}
+                  title="Aucune classe créée"
+                  description="Commencez par configurer les niveaux et matières dans Configuration > Madrassa, puis créez votre première classe."
+                  action={
+                    <Button className="gradient-positive border-0" onClick={openCreate}>
+                      <Plus className="h-4 w-4" /> Créer une classe
+                    </Button>
+                  }
+                />
+              ) : filteredClasses.length === 0 ? (
+                <EmptyState
+                  icon={GraduationCap}
+                  title="Aucun résultat"
+                  description="Aucune classe ne correspond à votre recherche ou filtre actuel."
+                />
+              ) : (
+                <AnimatePresence mode="popLayout">
+                  <motion.div
+                    layout
+                    className={
+                      viewMode === "grid"
+                        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                        : "grid grid-cols-1 gap-4"
+                    }
+                  >
+                    {filteredClasses.map((c) => {
+                      const scheduleDaysLabels = c.scheduleSlots.map(
+                        (s) => (DAY_LABELS[s.day_of_week] ?? "").slice(0, 3)
+                      );
+                      const firstSlot = c.scheduleSlots[0];
+                      const scheduleTime = firstSlot
+                        ? `${firstSlot.start_time.slice(0, 5)} – ${firstSlot.end_time.slice(0, 5)}`
+                        : "";
 
-            {/* Grid */}
-            {isLoading ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : classes.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
-                <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                <p className="text-muted-foreground">Aucune classe créée.</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Commencez par configurer les niveaux et matières dans Configuration &gt; Madrassa.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {classes
-                  .filter((c) => filterNiveau === "all" || c.niveau === filterNiveau)
-                  .filter((c) => {
-                    if (filterSubjects.length === 0) return true;
-                    const classSubjectIds = new Set(c.scheduleSlots.flatMap((s) => s.subject_ids));
-                    return filterSubjects.some((sid) => classSubjectIds.has(sid));
-                  })
-                  .map((c) => {
-                    const scheduleDaysLabels = c.scheduleSlots.map(
-                      (s) => (DAY_LABELS[s.day_of_week] ?? "").slice(0, 3)
-                    );
-                    const firstSlot = c.scheduleSlots[0];
-                    const scheduleTime = firstSlot
-                      ? `${firstSlot.start_time.slice(0, 5)} – ${firstSlot.end_time.slice(0, 5)}`
-                      : "";
-
-                    return (
-                      <ClassCard
-                        key={c.id}
-                        id={c.id}
-                        name={c.nom}
-                        level={c.niveau ?? ""}
-                        enrolled={enrollmentCounts[c.id] ?? 0}
-                        capacityMax={c.capacity_max ?? 30}
-                        teacherName={c.prof?.display_name ?? null}
-                        roomName={c.salle?.name ?? null}
-                        scheduleDays={scheduleDaysLabels}
-                        scheduleTime={scheduleTime}
-                        onClick={() => openEdit(c)}
-                        onEdit={() => openEdit(c)}
-                      />
-                    );
-                  })}
-              </div>
-            )}
+                      return (
+                        <motion.div
+                          key={c.id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ClassCard
+                            id={c.id}
+                            name={c.nom}
+                            level={c.niveau ?? ""}
+                            enrolled={enrollmentCounts[c.id] ?? 0}
+                            capacityMax={c.capacity_max ?? 30}
+                            teacherName={c.prof?.display_name ?? null}
+                            roomName={c.salle?.name ?? null}
+                            scheduleDays={scheduleDaysLabels}
+                            scheduleTime={scheduleTime}
+                            onClick={() => openEdit(c)}
+                            onEdit={() => openEdit(c)}
+                          />
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                </AnimatePresence>
+              )}
+            </ListingLayout>
           </TabsContent>
 
           <TabsContent value="progression" className="mt-4 space-y-4">
             {classes.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground text-sm">
-                Créez des classes pour visualiser la progression.
-              </div>
+              <EmptyState
+                icon={TrendingUp}
+                title="Pas encore de données"
+                description="Créez des classes pour visualiser la progression."
+              />
             ) : (
               <>
                 <div className="flex items-center gap-2">
