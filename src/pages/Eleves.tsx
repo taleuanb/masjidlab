@@ -7,7 +7,7 @@ import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   GraduationCap, Trash2, Search, Users, UserCheck, BarChart3,
-  Rocket, Building2, MoreHorizontal, MessageCircle, ArrowRightLeft,
+  UserPlus, Building2, MoreHorizontal, MessageCircle, ArrowRightLeft,
   FileText, Pencil, BookOpen, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
