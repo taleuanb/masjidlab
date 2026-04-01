@@ -64,6 +64,7 @@ const Eleves = () => {
   const canManage = !isTeacher;
 
   const [search, setSearch] = useState("");
+  const [quickFilter, setQuickFilter] = useState("all");
   const [filterCycle, setFilterCycle] = useState<string>("all");
   const [filterClass, setFilterClass] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
