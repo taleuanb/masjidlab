@@ -1101,12 +1101,13 @@ const Inscriptions = () => {
   }, [enrollments]);
 
   return (
+    <TooltipProvider>
     <main className="flex-1 overflow-auto">
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <SidebarTrigger />
-          <ClipboardList className="h-6 w-6 text-primary" />
+          <ClipboardList className="h-5 w-5 text-brand-cyan" />
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-foreground">Inscriptions</h1>
             <p className="text-sm text-muted-foreground">Gestion des inscriptions scolaires — {getCurrentSchoolYear()}</p>
@@ -1128,36 +1129,49 @@ const Inscriptions = () => {
             <span className="hidden sm:inline">Import en masse</span>
           </Button>
           <Button onClick={() => setWizardOpen(true)} className="bg-brand-navy hover:bg-brand-navy/90">
-            <PlusCircle className="h-4 w-4 mr-1.5" />
+            <UserPlus className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Nouvelle inscription</span>
             <span className="sm:hidden">Inscrire</span>
           </Button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total inscriptions</p>
+        {/* KPI Cards — aligned with Élèves style */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
+                <ClipboardList className="h-3.5 w-3.5" /> Total Inscriptions
+              </div>
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xs text-muted-foreground mt-1">année {getCurrentSchoolYear()}</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
+          <Card className="border shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Actives
+              </div>
               <p className="text-2xl font-bold text-brand-emerald">{stats.actif}</p>
-              <p className="text-xs text-muted-foreground">Actives</p>
+              <Progress value={stats.total > 0 ? Math.round((stats.actif / stats.total) * 100) : 0} className="mt-2 h-1.5 [&>div]:bg-brand-emerald" />
+              <p className="text-xs text-muted-foreground mt-1">sur {stats.total} inscription(s)</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-primary">{stats.pending}</p>
-              <p className="text-xs text-muted-foreground">En attente</p>
+          <Card className="border shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
+                <Clock className="h-3.5 w-3.5" /> En attente
+              </div>
+              <p className="text-2xl font-bold">{stats.pending}</p>
+              <p className="text-xs text-muted-foreground mt-1">à placer en classe</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-accent-foreground">{stats.sandbox}</p>
-              <p className="text-xs text-muted-foreground">Sandbox</p>
+          <Card className="border shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
+                <Inbox className="h-3.5 w-3.5" /> Sandbox
+              </div>
+              <p className="text-2xl font-bold">{stats.sandbox}</p>
+              <p className="text-xs text-muted-foreground mt-1">sans affectation</p>
             </CardContent>
           </Card>
         </div>
@@ -1172,152 +1186,175 @@ const Inscriptions = () => {
           </TabsList>
         </Tabs>
 
-        {/* Search + Filters + Table */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un élève ou une classe…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8 h-9"
-                />
-              </div>
-              <Select value={filterLevel} onValueChange={setFilterLevel}>
-                <SelectTrigger className="w-[180px] h-9">
-                  <SelectValue placeholder="Tous les niveaux" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Tous les niveaux</SelectItem>
-                  {allLevels.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterClass} onValueChange={setFilterClass}>
-                <SelectTrigger className="w-[220px] h-9">
-                  <SelectValue placeholder="Toutes les classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Toutes les classes</SelectItem>
-                  <SelectItem value="__sandbox__">🟡 Sandbox (non placés)</SelectItem>
-                  {allClasses.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nom} ({classEnrollmentCounts.get(c.id) ?? 0})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm font-medium">
-                  {filterClass !== "__all__" && filterClass !== "__sandbox__"
-                    ? "Aucun élève inscrit dans cette classe pour le moment."
-                    : "Aucune inscription trouvée"}
-                </p>
-                <p className="text-xs mt-1">
-                  {filterClass !== "__all__" && filterClass !== "__sandbox__"
-                    ? "Les élèves peuvent être affectés depuis le Studio de placement."
-                    : "Cliquez sur \"Nouvelle inscription\" pour commencer."}
-                </p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Élève</TableHead>
-                    <TableHead>Classe</TableHead>
-                    <TableHead>Niveau</TableHead>
-                    <TableHead>Année</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="w-[50px]" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((e) => {
-                    const initials = `${e.student?.prenom?.[0] ?? ""}${e.student?.nom?.[0] ?? ""}`.toUpperCase();
-                    return (
-                      <TableRow key={e.id} className="hover:bg-muted/40">
-                        <TableCell>
-                          <div className="flex items-center gap-2.5">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-brand-navy/10 text-brand-navy text-xs font-semibold">
-                                {initials}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">
-                              {e.student ? `${e.student.prenom} ${e.student.nom}` : "—"}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {e.classe?.nom ?? (
-                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">
-                              🟡 En attente d'affectation
+        {/* Search + Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher un élève ou une classe…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={filterLevel} onValueChange={setFilterLevel}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Tous les niveaux" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Tous les niveaux</SelectItem>
+              {allLevels.map((l) => (
+                <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterClass} onValueChange={setFilterClass}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Toutes les classes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Toutes les classes</SelectItem>
+              <SelectItem value="__sandbox__">🟡 Sandbox (non placés)</SelectItem>
+              {allClasses.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.nom} ({classEnrollmentCounts.get(c.id) ?? 0})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Table */}
+        {loading ? (
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-md" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-lg border bg-card p-10 text-center space-y-2">
+            <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40" />
+            <p className="text-muted-foreground font-medium">
+              {filterClass !== "__all__" && filterClass !== "__sandbox__"
+                ? "Aucun élève inscrit dans cette classe pour le moment."
+                : "Aucune inscription trouvée"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {filterClass !== "__all__" && filterClass !== "__sandbox__"
+                ? "Les élèves peuvent être affectés depuis le Studio de placement."
+                : "Cliquez sur \"Nouvelle inscription\" pour commencer."}
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead>Élève</TableHead>
+                  <TableHead>Classe</TableHead>
+                  <TableHead className="hidden md:table-cell">Niveau</TableHead>
+                  <TableHead className="hidden sm:table-cell">Année</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="hidden lg:table-cell">Date</TableHead>
+                  <TableHead className="text-right w-[130px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((e) => {
+                  const initials = `${e.student?.prenom?.[0] ?? ""}${e.student?.nom?.[0] ?? ""}`.toUpperCase();
+                  return (
+                    <TableRow key={e.id} className="hover:bg-muted/40 border-b">
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-brand-navy/10 text-brand-navy text-xs font-semibold">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-semibold text-sm">
+                            {e.student ? `${e.student.prenom} ${e.student.nom}` : "—"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {e.classe?.nom ?? (
+                          <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">
+                            🟡 En attente d'affectation
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {e.student?.niveau ? (
+                          <Badge variant="outline" className="text-[10px]">{e.student.niveau}</Badge>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{e.annee_scolaire}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          const display = getStatusDisplay(e.statut, e.classe);
+                          return (
+                            <Badge variant="outline" className={cn("text-[10px]", display.className)}>
+                              {display.label}
                             </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {e.student?.niveau ? (
-                            <Badge variant="outline" className="text-[10px]">{e.student.niveau}</Badge>
-                          ) : "—"}
-                        </TableCell>
-                        <TableCell className="text-sm">{e.annee_scolaire}</TableCell>
-                        <TableCell>
-                          {(() => {
-                            const display = getStatusDisplay(e.statut, e.classe);
-                            return (
-                              <Badge variant="outline" className={cn("text-[10px]", display.className)}>
-                                {display.label}
-                              </Badge>
-                            );
-                          })()}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
-                        </TableCell>
-                        <TableCell>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                        {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                onClick={() => toast({ title: "👁️ Voir l'élève", description: "Fonctionnalité à venir." })}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Voir la fiche</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-brand-emerald hover:text-brand-emerald/80"
+                                onClick={() => toast({ title: "✅ Valider", description: "Fonctionnalité à venir." })}
+                              >
+                                <UserCheck className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Valider l'inscription</TooltipContent>
+                          </Tooltip>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => toast({ title: "👁️ Voir l'élève", description: "Fonctionnalité à venir." })}>
-                                <Eye className="h-4 w-4 mr-2" /> Voir l'élève
-                              </DropdownMenuItem>
+                            <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem onClick={() => toast({ title: "✏️ Modifier le statut", description: "Fonctionnalité à venir." })}>
-                                <Pencil className="h-4 w-4 mr-2" /> Modifier le statut
+                                <Pencil className="h-3.5 w-3.5 mr-2" /> Modifier le statut
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => setEnrollmentToDelete(e.id)}
                               >
-                                <Trash2 className="h-4 w-4 mr-2" /> Annuler l'inscription
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Annuler l'inscription
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       {orgId && (
@@ -1377,6 +1414,7 @@ const Inscriptions = () => {
         </AlertDialogContent>
       </AlertDialog>
     </main>
+    </TooltipProvider>
   );
 };
 
