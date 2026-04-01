@@ -258,6 +258,14 @@ const Eleves = () => {
 
   const filtered = useMemo(() => {
     return scopedStudents.filter(s => {
+      // Quick filter
+      if (quickFilter === "actif" && s.statut !== "actif") return false;
+      if (quickFilter === "en_attente") {
+        const enr = scopedEnrollments.find(e => e.student_id === s.id);
+        if (!enr || enr.statut !== "en_attente") return false;
+      }
+      if (quickFilter === "ancien" && s.statut !== "ancien") return false;
+
       const q = search.toLowerCase();
       if (q) {
         const parentName = s.parent_id ? (parentMap[s.parent_id]?.display_name ?? "") : "";
@@ -288,7 +296,7 @@ const Eleves = () => {
 
       return true;
     });
-  }, [scopedStudents, search, filterCycle, filterClass, filterStatus, filterGender, scopedEnrollments, cycleFilteredLevelIds, parentMap]);
+  }, [scopedStudents, search, quickFilter, filterCycle, filterClass, filterStatus, filterGender, scopedEnrollments, cycleFilteredLevelIds, parentMap]);
 
   const activeEnrollments = scopedEnrollments.filter(e => e.statut === "place").length;
   const totalCapacity = useMemo(() => scopedClasses.reduce((sum, c) => sum + (c.capacity_max ?? 15), 0), [scopedClasses]);
