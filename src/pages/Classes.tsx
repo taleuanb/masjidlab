@@ -672,72 +672,102 @@ const Classes = () => {
                 </Table>
               </div>
             ) : (
-              /* ══════ BOARD VIEW (Kanban) ══════ */
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {BOARD_COLUMNS.map((col) => (
-                  <div key={col.id} className={`rounded-lg ${col.color} p-3 min-h-[200px]`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-foreground">{col.label}</h3>
-                      <Badge variant="outline" className="text-[10px]">
-                        {boardColumns[col.id]?.length ?? 0}
-                      </Badge>
-                    </div>
-                    <div className="space-y-2.5">
-                      <AnimatePresence>
-                        {(boardColumns[col.id] ?? []).map((c) => {
-                          const enrolled = enrollmentCounts[c.id] ?? 0;
-                          const max = c.capacity_max ?? 30;
-                          const { rate, isFull, isWarning } = getFillInfo(enrolled, max);
-                          const progressColor = isFull
-                            ? "hsl(var(--destructive))"
-                            : isWarning
-                              ? "hsl(45 93% 47%)"
-                              : "hsl(var(--brand-emerald, 160 84% 39%))";
+              /* ══════ BOARD VIEW — columns by Cycle ══════ */
+              <div className="overflow-x-auto pb-4 -mx-4 md:-mx-6 px-4 md:px-6">
+                <motion.div
+                  className="flex gap-4"
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                    hidden: {},
+                    visible: { transition: { staggerChildren: 0.07 } },
+                  }}
+                >
+                  {cycleGroups.map((group) => (
+                    <motion.div
+                      key={group.cycleId}
+                      className="w-[320px] shrink-0 rounded-lg bg-muted/40 border border-border/50 p-3 flex flex-col"
+                      variants={{
+                        hidden: { opacity: 0, x: 30 },
+                        visible: { opacity: 1, x: 0 },
+                      }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      {/* Column header */}
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/60">
+                        <h3 className="text-sm font-semibold text-foreground truncate">{group.cycleName}</h3>
+                        <Badge variant="secondary" className="text-[10px] font-medium shrink-0">
+                          {group.classes.length}
+                        </Badge>
+                      </div>
 
-                          return (
-                            <motion.div
-                              key={c.id}
-                              layout
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              transition={{ duration: 0.15 }}
-                            >
-                              <Card
-                                className="group cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
-                                onClick={() => openEdit(c)}
+                      {/* Column body */}
+                      <div className="space-y-2.5 flex-1 min-h-[120px]">
+                        <AnimatePresence>
+                          {group.classes.map((c) => {
+                            const enrolled = enrollmentCounts[c.id] ?? 0;
+                            const max = c.capacity_max ?? 30;
+                            const { rate, isFull, isWarning } = getFillInfo(enrolled, max);
+                            const progressColor = isFull
+                              ? "hsl(var(--destructive))"
+                              : isWarning
+                                ? "hsl(45 93% 47%)"
+                                : "hsl(var(--brand-emerald, 160 84% 39%))";
+
+                            return (
+                              <motion.div
+                                key={c.id}
+                                layout
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.15 }}
                               >
-                                <div className="p-3 space-y-2">
-                                  <div className="flex items-start justify-between gap-1">
-                                    <div className="min-w-0">
+                                <Card
+                                  className="group cursor-pointer hover:shadow-md hover:border-primary/30 transition-all"
+                                  onClick={() => openEdit(c)}
+                                >
+                                  <div className="p-3 space-y-2">
+                                    <div className="flex items-start justify-between gap-1">
                                       <p className="text-sm font-semibold text-foreground truncate">{c.nom}</p>
-                                      <p className="text-[11px] text-muted-foreground truncate">{c.prof?.display_name ?? "Non assigné"}</p>
+                                      <Badge variant="secondary" className="text-[10px] font-normal shrink-0">
+                                        {c.niveau || "—"}
+                                      </Badge>
                                     </div>
-                                    {getEffectifBadge(enrolled, max)}
+                                    <div className="space-y-1">
+                                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                        <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Effectif</span>
+                                        <span className="font-medium text-foreground">{enrolled}/{max}</span>
+                                      </div>
+                                      <Progress
+                                        value={Math.min(rate, 100)}
+                                        className="h-1"
+                                        style={{ "--progress-color": progressColor } as React.CSSProperties}
+                                      />
+                                    </div>
                                   </div>
-                                  <Progress
-                                    value={Math.min(rate, 100)}
-                                    className="h-1"
-                                    style={{ "--progress-color": progressColor } as React.CSSProperties}
-                                  />
-                                  {c.salle?.name && (
-                                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                      <MapPin className="h-3 w-3" />
-                                      {c.salle.name}
-                                    </div>
-                                  )}
-                                </div>
-                              </Card>
-                            </motion.div>
-                          );
-                        })}
-                      </AnimatePresence>
-                      {(boardColumns[col.id] ?? []).length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center py-6 italic">Aucune classe</p>
-                      )}
+                                </Card>
+                              </motion.div>
+                            );
+                          })}
+                        </AnimatePresence>
+                        {group.classes.length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-6 italic">Aucune classe</p>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {cycleGroups.length === 0 && (
+                    <div className="w-full py-12">
+                      <EmptyState
+                        icon={Columns3}
+                        title="Aucun résultat"
+                        description="Aucune classe ne correspond aux filtres sélectionnés."
+                      />
                     </div>
-                  </div>
-                ))}
+                  )}
+                </motion.div>
               </div>
             )}
           </TabsContent>
