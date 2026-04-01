@@ -353,7 +353,7 @@ const Eleves = () => {
                 className="bg-brand-navy text-white hover:bg-brand-navy/90"
                 onClick={() => navigate("/inscriptions")}
               >
-                <Rocket className="h-4 w-4 mr-1" />
+                <UserPlus className="h-4 w-4 mr-1" />
                 Nouvelle Inscription
               </Button>
             </div>
