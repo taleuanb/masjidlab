@@ -5,6 +5,7 @@ import {
   ClipboardList, PlusCircle, Loader2, Check, ChevronRight, ChevronLeft,
   User, Users, Receipt, Search, GraduationCap, AlertCircle, UserPlus, Clock,
   FileSpreadsheet, MoreHorizontal, Download, Eye, Pencil, Trash2,
+  CheckCircle2, Inbox, UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
