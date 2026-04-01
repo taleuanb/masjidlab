@@ -7,7 +7,7 @@ import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   GraduationCap, Trash2, Search, Users, UserCheck, BarChart3,
-  Rocket, Building2, MoreHorizontal, MessageCircle, ArrowRightLeft,
+  UserPlus, Building2, MoreHorizontal, MessageCircle, ArrowRightLeft,
   FileText, Pencil, BookOpen, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -63,6 +64,7 @@ const Eleves = () => {
   const canManage = !isTeacher;
 
   const [search, setSearch] = useState("");
+  const [quickFilter, setQuickFilter] = useState("all");
   const [filterCycle, setFilterCycle] = useState<string>("all");
   const [filterClass, setFilterClass] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -256,6 +258,14 @@ const Eleves = () => {
 
   const filtered = useMemo(() => {
     return scopedStudents.filter(s => {
+      // Quick filter
+      if (quickFilter === "actif" && s.statut !== "actif") return false;
+      if (quickFilter === "en_attente") {
+        const enr = scopedEnrollments.find(e => e.student_id === s.id);
+        if (!enr || enr.statut !== "en_attente") return false;
+      }
+      if (quickFilter === "ancien" && s.statut !== "ancien") return false;
+
       const q = search.toLowerCase();
       if (q) {
         const parentName = s.parent_id ? (parentMap[s.parent_id]?.display_name ?? "") : "";
@@ -286,7 +296,7 @@ const Eleves = () => {
 
       return true;
     });
-  }, [scopedStudents, search, filterCycle, filterClass, filterStatus, filterGender, scopedEnrollments, cycleFilteredLevelIds, parentMap]);
+  }, [scopedStudents, search, quickFilter, filterCycle, filterClass, filterStatus, filterGender, scopedEnrollments, cycleFilteredLevelIds, parentMap]);
 
   const activeEnrollments = scopedEnrollments.filter(e => e.statut === "place").length;
   const totalCapacity = useMemo(() => scopedClasses.reduce((sum, c) => sum + (c.capacity_max ?? 15), 0), [scopedClasses]);
@@ -351,7 +361,7 @@ const Eleves = () => {
                 className="bg-brand-navy text-white hover:bg-brand-navy/90"
                 onClick={() => navigate("/inscriptions")}
               >
-                <Rocket className="h-4 w-4 mr-1" />
+                <UserPlus className="h-4 w-4 mr-1" />
                 Nouvelle Inscription
               </Button>
             </div>
@@ -402,6 +412,16 @@ const Eleves = () => {
             </Card>
           )}
         </div>
+
+        {/* Quick Filter Tabs */}
+        <Tabs value={quickFilter} onValueChange={setQuickFilter}>
+          <TabsList>
+            <TabsTrigger value="all">Tous</TabsTrigger>
+            <TabsTrigger value="actif">🟢 Actifs</TabsTrigger>
+            <TabsTrigger value="en_attente">🟡 En attente</TabsTrigger>
+            <TabsTrigger value="ancien">⚫ Anciens</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {/* Search & Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
