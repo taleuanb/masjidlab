@@ -1141,46 +1141,13 @@ const Inscriptions = () => {
           </Button>
         </div>
 
-        {/* KPI Cards — aligned with Élèves style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
-                <ClipboardList className="h-3.5 w-3.5" /> Total Inscriptions
-              </div>
-              <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-xs text-muted-foreground mt-1">année {getCurrentSchoolYear()}</p>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Actives
-              </div>
-              <p className="text-2xl font-bold text-brand-emerald">{stats.actif}</p>
-              <Progress value={stats.total > 0 ? Math.round((stats.actif / stats.total) * 100) : 0} className="mt-2 h-1.5 [&>div]:bg-brand-emerald" />
-              <p className="text-xs text-muted-foreground mt-1">sur {stats.total} inscription(s)</p>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
-                <Clock className="h-3.5 w-3.5" /> En attente
-              </div>
-              <p className="text-2xl font-bold">{stats.pending}</p>
-              <p className="text-xs text-muted-foreground mt-1">à placer en classe</p>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
-                <Inbox className="h-3.5 w-3.5" /> Sandbox
-              </div>
-              <p className="text-2xl font-bold">{stats.sandbox}</p>
-              <p className="text-xs text-muted-foreground mt-1">sans affectation</p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* KPI Cards */}
+        <StatCards items={[
+          { label: "Total Inscriptions", value: stats.total, icon: ClipboardList, subValue: `année ${getCurrentSchoolYear()}` },
+          { label: "Actives", value: stats.actif, icon: CheckCircle2, subValue: `sur ${stats.total} inscription(s)`, progress: stats.total > 0 ? Math.round((stats.actif / stats.total) * 100) : 0 },
+          { label: "En attente", value: stats.pending, icon: Clock, subValue: "à placer en classe" },
+          { label: "Sandbox", value: stats.sandbox, icon: Inbox, subValue: "sans affectation" },
+        ]} />
 
         {/* Tabs */}
         <Tabs value={statusTab} onValueChange={setStatusTab}>
