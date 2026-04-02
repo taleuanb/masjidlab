@@ -764,7 +764,7 @@ const Classes = () => {
                   {cycleGroups.length === 0 && (
                     <div className="w-full py-12">
                       <EmptyState
-                        icon={Columns3}
+                        icon={School}
                         title="Aucun résultat"
                         description="Aucune classe ne correspond aux filtres sélectionnés."
                       />
