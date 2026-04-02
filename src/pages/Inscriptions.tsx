@@ -1163,38 +1163,24 @@ const Inscriptions = () => {
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher un élève ou une classe…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+            <Input placeholder="Rechercher un élève ou une classe…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
           </div>
           <Select value={filterLevel} onValueChange={setFilterLevel}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Tous les niveaux" />
-            </SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm"><SelectValue placeholder="Tous les niveaux" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Tous les niveaux</SelectItem>
-              {allLevels.map((l) => (
-                <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>
-              ))}
+              {allLevels.map((l) => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterClass} onValueChange={setFilterClass}>
-            <SelectTrigger className="w-full sm:w-[220px]">
-              <SelectValue placeholder="Toutes les classes" />
-            </SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[220px] h-9 text-sm"><SelectValue placeholder="Toutes les classes" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Toutes les classes</SelectItem>
               <SelectItem value="__sandbox__">🟡 Sandbox (non placés)</SelectItem>
-              {allClasses.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.nom} ({classEnrollmentCounts.get(c.id) ?? 0})
-                </SelectItem>
-              ))}
+              {allClasses.map((c) => <SelectItem key={c.id} value={c.id}>{c.nom} ({classEnrollmentCounts.get(c.id) ?? 0})</SelectItem>)}
             </SelectContent>
           </Select>
+          <ViewSwitcher viewMode={viewMode} onViewChange={setViewMode} className="shrink-0 ml-auto" />
         </div>
 
         {/* Table */}
