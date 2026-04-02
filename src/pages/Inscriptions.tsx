@@ -1183,10 +1183,10 @@ const Inscriptions = () => {
           <ViewSwitcher viewMode={viewMode} onViewChange={setViewMode} className="shrink-0 ml-auto" />
         </div>
 
-        {/* Table */}
+        {/* Content */}
         {loading ? (
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-md" />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-lg border bg-card p-10 text-center space-y-2">
@@ -1199,120 +1199,177 @@ const Inscriptions = () => {
             <p className="text-xs text-muted-foreground">
               {filterClass !== "__all__" && filterClass !== "__sandbox__"
                 ? "Les élèves peuvent être affectés depuis le Studio de placement."
-                : "Cliquez sur \"Nouvelle inscription\" pour commencer."}
+                : 'Cliquez sur "Nouvelle inscription" pour commencer.'}
             </p>
           </div>
         ) : (
-          <div className="rounded-lg border overflow-hidden shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40">
-                  <TableHead>Élève</TableHead>
-                  <TableHead>Classe</TableHead>
-                  <TableHead className="hidden md:table-cell">Niveau</TableHead>
-                  <TableHead className="hidden sm:table-cell">Année</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="hidden lg:table-cell">Date</TableHead>
-                  <TableHead className="text-right w-[130px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((e) => {
-                  const initials = `${e.student?.prenom?.[0] ?? ""}${e.student?.nom?.[0] ?? ""}`.toUpperCase();
+          <AnimatePresence mode="wait">
+            {/* ── LIST VIEW ── */}
+            {viewMode === "list" && (
+              <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <div className="rounded-lg border overflow-hidden shadow-sm">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
+                        <TableHead>Élève</TableHead>
+                        <TableHead>Classe</TableHead>
+                        <TableHead className="hidden md:table-cell">Niveau</TableHead>
+                        <TableHead className="hidden sm:table-cell">Année</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead className="hidden lg:table-cell">Date</TableHead>
+                        <TableHead className="text-right w-[130px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map((e) => {
+                        const initials = `${e.student?.prenom?.[0] ?? ""}${e.student?.nom?.[0] ?? ""}`.toUpperCase();
+                        return (
+                          <TableRow key={e.id} className="hover:bg-muted/40 border-b">
+                            <TableCell>
+                              <div className="flex items-center gap-2.5">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="bg-brand-navy/10 text-brand-navy text-xs font-semibold">{initials}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-semibold text-sm">{e.student ? `${e.student.prenom} ${e.student.nom}` : "—"}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {e.classe?.nom ?? (
+                                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">🟡 En attente</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {e.student?.niveau ? <Badge variant="outline" className="text-[10px]">{e.student.niveau}</Badge> : "—"}
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{e.annee_scolaire}</TableCell>
+                            <TableCell>
+                              {(() => {
+                                const display = getStatusDisplay(e.statut, e.classe);
+                                return <Badge variant="outline" className={cn("text-[10px]", display.className)}>{display.label}</Badge>;
+                              })()}
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                              {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => toast({ title: "👁️ Voir", description: "Fonctionnalité à venir." })}>
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Voir la fiche</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-brand-emerald hover:text-brand-emerald/80" onClick={() => toast({ title: "✅ Valider", description: "Fonctionnalité à venir." })}>
+                                      <UserCheck className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Valider l'inscription</TooltipContent>
+                                </Tooltip>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={() => toast({ title: "✏️ Modifier", description: "Fonctionnalité à venir." })}>
+                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Modifier le statut
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setEnrollmentToDelete(e.id)}>
+                                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Annuler l'inscription
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── GRID VIEW ── */}
+            {viewMode === "grid" && (
+              <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                {(() => {
+                  const levelGroups = new Map<string, { label: string; items: EnrollmentRow[] }>();
+                  for (const e of filtered) {
+                    const lvl = e.student?.niveau ?? "Non classé";
+                    if (!levelGroups.has(lvl)) levelGroups.set(lvl, { label: lvl, items: [] });
+                    levelGroups.get(lvl)!.items.push(e);
+                  }
+                  const groups = Array.from(levelGroups.values());
+
                   return (
-                    <TableRow key={e.id} className="hover:bg-muted/40 border-b">
-                      <TableCell>
-                        <div className="flex items-center gap-2.5">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="bg-brand-navy/10 text-brand-navy text-xs font-semibold">
-                              {initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-semibold text-sm">
-                            {e.student ? `${e.student.prenom} ${e.student.nom}` : "—"}
-                          </span>
+                    <div className="space-y-6">
+                      {groups.map(group => (
+                        <div key={group.label}>
+                          <div className="flex items-center gap-3 mb-4">
+                            <h2 className="text-lg font-semibold text-foreground border-l-4 border-primary pl-3">{group.label}</h2>
+                            <Badge variant="secondary" className="text-xs">{group.items.length}</Badge>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {group.items.map(e => (
+                              <motion.div key={e.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+                                <EnrollmentCard enrollment={{
+                                  id: e.id,
+                                  statut: e.statut,
+                                  created_at: e.created_at,
+                                  annee_scolaire: e.annee_scolaire,
+                                  student_name: e.student ? `${e.student.prenom} ${e.student.nom}` : "—",
+                                  class_name: e.classe?.nom ?? null,
+                                  level_label: e.student?.niveau ?? null,
+                                }} />
+                              </motion.div>
+                            ))}
+                          </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {e.classe?.nom ?? (
-                          <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">
-                            🟡 En attente d'affectation
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {e.student?.niveau ? (
-                          <Badge variant="outline" className="text-[10px]">{e.student.niveau}</Badge>
-                        ) : "—"}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{e.annee_scolaire}</TableCell>
-                      <TableCell>
-                        {(() => {
-                          const display = getStatusDisplay(e.statut, e.classe);
-                          return (
-                            <Badge variant="outline" className={cn("text-[10px]", display.className)}>
-                              {display.label}
-                            </Badge>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                        {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                onClick={() => toast({ title: "👁️ Voir l'élève", description: "Fonctionnalité à venir." })}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Voir la fiche</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-brand-emerald hover:text-brand-emerald/80"
-                                onClick={() => toast({ title: "✅ Valider", description: "Fonctionnalité à venir." })}
-                              >
-                                <UserCheck className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Valider l'inscription</TooltipContent>
-                          </Tooltip>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem onClick={() => toast({ title: "✏️ Modifier le statut", description: "Fonctionnalité à venir." })}>
-                                <Pencil className="h-3.5 w-3.5 mr-2" /> Modifier le statut
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setEnrollmentToDelete(e.id)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Annuler l'inscription
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                      ))}
+                    </div>
                   );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                })()}
+              </motion.div>
+            )}
+
+            {/* ── BOARD VIEW ── */}
+            {viewMode === "board" && (
+              <motion.div key="board" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <div className="flex gap-4 overflow-x-auto pb-4">
+                  {[
+                    { key: "en_attente", label: "Sandbox", items: filtered.filter(e => e.statut === "en_attente" || e.classe === null) },
+                    { key: "place", label: "Placés", items: filtered.filter(e => e.statut === "place" && e.classe !== null) },
+                    { key: "annule", label: "Annulés", items: filtered.filter(e => e.statut === "annule") },
+                  ].map(col => (
+                    <motion.div key={col.key} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }} className="w-[320px] shrink-0 rounded-lg bg-muted/40 p-3">
+                      <div className="flex items-center justify-between mb-3 border-b pb-2">
+                        <h3 className="text-sm font-semibold text-foreground">{col.label}</h3>
+                        <Badge variant="secondary" className="text-xs">{col.items.length}</Badge>
+                      </div>
+                      <div className="space-y-2.5">
+                        {col.items.map(e => (
+                          <EnrollmentCard key={e.id} enrollment={{
+                            id: e.id,
+                            statut: e.statut,
+                            created_at: e.created_at,
+                            annee_scolaire: e.annee_scolaire,
+                            student_name: e.student ? `${e.student.prenom} ${e.student.nom}` : "—",
+                            class_name: e.classe?.nom ?? null,
+                            level_label: e.student?.niveau ?? null,
+                          }} />
+                        ))}
+                        {col.items.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-4">Aucune inscription</p>}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
       </div>
 
