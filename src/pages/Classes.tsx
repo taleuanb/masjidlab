@@ -5,7 +5,7 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Pencil, TrendingUp,
-  Clock, CalendarDays, School, Search, LayoutGrid, List, Columns3, MapPin,
+  Clock, CalendarDays, School, Search, MapPin,
   MoreVertical, FileText, PhoneCall,
 } from "lucide-react";
 import { ClassCard } from "@/components/madrasa/ClassCard";
