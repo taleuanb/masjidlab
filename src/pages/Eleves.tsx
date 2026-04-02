@@ -432,10 +432,10 @@ const Eleves = () => {
           <ViewSwitcher viewMode={viewMode} onViewChange={setViewMode} className="shrink-0 ml-auto" />
         </div>
 
-        {/* Table */}
+        {/* Content */}
         {isLoading ? (
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-md" />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-lg border bg-card p-10 text-center space-y-2">
@@ -456,197 +456,231 @@ const Eleves = () => {
             </p>
           </div>
         ) : (
-          <div className="rounded-lg border overflow-hidden shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40">
-                  <TableHead>Élève</TableHead>
-                  <TableHead className="hidden sm:table-cell">Âge</TableHead>
-                  <TableHead className="hidden md:table-cell">Parcours</TableHead>
-                  <TableHead className="hidden lg:table-cell">Responsable Légal</TableHead>
-                  <TableHead>Statut</TableHead>
-                  {canSeeFinance && <TableHead className="hidden xl:table-cell">Finance</TableHead>}
-                  <TableHead className="text-right w-[130px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((s) => {
-                  const enrollment = scopedEnrollments.find(e => e.student_id === s.id);
-                  const statut = enrollment?.statut ?? "Inactif";
-                  const cls = enrollment?.madrasa_classes;
-                  const parent = s.parent_id ? parentMap[s.parent_id] : null;
-                  const cycleName = getCycleName(cls?.level_id);
-                  const levelLabel = getLevelLabel(cls?.level_id);
+          <AnimatePresence mode="wait">
+            {/* ── LIST VIEW ── */}
+            {viewMode === "list" && (
+              <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <div className="rounded-lg border overflow-hidden shadow-sm">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
+                        <TableHead>Élève</TableHead>
+                        <TableHead className="hidden sm:table-cell">Âge</TableHead>
+                        <TableHead className="hidden md:table-cell">Parcours</TableHead>
+                        <TableHead className="hidden lg:table-cell">Responsable Légal</TableHead>
+                        <TableHead>Statut</TableHead>
+                        {canSeeFinance && <TableHead className="hidden xl:table-cell">Finance</TableHead>}
+                        <TableHead className="text-right w-[130px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map((s) => {
+                        const enrollment = scopedEnrollments.find(e => e.student_id === s.id);
+                        const cls = enrollment?.madrasa_classes;
+                        const parent = s.parent_id ? parentMap[s.parent_id] : null;
+                        const cycleName = getCycleName(cls?.level_id);
+                        const levelLabel = getLevelLabel(cls?.level_id);
+
+                        return (
+                          <TableRow key={s.id} className="cursor-pointer hover:bg-muted/40 border-b" onClick={() => navigate(`/eleves/${s.id}`)}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8 bg-brand-navy/10 text-brand-navy shrink-0">
+                                  <AvatarFallback className="text-xs font-semibold bg-brand-navy/10 text-brand-navy">
+                                    {getInitials(s.nom, s.prenom)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold text-sm leading-tight">{s.prenom} {s.nom}</span>
+                                  {getGenderBadge(s.gender)}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{s.age ? `${s.age} ans` : "—"}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {cycleName && <Badge className="bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30 text-[10px]">{cycleName}</Badge>}
+                                {enrollment?.statut === "en_attente" || !cls ? (
+                                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">🟡 Sandbox</Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">{levelLabel ?? cls?.niveau ?? "—"} &gt; {cls?.nom ?? "—"}</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell">
+                              {parent ? (
+                                <div>
+                                  <p className="text-sm font-medium leading-tight">{parent.display_name}</p>
+                                  <p className="text-xs text-muted-foreground">{parent.phone ?? "—"}</p>
+                                </div>
+                              ) : <span className="text-xs text-muted-foreground">—</span>}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={
+                                s.statut === "actif" ? "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30"
+                                  : s.statut === "ancien" ? "bg-muted text-muted-foreground border-border"
+                                    : "bg-muted text-muted-foreground"
+                              }>
+                                {s.statut === "actif" ? "Actif" : s.statut === "ancien" ? "Ancien élève" : (s.statut ?? "—")}
+                              </Badge>
+                            </TableCell>
+                            {canSeeFinance && <TableCell className="hidden xl:table-cell">{getFeeStatusBadge(s.id)}</TableCell>}
+                            <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => navigate(`/eleves/${s.id}`)}>
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Voir la fiche</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-brand-emerald hover:text-brand-emerald/80" onClick={() => openWhatsApp(s.parent_id)}>
+                                      <MessageCircle className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Contacter le parent via WhatsApp</TooltipContent>
+                                </Tooltip>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    {isTeacher ? (
+                                      <DropdownMenuItem onClick={() => navigate(`/eleves/${s.id}`)}>
+                                        <BookOpen className="h-3.5 w-3.5 mr-2" /> Voir suivi pédagogique
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <>
+                                        <DropdownMenuItem onClick={() => navigate(`/eleves/${s.id}`)}>
+                                          <Pencil className="h-3.5 w-3.5 mr-2" /> Modifier l'inscription
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => toast.info("Fonctionnalité à venir")}>
+                                          <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Changer de classe
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={e => e.preventDefault()}>
+                                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer
+                                            </DropdownMenuItem>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Supprimer cet élève ?</AlertDialogTitle>
+                                              <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                              <AlertDialogAction onClick={() => deleteMutation.mutate(s.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      </>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── GRID VIEW ── */}
+            {viewMode === "grid" && (
+              <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                {(() => {
+                  const statusGroups: { key: string; label: string; students: typeof filtered }[] = [
+                    { key: "actif", label: "Actifs", students: filtered.filter(s => s.statut === "actif") },
+                    { key: "en_attente", label: "En attente", students: filtered.filter(s => {
+                      const enr = scopedEnrollments.find(e => e.student_id === s.id);
+                      return enr?.statut === "en_attente";
+                    })},
+                    { key: "ancien", label: "Anciens", students: filtered.filter(s => s.statut === "ancien") },
+                  ].filter(g => g.students.length > 0);
+
+                  // If no groups match specific statuses, show all
+                  const showAll = statusGroups.length === 0;
 
                   return (
-                    <TableRow
-                      key={s.id}
-                      className="cursor-pointer hover:bg-muted/40 border-b"
-                      onClick={() => navigate(`/eleves/${s.id}`)}
-                    >
-                      {/* Élève: Avatar + Nom + Genre badge */}
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8 bg-brand-navy/10 text-brand-navy shrink-0">
-                            <AvatarFallback className="text-xs font-semibold bg-brand-navy/10 text-brand-navy">
-                              {getInitials(s.nom, s.prenom)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-sm leading-tight">{s.prenom} {s.nom}</span>
-                            {getGenderBadge(s.gender)}
+                    <div className="space-y-6">
+                      {showAll ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {filtered.map(s => {
+                            const enr = scopedEnrollments.find(e => e.student_id === s.id);
+                            const levelLabel = getLevelLabel(enr?.madrasa_classes?.level_id);
+                            return (
+                              <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+                                <StudentCard student={s} levelLabel={levelLabel} feeStatus={canSeeFinance ? (feeStatusMap[s.id] ?? null) : null} onClick={() => navigate(`/eleves/${s.id}`)} />
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      ) : statusGroups.map(group => (
+                        <div key={group.key}>
+                          <div className="flex items-center gap-3 mb-4">
+                            <h2 className="text-lg font-semibold text-foreground border-l-4 border-primary pl-3">{group.label}</h2>
+                            <Badge variant="secondary" className="text-xs">{group.students.length}</Badge>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {group.students.map(s => {
+                              const enr = scopedEnrollments.find(e => e.student_id === s.id);
+                              const levelLabel = getLevelLabel(enr?.madrasa_classes?.level_id);
+                              return (
+                                <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+                                  <StudentCard student={s} levelLabel={levelLabel} feeStatus={canSeeFinance ? (feeStatusMap[s.id] ?? null) : null} onClick={() => navigate(`/eleves/${s.id}`)} />
+                                </motion.div>
+                              );
+                            })}
                           </div>
                         </div>
-                      </TableCell>
-
-                      {/* Âge */}
-                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                        {s.age ? `${s.age} ans` : "—"}
-                      </TableCell>
-
-                      {/* Parcours: Cycle badge > Niveau > Classe */}
-                      <TableCell className="hidden md:table-cell">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {cycleName && (
-                            <Badge className="bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30 text-[10px]">
-                              {cycleName}
-                            </Badge>
-                          )}
-                          {enrollment?.statut === "en_attente" || !cls ? (
-                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">
-                              🟡 Sandbox
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              {levelLabel ?? cls?.niveau ?? "—"} &gt; {cls?.nom ?? "—"}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-
-                      {/* Responsable Légal */}
-                      <TableCell className="hidden lg:table-cell">
-                        {parent ? (
-                          <div>
-                            <p className="text-sm font-medium leading-tight">{parent.display_name}</p>
-                            <p className="text-xs text-muted-foreground">{parent.phone ?? "—"}</p>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-
-                      {/* Statut élève */}
-                      <TableCell>
-                        <Badge className={
-                          s.statut === "actif"
-                            ? "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30"
-                            : s.statut === "ancien"
-                              ? "bg-muted text-muted-foreground border-border"
-                              : "bg-muted text-muted-foreground"
-                        }>
-                          {s.statut === "actif" ? "Actif" : s.statut === "ancien" ? "Ancien élève" : (s.statut ?? "—")}
-                        </Badge>
-                      </TableCell>
-
-                      {/* Finance (admin only) */}
-                      {canSeeFinance && (
-                        <TableCell className="hidden xl:table-cell">
-                          {getFeeStatusBadge(s.id)}
-                        </TableCell>
-                      )}
-
-                      {/* Actions */}
-                      <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Voir profil */}
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                onClick={() => navigate(`/eleves/${s.id}`)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Voir la fiche</TooltipContent>
-                          </Tooltip>
-
-                          {/* WhatsApp */}
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-brand-emerald hover:text-brand-emerald/80"
-                                onClick={() => openWhatsApp(s.parent_id)}
-                              >
-                                <MessageCircle className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Contacter le parent via WhatsApp</TooltipContent>
-                          </Tooltip>
-
-                          {/* Dropdown */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              {isTeacher ? (
-                                <DropdownMenuItem onClick={() => navigate(`/eleves/${s.id}`)}>
-                                  <BookOpen className="h-3.5 w-3.5 mr-2" /> Voir suivi pédagogique
-                                </DropdownMenuItem>
-                              ) : (
-                                <>
-                                  <DropdownMenuItem onClick={() => navigate(`/eleves/${s.id}`)}>
-                                    <Pencil className="h-3.5 w-3.5 mr-2" /> Modifier l'inscription
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => toast.info("Fonctionnalité à venir")}>
-                                    <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Changer de classe
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive"
-                                        onSelect={e => e.preventDefault()}
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer
-                                      </DropdownMenuItem>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Supprimer cet élève ?</AlertDialogTitle>
-                                        <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={() => deleteMutation.mutate(s.id)}
-                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                        >
-                                          Supprimer
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                      ))}
+                    </div>
                   );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                })()}
+              </motion.div>
+            )}
+
+            {/* ── BOARD VIEW ── */}
+            {viewMode === "board" && (
+              <motion.div key="board" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <div className="flex gap-4 overflow-x-auto pb-4">
+                  {[
+                    { key: "actif", label: "Actifs", items: filtered.filter(s => s.statut === "actif") },
+                    { key: "en_attente", label: "En attente", items: filtered.filter(s => {
+                      const enr = scopedEnrollments.find(e => e.student_id === s.id);
+                      return enr?.statut === "en_attente";
+                    })},
+                    { key: "ancien", label: "Anciens", items: filtered.filter(s => s.statut === "ancien") },
+                  ].map(col => (
+                    <motion.div key={col.key} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }} className="w-[320px] shrink-0 rounded-lg bg-muted/40 p-3">
+                      <div className="flex items-center justify-between mb-3 border-b pb-2">
+                        <h3 className="text-sm font-semibold text-foreground">{col.label}</h3>
+                        <Badge variant="secondary" className="text-xs">{col.items.length}</Badge>
+                      </div>
+                      <div className="space-y-2.5">
+                        {col.items.map(s => {
+                          const enr = scopedEnrollments.find(e => e.student_id === s.id);
+                          const levelLabel = getLevelLabel(enr?.madrasa_classes?.level_id);
+                          return (
+                            <StudentCard key={s.id} student={s} levelLabel={levelLabel} feeStatus={canSeeFinance ? (feeStatusMap[s.id] ?? null) : null} onClick={() => navigate(`/eleves/${s.id}`)} />
+                          );
+                        })}
+                        {col.items.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-4">Aucun élève</p>}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
         </div>
       </main>
