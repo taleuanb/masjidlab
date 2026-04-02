@@ -510,22 +510,7 @@ const Classes = () => {
               </Select>
 
               {/* View Mode Toggle */}
-              <ToggleGroup
-                type="single"
-                value={viewMode}
-                onValueChange={(v) => { if (v) setViewMode(v as ViewMode); }}
-                className="shrink-0 ml-auto"
-              >
-                <ToggleGroupItem value="grid" aria-label="Grille" className="h-9 w-9 p-0">
-                  <LayoutGrid className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="list" aria-label="Liste" className="h-9 w-9 p-0">
-                  <List className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="board" aria-label="Board" className="h-9 w-9 p-0">
-                  <Columns3 className="h-4 w-4" />
-                </ToggleGroupItem>
-              </ToggleGroup>
+              <ViewSwitcher viewMode={viewMode} onViewChange={setViewMode} className="shrink-0 ml-auto" />
             </div>
 
             {/* ── Content ── */}
