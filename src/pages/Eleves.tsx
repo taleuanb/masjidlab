@@ -69,6 +69,7 @@ const Eleves = () => {
 
   const [search, setSearch] = useState("");
   const [quickFilter, setQuickFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [filterCycle, setFilterCycle] = useState<string>("all");
   const [filterClass, setFilterClass] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
