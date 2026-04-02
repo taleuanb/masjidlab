@@ -996,6 +996,7 @@ const Inscriptions = () => {
   const [search, setSearch] = useState("");
   const [enrollmentToDelete, setEnrollmentToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const [statusTab, setStatusTab] = useState("all");
   const [filterLevel, setFilterLevel] = useState("__all__");
