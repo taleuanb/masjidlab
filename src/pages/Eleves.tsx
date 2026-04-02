@@ -30,6 +30,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { motion, AnimatePresence } from "framer-motion";
+import { ViewSwitcher, type ViewMode } from "@/components/ui/ViewSwitcher";
+import { StatCards, type StatCardItem } from "@/components/shared/StatCards";
+import { StudentCard } from "@/components/madrasa/StudentCard";
 
 interface EnrollmentRow {
   student_id: string;
