@@ -374,49 +374,12 @@ const Eleves = () => {
         </div>
 
         {/* KPI Cards */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 ${canSeeFinance ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-4`}>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
-                <Users className="h-3.5 w-3.5" /> {isTeacher ? "Mes Élèves" : "Total Élèves"}
-              </div>
-              <p className="text-2xl font-bold">{isLoading ? "—" : scopedStudents.length}</p>
-              <Badge className="mt-2 bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30 text-[10px]">
-                {filtered.length} affiché(s)
-              </Badge>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
-                <UserCheck className="h-3.5 w-3.5" /> Inscriptions Actives
-              </div>
-              <p className="text-2xl font-bold text-brand-emerald">{isLoading ? "—" : activeEnrollments}</p>
-              <p className="text-xs text-muted-foreground mt-1">sur {scopedStudents.length} élève(s)</p>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
-                <Building2 className="h-3.5 w-3.5" /> Capacité {isTeacher ? "Mes classes" : "Globale"}
-              </div>
-              <p className="text-2xl font-bold">{occupancyRate}%</p>
-              <Progress value={occupancyRate} className="mt-2 h-1.5 [&>div]:bg-brand-cyan" />
-              <p className="text-xs text-muted-foreground mt-1">{activeEnrollments} / {totalCapacity} places</p>
-            </CardContent>
-          </Card>
-          {canSeeFinance && (
-            <Card className="border shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-2">
-                  <BarChart3 className="h-3.5 w-3.5" /> Classes Actives
-                </div>
-                <p className="text-2xl font-bold">{isLoading ? "—" : classes.length}</p>
-                <p className="text-xs text-muted-foreground mt-1">{cycles.length} cycle(s) configuré(s)</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        <StatCards items={[
+          { label: isTeacher ? "Mes Élèves" : "Total Élèves", value: isLoading ? "—" : scopedStudents.length, icon: Users, subValue: `${filtered.length} affiché(s)` },
+          { label: "Inscriptions Actives", value: isLoading ? "—" : activeEnrollments, icon: UserCheck, subValue: `sur ${scopedStudents.length} élève(s)` },
+          { label: isTeacher ? "Capacité Mes classes" : "Capacité Globale", value: `${occupancyRate}%`, icon: Building2, subValue: `${activeEnrollments} / ${totalCapacity} places`, progress: occupancyRate },
+          ...(canSeeFinance ? [{ label: "Classes Actives", value: isLoading ? "—" : classes.length, icon: BarChart3, subValue: `${cycles.length} cycle(s) configuré(s)` } as StatCardItem] : []),
+        ]} className={`grid grid-cols-1 sm:grid-cols-2 ${canSeeFinance ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-4`} />
 
         {/* Quick Filter Tabs */}
         <Tabs value={quickFilter} onValueChange={setQuickFilter}>
@@ -432,10 +395,10 @@ const Eleves = () => {
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Rechercher par élève ou parent..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Rechercher par élève ou parent..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
           </div>
           <Select value={filterGender} onValueChange={setFilterGender}>
-            <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Sexe" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm"><SelectValue placeholder="Sexe" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous</SelectItem>
               <SelectItem value="M">Homme</SelectItem>
@@ -444,7 +407,7 @@ const Eleves = () => {
           </Select>
           {!isTeacher && (
             <Select value={filterCycle} onValueChange={v => { setFilterCycle(v); setFilterClass("all"); }}>
-              <SelectTrigger className="w-full sm:w-[170px]"><SelectValue placeholder="Cycle" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[170px] h-9 text-sm"><SelectValue placeholder="Cycle" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les cycles</SelectItem>
                 {cycles.map(c => <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>)}
@@ -452,20 +415,21 @@ const Eleves = () => {
             </Select>
           )}
           <Select value={filterClass} onValueChange={setFilterClass}>
-            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Classe" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm"><SelectValue placeholder="Classe" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{isTeacher ? "Toutes mes classes" : "Toutes les classes"}</SelectItem>
               {classesForFilter.map(c => <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Statut" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[160px] h-9 text-sm"><SelectValue placeholder="Statut" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les statuts</SelectItem>
               <SelectItem value="actif">Actif</SelectItem>
               <SelectItem value="ancien">Ancien élève</SelectItem>
             </SelectContent>
           </Select>
+          <ViewSwitcher viewMode={viewMode} onViewChange={setViewMode} className="shrink-0 ml-auto" />
         </div>
 
         {/* Table */}
