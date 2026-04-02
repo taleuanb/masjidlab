@@ -5,7 +5,7 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Pencil, TrendingUp,
-  Clock, CalendarDays, School, Search, LayoutGrid, List, Columns3, MapPin,
+  Clock, CalendarDays, School, Search, MapPin,
   MoreVertical, FileText, PhoneCall,
 } from "lucide-react";
 import { ClassCard } from "@/components/madrasa/ClassCard";
@@ -30,7 +30,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ViewSwitcher } from "@/components/ui/ViewSwitcher";
+import { StatCards, type StatCardItem } from "@/components/shared/StatCards";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ClassProgressBoard } from "@/components/ClassProgressBoard";
@@ -452,6 +453,23 @@ const Classes = () => {
               </Button>
             </div>
 
+            {/* ── Stat Cards ── */}
+            <StatCards
+              items={(() => {
+                const totalEnrolled = Object.values(enrollmentCounts).reduce((a, b) => a + b, 0);
+                const totalCap = filteredClasses.reduce((a, c) => a + (c.capacity_max ?? 15), 0);
+                const capRate = totalCap > 0 ? Math.round((totalEnrolled / totalCap) * 100) : 0;
+                const uniqueProfs = new Set(filteredClasses.map(c => c.prof_id).filter(Boolean)).size;
+                const uniqueRooms = new Set(filteredClasses.map(c => c.salle_id).filter(Boolean)).size;
+                return [
+                  { label: "Total Classes", value: filteredClasses.length, icon: School, subValue: `sur ${classes.length} créée(s)` },
+                  { label: "Capacité", value: `${capRate}%`, icon: Users, subValue: `${totalEnrolled} / ${totalCap} places`, progress: capRate },
+                  { label: "Professeurs", value: uniqueProfs, icon: GraduationCap, subValue: "enseignant(s) assigné(s)" },
+                  { label: "Salles", value: uniqueRooms, icon: MapPin, subValue: "salle(s) utilisée(s)" },
+                ] as StatCardItem[];
+              })()}
+            />
+
             {/* ── Unified Toolbar ── */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               {/* Search */}
@@ -492,22 +510,7 @@ const Classes = () => {
               </Select>
 
               {/* View Mode Toggle */}
-              <ToggleGroup
-                type="single"
-                value={viewMode}
-                onValueChange={(v) => { if (v) setViewMode(v as ViewMode); }}
-                className="shrink-0 ml-auto"
-              >
-                <ToggleGroupItem value="grid" aria-label="Grille" className="h-9 w-9 p-0">
-                  <LayoutGrid className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="list" aria-label="Liste" className="h-9 w-9 p-0">
-                  <List className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="board" aria-label="Board" className="h-9 w-9 p-0">
-                  <Columns3 className="h-4 w-4" />
-                </ToggleGroupItem>
-              </ToggleGroup>
+              <ViewSwitcher viewMode={viewMode} onViewChange={setViewMode} className="shrink-0 ml-auto" />
             </div>
 
             {/* ── Content ── */}
@@ -761,7 +764,7 @@ const Classes = () => {
                   {cycleGroups.length === 0 && (
                     <div className="w-full py-12">
                       <EmptyState
-                        icon={Columns3}
+                        icon={School}
                         title="Aucun résultat"
                         description="Aucune classe ne correspond aux filtres sélectionnés."
                       />
