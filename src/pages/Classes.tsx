@@ -765,9 +765,11 @@ const Classes = () => {
                 </motion.div>
               </div>
             )}
-          </TabsContent>
+          </motion.div>
+        )}
 
-          <TabsContent value="progression" className="mt-4 space-y-4">
+        {pageTab === "progression" && (
+          <motion.div key="progression" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-4">
             {classes.length === 0 ? (
               <EmptyState
                 icon={TrendingUp}
@@ -805,12 +807,15 @@ const Classes = () => {
                 })()}
               </>
             )}
-          </TabsContent>
+          </motion.div>
+        )}
 
-          <TabsContent value="planning" className="mt-4">
+        {pageTab === "planning" && (
+          <motion.div key="planning" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             <GlobalCalendarView filterNiveau={filterNiveau} filterSubjects={filterSubjects} />
-          </TabsContent>
-        </Tabs>
+          </motion.div>
+        )}
+        </AnimatePresence>
       </div>
 
       {/* ── Create / Edit Dialog ── */}
