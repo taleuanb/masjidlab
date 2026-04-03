@@ -1,14 +1,15 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   GraduationCap, Trash2, Search, Users, UserCheck, BarChart3,
-  UserPlus, Building2, MoreHorizontal, MessageCircle, ArrowRightLeft,
-  FileText, Pencil, BookOpen, Eye,
+  UserPlus, Building2, MoreHorizontal, MoreVertical, MessageCircle, MessageSquare, ArrowRightLeft,
+  FileText, Pencil, BookOpen, Eye, Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -483,7 +484,7 @@ const Eleves = () => {
 
                         return (
                           <TableRow key={s.id} className="cursor-pointer hover:bg-muted/40 border-b" onClick={() => navigate(`/eleves/${s.id}`)}>
-                            <TableCell>
+                            <TableCell className="py-3">
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8 bg-brand-navy/10 text-brand-navy shrink-0">
                                   <AvatarFallback className="text-xs font-semibold bg-brand-navy/10 text-brand-navy">
@@ -496,18 +497,18 @@ const Eleves = () => {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{s.age ? `${s.age} ans` : "—"}</TableCell>
-                            <TableCell className="hidden md:table-cell">
+                            <TableCell className="hidden sm:table-cell text-sm text-muted-foreground py-3">{s.age ? `${s.age} ans` : "—"}</TableCell>
+                            <TableCell className="hidden md:table-cell py-3">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                {cycleName && <Badge className="bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30 text-[10px]">{cycleName}</Badge>}
+                                {cycleName && <Badge className="bg-brand-cyan/10 text-brand-cyan border-brand-cyan/30 text-[10px] font-normal px-2 py-0.5">{cycleName}</Badge>}
                                 {enrollment?.statut === "en_attente" || !cls ? (
-                                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">🟡 Sandbox</Badge>
+                                  <Badge variant="outline" className="text-[10px] font-normal px-2 py-0.5 bg-amber-500/10 text-amber-700 border-amber-400/30">🟡 Sandbox</Badge>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">{levelLabel ?? cls?.niveau ?? "—"} &gt; {cls?.nom ?? "—"}</span>
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="hidden lg:table-cell">
+                            <TableCell className="hidden lg:table-cell py-3">
                               {parent ? (
                                 <div>
                                   <p className="text-sm font-medium leading-tight">{parent.display_name}</p>
@@ -515,37 +516,31 @@ const Eleves = () => {
                                 </div>
                               ) : <span className="text-xs text-muted-foreground">—</span>}
                             </TableCell>
-                            <TableCell>
-                              <Badge className={
+                            <TableCell className="py-3">
+                              <Badge className={cn(
+                                "text-[10px] font-normal px-2 py-0.5",
                                 s.statut === "actif" ? "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30"
                                   : s.statut === "ancien" ? "bg-muted text-muted-foreground border-border"
                                     : "bg-muted text-muted-foreground"
-                              }>
+                              )}>
                                 {s.statut === "actif" ? "Actif" : s.statut === "ancien" ? "Ancien élève" : (s.statut ?? "—")}
                               </Badge>
                             </TableCell>
-                            {canSeeFinance && <TableCell className="hidden xl:table-cell">{getFeeStatusBadge(s.id)}</TableCell>}
-                            <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                            {canSeeFinance && <TableCell className="hidden xl:table-cell py-3">{getFeeStatusBadge(s.id)}</TableCell>}
+                            <TableCell className="text-right py-3" onClick={e => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => navigate(`/eleves/${s.id}`)}>
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Voir la fiche</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-brand-emerald hover:text-brand-emerald/80" onClick={() => openWhatsApp(s.parent_id)}>
-                                      <MessageCircle className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Contacter le parent via WhatsApp</TooltipContent>
-                                </Tooltip>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => navigate(`/eleves/${s.id}`)}>
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => navigate(`/eleves/${s.id}`)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => openWhatsApp(s.parent_id)}>
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                </Button>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><MoreVertical className="h-3.5 w-3.5" /></Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-48">
                                     {isTeacher ? (
@@ -554,11 +549,11 @@ const Eleves = () => {
                                       </DropdownMenuItem>
                                     ) : (
                                       <>
-                                        <DropdownMenuItem onClick={() => navigate(`/eleves/${s.id}`)}>
-                                          <Pencil className="h-3.5 w-3.5 mr-2" /> Modifier l'inscription
-                                        </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => toast.info("Fonctionnalité à venir")}>
                                           <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Changer de classe
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => toast.info("Fonctionnalité à venir")}>
+                                          <Archive className="h-3.5 w-3.5 mr-2" /> Archiver le profil
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                         <AlertDialog>

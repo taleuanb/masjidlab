@@ -6,7 +6,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Pencil, TrendingUp,
   Clock, CalendarDays, School, Search, MapPin,
-  MoreVertical, FileText, PhoneCall,
+  MoreVertical, FileText, PhoneCall, Eye, MessageSquare, UserCog, Lock,
 } from "lucide-react";
 import { ClassCard } from "@/components/madrasa/ClassCard";
 import { Button } from "@/components/ui/button";
@@ -470,6 +470,16 @@ const Classes = () => {
               })()}
             />
 
+            {/* ── Quick Filter Tabs ── */}
+            <Tabs value={filterNiveau} onValueChange={setFilterNiveau}>
+              <TabsList>
+                <TabsTrigger value="all">Toutes</TabsTrigger>
+                {uniqueLevels.slice(0, 5).map(l => (
+                  <TabsTrigger key={l} value={l}>{l}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
             {/* ── Unified Toolbar ── */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               {/* Search */}
@@ -482,19 +492,6 @@ const Classes = () => {
                   className="h-9 pl-9 text-sm"
                 />
               </div>
-
-              {/* Filter: Niveau */}
-              <Select value={filterNiveau} onValueChange={setFilterNiveau}>
-                <SelectTrigger className="h-9 w-full sm:w-[160px] text-sm">
-                  <SelectValue placeholder="Niveau" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les niveaux</SelectItem>
-                  {uniqueLevels.map((l) => (
-                    <SelectItem key={l} value={l}>{l}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
               {/* Filter: Matière */}
               <Select value={filterSubject} onValueChange={setFilterSubject}>
@@ -596,7 +593,7 @@ const Classes = () => {
                       <TableHead className="hidden md:table-cell">Salle</TableHead>
                       <TableHead className="hidden sm:table-cell">Niveau</TableHead>
                       <TableHead>Effectif</TableHead>
-                      <TableHead className="text-right w-[100px]">Actions</TableHead>
+                      <TableHead className="text-right w-[140px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -609,10 +606,10 @@ const Classes = () => {
                           className="cursor-pointer hover:bg-muted/40 border-b"
                           onClick={() => openEdit(c)}
                         >
-                          <TableCell>
+                          <TableCell className="py-3">
                             <span className="font-semibold text-sm">{c.nom}</span>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-3">
                             <div className="flex items-center gap-2">
                               <Avatar className="h-7 w-7">
                                 <AvatarFallback className="text-[10px] bg-muted">
@@ -624,27 +621,39 @@ const Classes = () => {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                          <TableCell className="hidden md:table-cell text-sm text-muted-foreground py-3">
                             {c.salle?.name ?? "—"}
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <Badge variant="secondary" className="text-[10px] font-normal">
+                          <TableCell className="hidden sm:table-cell py-3">
+                            <Badge variant="secondary" className="text-[10px] font-normal px-2 py-0.5">
                               {c.niveau || "—"}
                             </Badge>
                           </TableCell>
-                          <TableCell>{getEffectifBadge(enrolled, max)}</TableCell>
-                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <TableCell className="py-3">{getEffectifBadge(enrolled, max)}</TableCell>
+                          <TableCell className="text-right py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => openEdit(c)}>
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => openEdit(c)}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => toast({ title: "💬 Communication", description: "Fonctionnalité à venir." })}>
+                                <MessageSquare className="h-3.5 w-3.5" />
+                              </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
                                     <MoreVertical className="h-3.5 w-3.5" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem onClick={() => toast({ title: "👥 Staffing", description: "Fonctionnalité à venir." })}>
+                                    <UserCog className="h-3.5 w-3.5 mr-2" /> Gérer le Staffing
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => toast({ title: "🔒 Clôturer", description: "Fonctionnalité à venir." })}>
+                                    <Lock className="h-3.5 w-3.5 mr-2" /> Clôturer la classe
+                                  </DropdownMenuItem>
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                       <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>

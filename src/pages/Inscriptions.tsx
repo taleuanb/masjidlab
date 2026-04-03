@@ -4,8 +4,8 @@ import { fr } from "date-fns/locale";
 import {
   ClipboardList, PlusCircle, Loader2, Check, ChevronRight, ChevronLeft,
   User, Users, Receipt, Search, GraduationCap, AlertCircle, UserPlus, Clock,
-  FileSpreadsheet, MoreHorizontal, Download, Eye, Pencil, Trash2,
-  CheckCircle2, Inbox, UserCheck,
+  FileSpreadsheet, MoreHorizontal, MoreVertical, Download, Eye, Pencil, Trash2,
+  CheckCircle2, Inbox, UserCheck, MessageSquare, XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -1224,8 +1224,8 @@ const Inscriptions = () => {
                       {filtered.map((e) => {
                         const initials = `${e.student?.prenom?.[0] ?? ""}${e.student?.nom?.[0] ?? ""}`.toUpperCase();
                         return (
-                          <TableRow key={e.id} className="hover:bg-muted/40 border-b">
-                            <TableCell>
+                          <TableRow key={e.id} className="cursor-pointer hover:bg-muted/40 border-b" onClick={() => toast({ title: "👁️ Fiche inscription", description: "Fonctionnalité à venir." })}>
+                            <TableCell className="py-3">
                               <div className="flex items-center gap-2.5">
                                 <Avatar className="h-8 w-8">
                                   <AvatarFallback className="bg-brand-navy/10 text-brand-navy text-xs font-semibold">{initials}</AvatarFallback>
@@ -1233,52 +1233,45 @@ const Inscriptions = () => {
                                 <span className="font-semibold text-sm">{e.student ? `${e.student.prenom} ${e.student.nom}` : "—"}</span>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-3">
                               {e.classe?.nom ?? (
-                                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-400/30 font-semibold">🟡 En attente</Badge>
+                                <Badge variant="outline" className="text-[10px] font-normal px-2 py-0.5 bg-amber-500/10 text-amber-700 border-amber-400/30">🟡 En attente</Badge>
                               )}
                             </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {e.student?.niveau ? <Badge variant="outline" className="text-[10px]">{e.student.niveau}</Badge> : "—"}
+                            <TableCell className="hidden md:table-cell py-3">
+                              {e.student?.niveau ? <Badge variant="outline" className="text-[10px] font-normal px-2 py-0.5">{e.student.niveau}</Badge> : "—"}
                             </TableCell>
-                            <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{e.annee_scolaire}</TableCell>
-                            <TableCell>
+                            <TableCell className="hidden sm:table-cell text-sm text-muted-foreground py-3">{e.annee_scolaire}</TableCell>
+                            <TableCell className="py-3">
                               {(() => {
                                 const display = getStatusDisplay(e.statut, e.classe);
-                                return <Badge variant="outline" className={cn("text-[10px]", display.className)}>{display.label}</Badge>;
+                                return <Badge variant="outline" className={cn("text-[10px] font-normal px-2 py-0.5", display.className)}>{display.label}</Badge>;
                               })()}
                             </TableCell>
-                            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground py-3">
                               {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right py-3" onClick={ev => ev.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => toast({ title: "👁️ Voir", description: "Fonctionnalité à venir." })}>
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Voir la fiche</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-brand-emerald hover:text-brand-emerald/80" onClick={() => toast({ title: "✅ Valider", description: "Fonctionnalité à venir." })}>
-                                      <UserCheck className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Valider l'inscription</TooltipContent>
-                                </Tooltip>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => toast({ title: "👁️ Voir", description: "Fonctionnalité à venir." })}>
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => toast({ title: "✏️ Modifier", description: "Fonctionnalité à venir." })}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => toast({ title: "💬 Contact", description: "Fonctionnalité à venir." })}>
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                </Button>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><MoreVertical className="h-3.5 w-3.5" /></Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem onClick={() => toast({ title: "✏️ Modifier", description: "Fonctionnalité à venir." })}>
-                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Modifier le statut
+                                    <DropdownMenuItem onClick={() => toast({ title: "✅ Valider", description: "Fonctionnalité à venir." })}>
+                                      <UserCheck className="h-3.5 w-3.5 mr-2" /> Valider et Placer
                                     </DropdownMenuItem>
                                     <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setEnrollmentToDelete(e.id)}>
-                                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Annuler l'inscription
+                                      <XCircle className="h-3.5 w-3.5 mr-2" /> Annuler l'inscription
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
