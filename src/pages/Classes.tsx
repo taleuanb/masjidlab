@@ -416,101 +416,96 @@ const Classes = () => {
     return groups;
   }, [filteredClasses, levels, cycles]);
 
+  const [pageTab, setPageTab] = useState<"liste" | "progression" | "planning">("liste");
+
   return (
     <main className="flex-1 overflow-y-auto">
-      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
-        <div className="flex items-center gap-3 mb-1">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+        {/* Header — aligned with Eleves & Inscriptions */}
+        <div className="flex items-center gap-3">
           <SidebarTrigger />
+          <School className="h-5 w-5 text-brand-cyan" />
+          <h1 className="text-xl font-bold text-foreground">Classes</h1>
+          <Badge variant="secondary" className="text-xs font-medium bg-muted text-muted-foreground">
+            {filteredClasses.length}
+          </Badge>
+          <div className="flex-1" />
+          <Tabs value={pageTab} onValueChange={(v) => setPageTab(v as typeof pageTab)}>
+            <TabsList className="h-8">
+              <TabsTrigger value="liste" className="text-xs gap-1 px-2.5 py-1">
+                <BookOpen className="h-3 w-3" /> Liste
+              </TabsTrigger>
+              <TabsTrigger value="progression" className="text-xs gap-1 px-2.5 py-1">
+                <TrendingUp className="h-3 w-3" /> Progrès
+              </TabsTrigger>
+              <TabsTrigger value="planning" className="text-xs gap-1 px-2.5 py-1">
+                <CalendarDays className="h-3 w-3" /> Planning
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Button size="sm" className="gradient-positive border-0" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Nouvelle classe
+          </Button>
         </div>
 
-        <Tabs defaultValue="liste" className="w-full">
+        {/* KPI Cards */}
+        <StatCards
+          items={(() => {
+            const totalEnrolled = Object.values(enrollmentCounts).reduce((a, b) => a + b, 0);
+            const totalCap = filteredClasses.reduce((a, c) => a + (c.capacity_max ?? 15), 0);
+            const capRate = totalCap > 0 ? Math.round((totalEnrolled / totalCap) * 100) : 0;
+            const uniqueProfs = new Set(filteredClasses.map(c => c.prof_id).filter(Boolean)).size;
+            const uniqueRooms = new Set(filteredClasses.map(c => c.salle_id).filter(Boolean)).size;
+            return [
+              { label: "Total Classes", value: filteredClasses.length, icon: School, subValue: `sur ${classes.length} créée(s)` },
+              { label: "Capacité", value: `${capRate}%`, icon: Users, subValue: `${totalEnrolled} / ${totalCap} places`, progress: capRate },
+              { label: "Professeurs", value: uniqueProfs, icon: GraduationCap, subValue: "enseignant(s) assigné(s)" },
+              { label: "Salles", value: uniqueRooms, icon: MapPin, subValue: "salle(s) utilisée(s)" },
+            ] as StatCardItem[];
+          })()}
+        />
+
+        {/* Quick Filter Tabs */}
+        <Tabs value={filterNiveau} onValueChange={setFilterNiveau}>
           <TabsList>
-            <TabsTrigger value="liste" className="gap-1.5">
-              <BookOpen className="h-3.5 w-3.5" />
-              Liste des classes
-            </TabsTrigger>
-            <TabsTrigger value="progression" className="gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5" />
-              Vue Progrès
-            </TabsTrigger>
-            <TabsTrigger value="planning" className="gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" />
-              Planning Global
-            </TabsTrigger>
+            <TabsTrigger value="all">Toutes</TabsTrigger>
+            {uniqueLevels.slice(0, 5).map(l => (
+              <TabsTrigger key={l} value={l}>{l}</TabsTrigger>
+            ))}
           </TabsList>
+        </Tabs>
 
-          <TabsContent value="liste" className="mt-4 space-y-5">
-            {/* ── Header ── */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-foreground">Classes</h1>
-                <Badge variant="secondary" className="text-xs font-medium bg-muted text-muted-foreground">
-                  {filteredClasses.length}
-                </Badge>
-              </div>
-              <Button size="sm" className="gradient-positive border-0" onClick={openCreate}>
-                <Plus className="h-4 w-4" /> Nouvelle classe
-              </Button>
-            </div>
-
-            {/* ── Stat Cards ── */}
-            <StatCards
-              items={(() => {
-                const totalEnrolled = Object.values(enrollmentCounts).reduce((a, b) => a + b, 0);
-                const totalCap = filteredClasses.reduce((a, c) => a + (c.capacity_max ?? 15), 0);
-                const capRate = totalCap > 0 ? Math.round((totalEnrolled / totalCap) * 100) : 0;
-                const uniqueProfs = new Set(filteredClasses.map(c => c.prof_id).filter(Boolean)).size;
-                const uniqueRooms = new Set(filteredClasses.map(c => c.salle_id).filter(Boolean)).size;
-                return [
-                  { label: "Total Classes", value: filteredClasses.length, icon: School, subValue: `sur ${classes.length} créée(s)` },
-                  { label: "Capacité", value: `${capRate}%`, icon: Users, subValue: `${totalEnrolled} / ${totalCap} places`, progress: capRate },
-                  { label: "Professeurs", value: uniqueProfs, icon: GraduationCap, subValue: "enseignant(s) assigné(s)" },
-                  { label: "Salles", value: uniqueRooms, icon: MapPin, subValue: "salle(s) utilisée(s)" },
-                ] as StatCardItem[];
-              })()}
+        {/* Search & Filters */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Rechercher une classe…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-9 pl-9 text-sm"
             />
+          </div>
+          <Select value={filterSubject} onValueChange={setFilterSubject}>
+            <SelectTrigger className="h-9 w-full sm:w-[170px] text-sm">
+              <SelectValue placeholder="Matière" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les matières</SelectItem>
+              {uniqueSubjects.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {pageTab === "liste" && (
+            <ViewSwitcher viewMode={viewMode} onViewChange={setViewMode} className="shrink-0 ml-auto" />
+          )}
+        </div>
 
-            {/* ── Quick Filter Tabs ── */}
-            <Tabs value={filterNiveau} onValueChange={setFilterNiveau}>
-              <TabsList>
-                <TabsTrigger value="all">Toutes</TabsTrigger>
-                {uniqueLevels.slice(0, 5).map(l => (
-                  <TabsTrigger key={l} value={l}>{l}</TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-
-            {/* ── Unified Toolbar ── */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              {/* Search */}
-              <div className="relative w-full sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  placeholder="Rechercher une classe…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-9 text-sm"
-                />
-              </div>
-
-              {/* Filter: Matière */}
-              <Select value={filterSubject} onValueChange={setFilterSubject}>
-                <SelectTrigger className="h-9 w-full sm:w-[170px] text-sm">
-                  <SelectValue placeholder="Matière" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Toutes les matières</SelectItem>
-                  {uniqueSubjects.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* View Mode Toggle */}
-              <ViewSwitcher viewMode={viewMode} onViewChange={setViewMode} className="shrink-0 ml-auto" />
-            </div>
-
-            {/* ── Content ── */}
+        {/* ── Page Content ── */}
+        <AnimatePresence mode="wait">
+        {pageTab === "liste" && (
+          <motion.div key="liste" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -535,7 +530,6 @@ const Classes = () => {
                 description="Aucune classe ne correspond à votre recherche ou filtre actuel."
               />
             ) : viewMode === "grid" ? (
-              /* ══════ GRID VIEW — grouped by cycle ══════ */
               <div className="space-y-8">
                 {cycleGroups.map((group) => (
                   <section key={group.cycleId}>
@@ -546,21 +540,11 @@ const Classes = () => {
                       </Badge>
                     </div>
                     <AnimatePresence mode="popLayout">
-                      <motion.div
-                        layout
-                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                      >
+                      <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {group.classes.map((c) => {
                           const { days, time } = getScheduleInfo(c);
                           return (
-                            <motion.div
-                              key={c.id}
-                              layout
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.9 }}
-                              transition={{ duration: 0.2 }}
-                            >
+                            <motion.div key={c.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.2 }}>
                               <ClassCard
                                 id={c.id}
                                 name={c.nom}
@@ -583,7 +567,6 @@ const Classes = () => {
                 ))}
               </div>
             ) : viewMode === "list" ? (
-              /* ══════ LIST VIEW (Table, Eleves-style) ══════ */
               <div className="rounded-lg border overflow-hidden shadow-sm">
                 <Table>
                   <TableHeader>
@@ -782,9 +765,11 @@ const Classes = () => {
                 </motion.div>
               </div>
             )}
-          </TabsContent>
+          </motion.div>
+        )}
 
-          <TabsContent value="progression" className="mt-4 space-y-4">
+        {pageTab === "progression" && (
+          <motion.div key="progression" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-4">
             {classes.length === 0 ? (
               <EmptyState
                 icon={TrendingUp}
@@ -822,12 +807,15 @@ const Classes = () => {
                 })()}
               </>
             )}
-          </TabsContent>
+          </motion.div>
+        )}
 
-          <TabsContent value="planning" className="mt-4">
+        {pageTab === "planning" && (
+          <motion.div key="planning" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             <GlobalCalendarView filterNiveau={filterNiveau} filterSubjects={filterSubjects} />
-          </TabsContent>
-        </Tabs>
+          </motion.div>
+        )}
+        </AnimatePresence>
       </div>
 
       {/* ── Create / Edit Dialog ── */}
