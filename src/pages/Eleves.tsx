@@ -7,8 +7,8 @@ import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   GraduationCap, Trash2, Search, Users, UserCheck, BarChart3,
-  UserPlus, Building2, MoreHorizontal, MessageCircle, ArrowRightLeft,
-  FileText, Pencil, BookOpen, Eye,
+  UserPlus, Building2, MoreHorizontal, MoreVertical, MessageCircle, MessageSquare, ArrowRightLeft,
+  FileText, Pencil, BookOpen, Eye, Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
