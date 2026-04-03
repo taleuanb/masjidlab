@@ -470,6 +470,16 @@ const Classes = () => {
               })()}
             />
 
+            {/* ── Quick Filter Tabs ── */}
+            <Tabs value={filterNiveau} onValueChange={setFilterNiveau}>
+              <TabsList>
+                <TabsTrigger value="all">Toutes</TabsTrigger>
+                {uniqueLevels.slice(0, 5).map(l => (
+                  <TabsTrigger key={l} value={l}>{l}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
             {/* ── Unified Toolbar ── */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               {/* Search */}
@@ -482,19 +492,6 @@ const Classes = () => {
                   className="h-9 pl-9 text-sm"
                 />
               </div>
-
-              {/* Filter: Niveau */}
-              <Select value={filterNiveau} onValueChange={setFilterNiveau}>
-                <SelectTrigger className="h-9 w-full sm:w-[160px] text-sm">
-                  <SelectValue placeholder="Niveau" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les niveaux</SelectItem>
-                  {uniqueLevels.map((l) => (
-                    <SelectItem key={l} value={l}>{l}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
               {/* Filter: Matière */}
               <Select value={filterSubject} onValueChange={setFilterSubject}>
