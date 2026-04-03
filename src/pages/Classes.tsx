@@ -6,7 +6,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   BookOpen, Trash2, Loader2, Plus, Users, GraduationCap, Pencil, TrendingUp,
   Clock, CalendarDays, School, Search, MapPin,
-  MoreVertical, FileText, PhoneCall,
+  MoreVertical, FileText, PhoneCall, Eye, MessageSquare, UserCog, Lock,
 } from "lucide-react";
 import { ClassCard } from "@/components/madrasa/ClassCard";
 import { Button } from "@/components/ui/button";
