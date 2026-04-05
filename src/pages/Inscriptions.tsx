@@ -1118,7 +1118,7 @@ const Inscriptions = () => {
           <ClipboardList className="h-5 w-5 text-brand-cyan" />
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-foreground">Inscriptions</h1>
-            <p className="text-sm text-muted-foreground">Gestion des inscriptions scolaires — {getCurrentSchoolYear()}</p>
+            <p className="text-sm text-muted-foreground">Gestion des inscriptions scolaires{yearLabel ? ` — ${yearLabel}` : ` — ${getCurrentSchoolYear()}`}</p>
           </div>
           <div className="flex-1" />
           <Button
@@ -1136,7 +1136,7 @@ const Inscriptions = () => {
             <FileSpreadsheet className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Import en masse</span>
           </Button>
-          <Button onClick={() => setWizardOpen(true)} className="bg-brand-navy hover:bg-brand-navy/90">
+          <Button onClick={() => setWizardOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
             <UserPlus className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Nouvelle inscription</span>
             <span className="sm:hidden">Inscrire</span>
