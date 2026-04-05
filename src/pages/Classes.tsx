@@ -599,7 +599,7 @@ const Classes = () => {
             ) : viewMode === "list" ? (
               <div className="rounded-lg border overflow-hidden shadow-sm">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background">
                     <TableRow className="bg-muted/40">
                       <TableHead className="text-xs uppercase text-muted-foreground">Nom</TableHead>
                       <TableHead className="text-xs uppercase text-muted-foreground">Enseignant</TableHead>

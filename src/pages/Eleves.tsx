@@ -468,15 +468,15 @@ const Eleves = () => {
               <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
                 <div className="rounded-lg border overflow-hidden shadow-sm">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/40">
-                        <TableHead>Élève</TableHead>
-                        <TableHead className="hidden sm:table-cell">Âge</TableHead>
-                        <TableHead className="hidden md:table-cell">Parcours</TableHead>
-                        <TableHead className="hidden lg:table-cell">Responsable Légal</TableHead>
-                        <TableHead>Statut</TableHead>
-                        {canSeeFinance && <TableHead className="hidden xl:table-cell">Finance</TableHead>}
-                        <TableHead className="text-right w-[130px]">Actions</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Élève</TableHead>
+                        <TableHead className="hidden sm:table-cell text-xs uppercase text-muted-foreground">Âge</TableHead>
+                        <TableHead className="hidden md:table-cell text-xs uppercase text-muted-foreground">Parcours</TableHead>
+                        <TableHead className="hidden lg:table-cell text-xs uppercase text-muted-foreground">Responsable Légal</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Statut</TableHead>
+                        {canSeeFinance && <TableHead className="hidden xl:table-cell text-xs uppercase text-muted-foreground">Finance</TableHead>}
+                        <TableHead className="text-right w-[130px] text-xs uppercase text-muted-foreground">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

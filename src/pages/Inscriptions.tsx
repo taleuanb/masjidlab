@@ -1191,19 +1191,20 @@ const Inscriptions = () => {
             {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-lg border bg-card p-10 text-center space-y-2">
-            <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40" />
-            <p className="text-muted-foreground font-medium">
-              {filterClass !== "__all__" && filterClass !== "__sandbox__"
-                ? "Aucun élève inscrit dans cette classe pour le moment."
-                : "Aucune inscription trouvée"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {filterClass !== "__all__" && filterClass !== "__sandbox__"
-                ? "Les élèves peuvent être affectés depuis le Studio de placement."
-                : 'Cliquez sur "Nouvelle inscription" pour commencer.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={GraduationCap}
+            title={filterClass !== "__all__" && filterClass !== "__sandbox__"
+              ? "Aucun élève inscrit dans cette classe"
+              : "Aucune inscription trouvée"}
+            description={filterClass !== "__all__" && filterClass !== "__sandbox__"
+              ? "Les élèves peuvent être affectés depuis le Studio de placement."
+              : 'Cliquez sur "Nouvelle inscription" pour commencer.'}
+            action={
+              <Button className="bg-primary text-primary-foreground" onClick={() => setWizardOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-1" /> Nouvelle inscription
+              </Button>
+            }
+          />
         ) : (
           <AnimatePresence mode="wait">
             {/* ── LIST VIEW ── */}
