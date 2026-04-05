@@ -334,10 +334,26 @@ const Classes = () => {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [classes]);
 
-  // ── Derived: filtered classes (shared across all views) ──
+  // Build level_id -> cycle_id map
+  const levelToCycleMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    levels.forEach((l) => { if (l.cycle_id) map[l.id] = l.cycle_id; });
+    return map;
+  }, [levels]);
+
+  const cycleFilteredLevelIds = useMemo(() => {
+    if (filterCycle === "all") return null;
+    return new Set(levels.filter(l => l.cycle_id === filterCycle).map(l => l.id));
+  }, [filterCycle, levels]);
+
   const filteredClasses = useMemo(() => {
     return classes
       .filter((c) => {
+        // Cycle filter
+        if (filterCycle !== "all" && cycleFilteredLevelIds) {
+          if (!c.level_id || !cycleFilteredLevelIds.has(c.level_id)) return false;
+        }
+        // Level filter
         if (filterNiveau !== "all" && c.niveau !== filterNiveau) return false;
         if (filterSubject !== "all" && !c.subjects.some((s) => s.id === filterSubject)) return false;
         if (!searchQuery) return true;
@@ -348,7 +364,7 @@ const Classes = () => {
           (c.prof?.display_name ?? "").toLowerCase().includes(q)
         );
       });
-  }, [classes, filterNiveau, filterSubject, searchQuery]);
+  }, [classes, filterCycle, filterNiveau, filterSubject, searchQuery, cycleFilteredLevelIds]);
 
   // ── Helpers for card rendering ──
   const getScheduleInfo = (c: ClassRow) => {
