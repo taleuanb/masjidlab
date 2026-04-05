@@ -989,6 +989,7 @@ function getStatusDisplay(statut: string | null, classe: { nom: string } | null)
 // ── Main Page ────────────────────────────────────────────
 const Inscriptions = () => {
   const { orgId } = useOrganization();
+  const { yearLabel } = useCurrentAcademicYear();
   const { toast } = useToast();
   const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
   const [loading, setLoading] = useState(true);
