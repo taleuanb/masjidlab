@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useCurrentAcademicYear } from "@/hooks/useCurrentAcademicYear";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useTeacherScope } from "@/hooks/useTeacherScope";
@@ -35,6 +36,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ViewSwitcher, type ViewMode } from "@/components/ui/ViewSwitcher";
 import { StatCards, type StatCardItem } from "@/components/shared/StatCards";
 import { StudentCard } from "@/components/madrasa/StudentCard";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface EnrollmentRow {
   student_id: string;
@@ -62,6 +64,7 @@ interface ParentProfile {
 
 const Eleves = () => {
   const { orgId } = useOrganization();
+  const { yearLabel } = useCurrentAcademicYear();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { isTeacher, teacherClassIds } = useTeacherScope();
@@ -353,9 +356,12 @@ const Eleves = () => {
         <div className="flex items-center gap-3">
           <SidebarTrigger />
           <GraduationCap className="h-5 w-5 text-brand-cyan" />
-          <h1 className="text-xl font-bold text-foreground">
-            {isTeacher ? "Mes Élèves" : "Élèves"}
-          </h1>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-foreground">
+              {isTeacher ? "Mes Élèves" : "Élèves"}
+            </h1>
+            <p className="text-sm text-muted-foreground">Gestion de l'annuaire et des dossiers élèves{yearLabel ? ` — ${yearLabel}` : ""}</p>
+          </div>
           {isTeacher && (
             <Badge variant="outline" className="text-xs text-brand-cyan border-brand-cyan/30">
               Périmètre enseignant
@@ -364,7 +370,7 @@ const Eleves = () => {
           {canManage && (
             <div className="ml-auto">
               <Button
-                className="bg-brand-navy text-white hover:bg-brand-navy/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => navigate("/inscriptions")}
               >
                 <UserPlus className="h-4 w-4 mr-1" />
@@ -439,23 +445,19 @@ const Eleves = () => {
             {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-lg border bg-card p-10 text-center space-y-2">
-            <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40" />
-            <p className="text-muted-foreground font-medium">
-              {scopedStudents.length === 0
-                ? isTeacher
-                  ? "Aucun élève dans vos classes."
-                  : "Aucun élève enregistré."
-                : "Aucun élève ne correspond à vos filtres."}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {scopedStudents.length === 0
-                ? isTeacher
-                  ? "Contactez l'administration pour être assigné à une classe."
-                  : "Cliquez sur « Nouvelle Inscription » pour commencer."
-                : "Essayez d'élargir vos critères de recherche."}
-            </p>
-          </div>
+          <EmptyState
+            icon={GraduationCap}
+            title={scopedStudents.length === 0
+              ? isTeacher
+                ? "Aucun élève dans vos classes."
+                : "Aucun élève enregistré."
+              : "Aucun élève ne correspond à vos filtres."}
+            description={scopedStudents.length === 0
+              ? isTeacher
+                ? "Contactez l'administration pour être assigné à une classe."
+                : "Cliquez sur « Nouvelle Inscription » pour commencer."
+              : "Essayez d'élargir vos critères de recherche."}
+          />
         ) : (
           <AnimatePresence mode="wait">
             {/* ── LIST VIEW ── */}
@@ -463,15 +465,15 @@ const Eleves = () => {
               <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
                 <div className="rounded-lg border overflow-hidden shadow-sm">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/40">
-                        <TableHead>Élève</TableHead>
-                        <TableHead className="hidden sm:table-cell">Âge</TableHead>
-                        <TableHead className="hidden md:table-cell">Parcours</TableHead>
-                        <TableHead className="hidden lg:table-cell">Responsable Légal</TableHead>
-                        <TableHead>Statut</TableHead>
-                        {canSeeFinance && <TableHead className="hidden xl:table-cell">Finance</TableHead>}
-                        <TableHead className="text-right w-[130px]">Actions</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Élève</TableHead>
+                        <TableHead className="hidden sm:table-cell text-xs uppercase text-muted-foreground">Âge</TableHead>
+                        <TableHead className="hidden md:table-cell text-xs uppercase text-muted-foreground">Parcours</TableHead>
+                        <TableHead className="hidden lg:table-cell text-xs uppercase text-muted-foreground">Responsable Légal</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Statut</TableHead>
+                        {canSeeFinance && <TableHead className="hidden xl:table-cell text-xs uppercase text-muted-foreground">Finance</TableHead>}
+                        <TableHead className="text-right w-[130px] text-xs uppercase text-muted-foreground">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

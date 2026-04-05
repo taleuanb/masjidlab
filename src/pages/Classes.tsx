@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCurrentAcademicYear } from "@/hooks/useCurrentAcademicYear";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -83,6 +84,7 @@ function deriveClassStatus(c: ClassRow, enrolled: number): "planned" | "active" 
 
 const Classes = () => {
   const { orgId } = useOrganization();
+  const { yearLabel } = useCurrentAcademicYear();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -442,10 +444,10 @@ const Classes = () => {
         <div className="flex items-center gap-3">
           <SidebarTrigger />
           <School className="h-5 w-5 text-brand-cyan" />
-          <h1 className="text-xl font-bold text-foreground">Classes</h1>
-          <Badge variant="secondary" className="text-xs font-medium bg-muted text-muted-foreground">
-            {filteredClasses.length}
-          </Badge>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-foreground">Classes</h1>
+            <p className="text-sm text-muted-foreground">Organisation des classes et planification{yearLabel ? ` — ${yearLabel}` : ""}</p>
+          </div>
           <div className="flex-1" />
           <Tabs value={pageTab} onValueChange={(v) => setPageTab(v as typeof pageTab)}>
             <TabsList className="h-8">
@@ -597,7 +599,7 @@ const Classes = () => {
             ) : viewMode === "list" ? (
               <div className="rounded-lg border overflow-hidden shadow-sm">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background">
                     <TableRow className="bg-muted/40">
                       <TableHead className="text-xs uppercase text-muted-foreground">Nom</TableHead>
                       <TableHead className="text-xs uppercase text-muted-foreground">Enseignant</TableHead>

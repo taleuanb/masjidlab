@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { format } from "date-fns";
+import { useCurrentAcademicYear } from "@/hooks/useCurrentAcademicYear";
 import { fr } from "date-fns/locale";
 import {
   ClipboardList, PlusCircle, Loader2, Check, ChevronRight, ChevronLeft,
@@ -56,6 +57,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ViewSwitcher, type ViewMode } from "@/components/ui/ViewSwitcher";
 import { StatCards, type StatCardItem } from "@/components/shared/StatCards";
 import { EnrollmentCard, type EnrollmentCardData } from "@/components/madrasa/EnrollmentCard";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // ── Types ────────────────────────────────────────────────
 interface Level {
@@ -988,6 +990,7 @@ function getStatusDisplay(statut: string | null, classe: { nom: string } | null)
 // ── Main Page ────────────────────────────────────────────
 const Inscriptions = () => {
   const { orgId } = useOrganization();
+  const { yearLabel } = useCurrentAcademicYear();
   const { toast } = useToast();
   const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1116,7 +1119,7 @@ const Inscriptions = () => {
           <ClipboardList className="h-5 w-5 text-brand-cyan" />
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-foreground">Inscriptions</h1>
-            <p className="text-sm text-muted-foreground">Gestion des inscriptions scolaires — {getCurrentSchoolYear()}</p>
+            <p className="text-sm text-muted-foreground">Gestion des inscriptions scolaires{yearLabel ? ` — ${yearLabel}` : ` — ${getCurrentSchoolYear()}`}</p>
           </div>
           <div className="flex-1" />
           <Button
@@ -1134,7 +1137,7 @@ const Inscriptions = () => {
             <FileSpreadsheet className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Import en masse</span>
           </Button>
-          <Button onClick={() => setWizardOpen(true)} className="bg-brand-navy hover:bg-brand-navy/90">
+          <Button onClick={() => setWizardOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
             <UserPlus className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Nouvelle inscription</span>
             <span className="sm:hidden">Inscrire</span>
@@ -1189,19 +1192,20 @@ const Inscriptions = () => {
             {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-lg border bg-card p-10 text-center space-y-2">
-            <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40" />
-            <p className="text-muted-foreground font-medium">
-              {filterClass !== "__all__" && filterClass !== "__sandbox__"
-                ? "Aucun élève inscrit dans cette classe pour le moment."
-                : "Aucune inscription trouvée"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {filterClass !== "__all__" && filterClass !== "__sandbox__"
-                ? "Les élèves peuvent être affectés depuis le Studio de placement."
-                : 'Cliquez sur "Nouvelle inscription" pour commencer.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={GraduationCap}
+            title={filterClass !== "__all__" && filterClass !== "__sandbox__"
+              ? "Aucun élève inscrit dans cette classe"
+              : "Aucune inscription trouvée"}
+            description={filterClass !== "__all__" && filterClass !== "__sandbox__"
+              ? "Les élèves peuvent être affectés depuis le Studio de placement."
+              : 'Cliquez sur "Nouvelle inscription" pour commencer.'}
+            action={
+              <Button className="bg-primary text-primary-foreground" onClick={() => setWizardOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-1" /> Nouvelle inscription
+              </Button>
+            }
+          />
         ) : (
           <AnimatePresence mode="wait">
             {/* ── LIST VIEW ── */}
@@ -1209,15 +1213,15 @@ const Inscriptions = () => {
               <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
                 <div className="rounded-lg border overflow-hidden shadow-sm">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/40">
-                        <TableHead>Élève</TableHead>
-                        <TableHead>Classe</TableHead>
-                        <TableHead className="hidden md:table-cell">Niveau</TableHead>
-                        <TableHead className="hidden sm:table-cell">Année</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead className="hidden lg:table-cell">Date</TableHead>
-                        <TableHead className="text-right w-[130px]">Actions</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Élève</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Classe</TableHead>
+                        <TableHead className="hidden md:table-cell text-xs uppercase text-muted-foreground">Niveau</TableHead>
+                        <TableHead className="hidden sm:table-cell text-xs uppercase text-muted-foreground">Année</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Statut</TableHead>
+                        <TableHead className="hidden lg:table-cell text-xs uppercase text-muted-foreground">Date</TableHead>
+                        <TableHead className="text-right w-[130px] text-xs uppercase text-muted-foreground">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1249,7 +1253,7 @@ const Inscriptions = () => {
                               })()}
                             </TableCell>
                             <TableCell className="hidden lg:table-cell text-sm text-muted-foreground py-3">
-                              {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
+                              {e.created_at ? format(new Date(e.created_at), "dd MMM yyyy", { locale: fr }) : "—"}
                             </TableCell>
                             <TableCell className="text-right py-3" onClick={ev => ev.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
