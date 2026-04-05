@@ -92,11 +92,12 @@ const Classes = () => {
     { day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] },
   ]);
   const [filterNiveau, setFilterNiveau] = useState<string>("all");
+  const [filterCycle, setFilterCycle] = useState<string>("all");
   const [filterSubject, setFilterSubject] = useState<string>("all");
   const [filterSubjects, setFilterSubjects] = useState<string[]>([]);
   const [progressClassId, setProgressClassId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const isEditing = !!editingClass;
 
