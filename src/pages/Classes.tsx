@@ -84,6 +84,7 @@ function deriveClassStatus(c: ClassRow, enrolled: number): "planned" | "active" 
 
 const Classes = () => {
   const { orgId } = useOrganization();
+  const { yearLabel } = useCurrentAcademicYear();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
