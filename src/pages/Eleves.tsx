@@ -355,9 +355,12 @@ const Eleves = () => {
         <div className="flex items-center gap-3">
           <SidebarTrigger />
           <GraduationCap className="h-5 w-5 text-brand-cyan" />
-          <h1 className="text-xl font-bold text-foreground">
-            {isTeacher ? "Mes Élèves" : "Élèves"}
-          </h1>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-foreground">
+              {isTeacher ? "Mes Élèves" : "Élèves"}
+            </h1>
+            <p className="text-sm text-muted-foreground">Gestion de l'annuaire et des dossiers élèves{yearLabel ? ` — ${yearLabel}` : ""}</p>
+          </div>
           {isTeacher && (
             <Badge variant="outline" className="text-xs text-brand-cyan border-brand-cyan/30">
               Périmètre enseignant
@@ -366,7 +369,7 @@ const Eleves = () => {
           {canManage && (
             <div className="ml-auto">
               <Button
-                className="bg-brand-navy text-white hover:bg-brand-navy/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => navigate("/inscriptions")}
               >
                 <UserPlus className="h-4 w-4 mr-1" />
