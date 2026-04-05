@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { format } from "date-fns";
+import { useCurrentAcademicYear } from "@/hooks/useCurrentAcademicYear";
 import { fr } from "date-fns/locale";
 import {
   ClipboardList, PlusCircle, Loader2, Check, ChevronRight, ChevronLeft,
