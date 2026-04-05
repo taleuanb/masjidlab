@@ -444,10 +444,10 @@ const Classes = () => {
         <div className="flex items-center gap-3">
           <SidebarTrigger />
           <School className="h-5 w-5 text-brand-cyan" />
-          <h1 className="text-xl font-bold text-foreground">Classes</h1>
-          <Badge variant="secondary" className="text-xs font-medium bg-muted text-muted-foreground">
-            {filteredClasses.length}
-          </Badge>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-foreground">Classes</h1>
+            <p className="text-sm text-muted-foreground">Organisation des classes et planification{yearLabel ? ` — ${yearLabel}` : ""}</p>
+          </div>
           <div className="flex-1" />
           <Tabs value={pageTab} onValueChange={(v) => setPageTab(v as typeof pageTab)}>
             <TabsList className="h-8">
