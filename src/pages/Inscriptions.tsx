@@ -1211,15 +1211,15 @@ const Inscriptions = () => {
               <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
                 <div className="rounded-lg border overflow-hidden shadow-sm">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/40">
-                        <TableHead>Élève</TableHead>
-                        <TableHead>Classe</TableHead>
-                        <TableHead className="hidden md:table-cell">Niveau</TableHead>
-                        <TableHead className="hidden sm:table-cell">Année</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead className="hidden lg:table-cell">Date</TableHead>
-                        <TableHead className="text-right w-[130px]">Actions</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Élève</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Classe</TableHead>
+                        <TableHead className="hidden md:table-cell text-xs uppercase text-muted-foreground">Niveau</TableHead>
+                        <TableHead className="hidden sm:table-cell text-xs uppercase text-muted-foreground">Année</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Statut</TableHead>
+                        <TableHead className="hidden lg:table-cell text-xs uppercase text-muted-foreground">Date</TableHead>
+                        <TableHead className="text-right w-[130px] text-xs uppercase text-muted-foreground">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
