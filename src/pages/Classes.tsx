@@ -92,11 +92,12 @@ const Classes = () => {
     { day_of_week: 6, start_time: "09:00", end_time: "12:00", subject_ids: [] },
   ]);
   const [filterNiveau, setFilterNiveau] = useState<string>("all");
+  const [filterCycle, setFilterCycle] = useState<string>("all");
   const [filterSubject, setFilterSubject] = useState<string>("all");
   const [filterSubjects, setFilterSubjects] = useState<string[]>([]);
   const [progressClassId, setProgressClassId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const isEditing = !!editingClass;
 
@@ -333,10 +334,26 @@ const Classes = () => {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [classes]);
 
-  // ── Derived: filtered classes (shared across all views) ──
+  // Build level_id -> cycle_id map
+  const levelToCycleMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    levels.forEach((l) => { if (l.cycle_id) map[l.id] = l.cycle_id; });
+    return map;
+  }, [levels]);
+
+  const cycleFilteredLevelIds = useMemo(() => {
+    if (filterCycle === "all") return null;
+    return new Set(levels.filter(l => l.cycle_id === filterCycle).map(l => l.id));
+  }, [filterCycle, levels]);
+
   const filteredClasses = useMemo(() => {
     return classes
       .filter((c) => {
+        // Cycle filter
+        if (filterCycle !== "all" && cycleFilteredLevelIds) {
+          if (!c.level_id || !cycleFilteredLevelIds.has(c.level_id)) return false;
+        }
+        // Level filter
         if (filterNiveau !== "all" && c.niveau !== filterNiveau) return false;
         if (filterSubject !== "all" && !c.subjects.some((s) => s.id === filterSubject)) return false;
         if (!searchQuery) return true;
@@ -347,7 +364,7 @@ const Classes = () => {
           (c.prof?.display_name ?? "").toLowerCase().includes(q)
         );
       });
-  }, [classes, filterNiveau, filterSubject, searchQuery]);
+  }, [classes, filterCycle, filterNiveau, filterSubject, searchQuery, cycleFilteredLevelIds]);
 
   // ── Helpers for card rendering ──
   const getScheduleInfo = (c: ClassRow) => {
@@ -443,8 +460,8 @@ const Classes = () => {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button size="sm" className="gradient-positive border-0" onClick={openCreate}>
-            <Plus className="h-4 w-4" /> Nouvelle classe
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-1" /> Nouvelle classe
           </Button>
         </div>
 
@@ -452,12 +469,12 @@ const Classes = () => {
         <StatCards
           items={(() => {
             const totalEnrolled = Object.values(enrollmentCounts).reduce((a, b) => a + b, 0);
-            const totalCap = filteredClasses.reduce((a, c) => a + (c.capacity_max ?? 15), 0);
+            const totalCap = classes.reduce((a, c) => a + (c.capacity_max ?? 15), 0);
             const capRate = totalCap > 0 ? Math.round((totalEnrolled / totalCap) * 100) : 0;
-            const uniqueProfs = new Set(filteredClasses.map(c => c.prof_id).filter(Boolean)).size;
-            const uniqueRooms = new Set(filteredClasses.map(c => c.salle_id).filter(Boolean)).size;
+            const uniqueProfs = new Set(classes.map(c => c.prof_id).filter(Boolean)).size;
+            const uniqueRooms = new Set(classes.map(c => c.salle_id).filter(Boolean)).size;
             return [
-              { label: "Total Classes", value: filteredClasses.length, icon: School, subValue: `sur ${classes.length} créée(s)` },
+              { label: "Total Classes", value: classes.length, icon: School, subValue: `${filteredClasses.length} affiché(s)` },
               { label: "Capacité", value: `${capRate}%`, icon: Users, subValue: `${totalEnrolled} / ${totalCap} places`, progress: capRate },
               { label: "Professeurs", value: uniqueProfs, icon: GraduationCap, subValue: "enseignant(s) assigné(s)" },
               { label: "Salles", value: uniqueRooms, icon: MapPin, subValue: "salle(s) utilisée(s)" },
@@ -465,12 +482,12 @@ const Classes = () => {
           })()}
         />
 
-        {/* Quick Filter Tabs */}
-        <Tabs value={filterNiveau} onValueChange={setFilterNiveau}>
+        {/* Quick Filter Tabs — by Cycle */}
+        <Tabs value={filterCycle} onValueChange={(v) => { setFilterCycle(v); setFilterNiveau("all"); }}>
           <TabsList>
-            <TabsTrigger value="all">Toutes</TabsTrigger>
-            {uniqueLevels.slice(0, 5).map(l => (
-              <TabsTrigger key={l} value={l}>{l}</TabsTrigger>
+            <TabsTrigger value="all">Tous les cycles</TabsTrigger>
+            {cycles.map(c => (
+              <TabsTrigger key={c.id} value={c.id}>{c.nom}</TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
@@ -486,6 +503,17 @@ const Classes = () => {
               className="h-9 pl-9 text-sm"
             />
           </div>
+          <Select value={filterNiveau} onValueChange={setFilterNiveau}>
+            <SelectTrigger className="h-9 w-full sm:w-[170px] text-sm">
+              <SelectValue placeholder="Niveau" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les niveaux</SelectItem>
+              {uniqueLevels.map((l) => (
+                <SelectItem key={l} value={l}>{l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={filterSubject} onValueChange={setFilterSubject}>
             <SelectTrigger className="h-9 w-full sm:w-[170px] text-sm">
               <SelectValue placeholder="Matière" />
@@ -571,12 +599,12 @@ const Classes = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40">
-                      <TableHead>Nom</TableHead>
-                      <TableHead>Enseignant</TableHead>
-                      <TableHead className="hidden md:table-cell">Salle</TableHead>
-                      <TableHead className="hidden sm:table-cell">Niveau</TableHead>
-                      <TableHead>Effectif</TableHead>
-                      <TableHead className="text-right w-[140px]">Actions</TableHead>
+                      <TableHead className="text-xs uppercase text-muted-foreground">Nom</TableHead>
+                      <TableHead className="text-xs uppercase text-muted-foreground">Enseignant</TableHead>
+                      <TableHead className="hidden md:table-cell text-xs uppercase text-muted-foreground">Salle</TableHead>
+                      <TableHead className="hidden sm:table-cell text-xs uppercase text-muted-foreground">Niveau</TableHead>
+                      <TableHead className="text-xs uppercase text-muted-foreground">Effectif</TableHead>
+                      <TableHead className="text-right w-[140px] text-xs uppercase text-muted-foreground">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
