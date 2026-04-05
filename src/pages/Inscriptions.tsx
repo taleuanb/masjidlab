@@ -1251,7 +1251,7 @@ const Inscriptions = () => {
                               })()}
                             </TableCell>
                             <TableCell className="hidden lg:table-cell text-sm text-muted-foreground py-3">
-                              {e.created_at ? format(new Date(e.created_at), "dd/MM/yyyy") : "—"}
+                              {e.created_at ? format(new Date(e.created_at), "dd MMM yyyy", { locale: fr }) : "—"}
                             </TableCell>
                             <TableCell className="text-right py-3" onClick={ev => ev.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
