@@ -63,6 +63,7 @@ interface ParentProfile {
 
 const Eleves = () => {
   const { orgId } = useOrganization();
+  const { yearLabel } = useCurrentAcademicYear();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { isTeacher, teacherClassIds } = useTeacherScope();
