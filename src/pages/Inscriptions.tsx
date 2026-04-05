@@ -57,6 +57,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ViewSwitcher, type ViewMode } from "@/components/ui/ViewSwitcher";
 import { StatCards, type StatCardItem } from "@/components/shared/StatCards";
 import { EnrollmentCard, type EnrollmentCardData } from "@/components/madrasa/EnrollmentCard";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // ── Types ────────────────────────────────────────────────
 interface Level {
