@@ -460,8 +460,8 @@ const Classes = () => {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button size="sm" className="gradient-positive border-0" onClick={openCreate}>
-            <Plus className="h-4 w-4" /> Nouvelle classe
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-1" /> Nouvelle classe
           </Button>
         </div>
 
@@ -469,12 +469,12 @@ const Classes = () => {
         <StatCards
           items={(() => {
             const totalEnrolled = Object.values(enrollmentCounts).reduce((a, b) => a + b, 0);
-            const totalCap = filteredClasses.reduce((a, c) => a + (c.capacity_max ?? 15), 0);
+            const totalCap = classes.reduce((a, c) => a + (c.capacity_max ?? 15), 0);
             const capRate = totalCap > 0 ? Math.round((totalEnrolled / totalCap) * 100) : 0;
-            const uniqueProfs = new Set(filteredClasses.map(c => c.prof_id).filter(Boolean)).size;
-            const uniqueRooms = new Set(filteredClasses.map(c => c.salle_id).filter(Boolean)).size;
+            const uniqueProfs = new Set(classes.map(c => c.prof_id).filter(Boolean)).size;
+            const uniqueRooms = new Set(classes.map(c => c.salle_id).filter(Boolean)).size;
             return [
-              { label: "Total Classes", value: filteredClasses.length, icon: School, subValue: `sur ${classes.length} créée(s)` },
+              { label: "Total Classes", value: classes.length, icon: School, subValue: `${filteredClasses.length} affiché(s)` },
               { label: "Capacité", value: `${capRate}%`, icon: Users, subValue: `${totalEnrolled} / ${totalCap} places`, progress: capRate },
               { label: "Professeurs", value: uniqueProfs, icon: GraduationCap, subValue: "enseignant(s) assigné(s)" },
               { label: "Salles", value: uniqueRooms, icon: MapPin, subValue: "salle(s) utilisée(s)" },
@@ -482,12 +482,12 @@ const Classes = () => {
           })()}
         />
 
-        {/* Quick Filter Tabs */}
-        <Tabs value={filterNiveau} onValueChange={setFilterNiveau}>
+        {/* Quick Filter Tabs — by Cycle */}
+        <Tabs value={filterCycle} onValueChange={(v) => { setFilterCycle(v); setFilterNiveau("all"); }}>
           <TabsList>
-            <TabsTrigger value="all">Toutes</TabsTrigger>
-            {uniqueLevels.slice(0, 5).map(l => (
-              <TabsTrigger key={l} value={l}>{l}</TabsTrigger>
+            <TabsTrigger value="all">Tous les cycles</TabsTrigger>
+            {cycles.map(c => (
+              <TabsTrigger key={c.id} value={c.id}>{c.nom}</TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
@@ -503,6 +503,17 @@ const Classes = () => {
               className="h-9 pl-9 text-sm"
             />
           </div>
+          <Select value={filterNiveau} onValueChange={setFilterNiveau}>
+            <SelectTrigger className="h-9 w-full sm:w-[170px] text-sm">
+              <SelectValue placeholder="Niveau" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les niveaux</SelectItem>
+              {uniqueLevels.map((l) => (
+                <SelectItem key={l} value={l}>{l}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={filterSubject} onValueChange={setFilterSubject}>
             <SelectTrigger className="h-9 w-full sm:w-[170px] text-sm">
               <SelectValue placeholder="Matière" />
