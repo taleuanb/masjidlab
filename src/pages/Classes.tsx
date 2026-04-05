@@ -599,12 +599,12 @@ const Classes = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40">
-                      <TableHead>Nom</TableHead>
-                      <TableHead>Enseignant</TableHead>
-                      <TableHead className="hidden md:table-cell">Salle</TableHead>
-                      <TableHead className="hidden sm:table-cell">Niveau</TableHead>
-                      <TableHead>Effectif</TableHead>
-                      <TableHead className="text-right w-[140px]">Actions</TableHead>
+                      <TableHead className="text-xs uppercase text-muted-foreground">Nom</TableHead>
+                      <TableHead className="text-xs uppercase text-muted-foreground">Enseignant</TableHead>
+                      <TableHead className="hidden md:table-cell text-xs uppercase text-muted-foreground">Salle</TableHead>
+                      <TableHead className="hidden sm:table-cell text-xs uppercase text-muted-foreground">Niveau</TableHead>
+                      <TableHead className="text-xs uppercase text-muted-foreground">Effectif</TableHead>
+                      <TableHead className="text-right w-[140px] text-xs uppercase text-muted-foreground">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
