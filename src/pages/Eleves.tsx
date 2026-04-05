@@ -444,23 +444,19 @@ const Eleves = () => {
             {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-lg border bg-card p-10 text-center space-y-2">
-            <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40" />
-            <p className="text-muted-foreground font-medium">
-              {scopedStudents.length === 0
-                ? isTeacher
-                  ? "Aucun élève dans vos classes."
-                  : "Aucun élève enregistré."
-                : "Aucun élève ne correspond à vos filtres."}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {scopedStudents.length === 0
-                ? isTeacher
-                  ? "Contactez l'administration pour être assigné à une classe."
-                  : "Cliquez sur « Nouvelle Inscription » pour commencer."
-                : "Essayez d'élargir vos critères de recherche."}
-            </p>
-          </div>
+          <EmptyState
+            icon={GraduationCap}
+            title={scopedStudents.length === 0
+              ? isTeacher
+                ? "Aucun élève dans vos classes."
+                : "Aucun élève enregistré."
+              : "Aucun élève ne correspond à vos filtres."}
+            description={scopedStudents.length === 0
+              ? isTeacher
+                ? "Contactez l'administration pour être assigné à une classe."
+                : "Cliquez sur « Nouvelle Inscription » pour commencer."
+              : "Essayez d'élargir vos critères de recherche."}
+          />
         ) : (
           <AnimatePresence mode="wait">
             {/* ── LIST VIEW ── */}
