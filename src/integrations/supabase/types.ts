@@ -468,6 +468,13 @@ export type Database = {
             foreignKeyName: "madrasa_attendance_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "view_student_fees_summary"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "madrasa_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "view_unplaced_students"
             referencedColumns: ["student_id"]
           },
@@ -763,6 +770,13 @@ export type Database = {
             foreignKeyName: "madrasa_enrollments_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "view_student_fees_summary"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "madrasa_enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "view_unplaced_students"
             referencedColumns: ["student_id"]
           },
@@ -886,6 +900,13 @@ export type Database = {
             foreignKeyName: "madrasa_fees_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "view_student_fees_summary"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "madrasa_fees_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "view_unplaced_students"
             referencedColumns: ["student_id"]
           },
@@ -947,6 +968,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_students"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_grades_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_student_fees_summary"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "madrasa_grades_student_id_fkey"
@@ -1283,6 +1311,13 @@ export type Database = {
             foreignKeyName: "madrasa_student_goals_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "view_student_fees_summary"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "madrasa_student_goals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "view_unplaced_students"
             referencedColumns: ["student_id"]
           },
@@ -1374,6 +1409,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_students"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_student_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_student_fees_summary"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "madrasa_student_progress_student_id_fkey"
@@ -2193,8 +2235,38 @@ export type Database = {
             foreignKeyName: "madrasa_attendance_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "view_student_fees_summary"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "madrasa_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "view_unplaced_students"
             referencedColumns: ["student_id"]
+          },
+        ]
+      }
+      view_student_fees_summary: {
+        Row: {
+          classe_nom: string | null
+          nb_echeances: number | null
+          nb_retards: number | null
+          nom: string | null
+          org_id: string | null
+          prenom: string | null
+          solde_restant: number | null
+          student_id: string | null
+          total_annuel: number | null
+          total_paye: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_students_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
