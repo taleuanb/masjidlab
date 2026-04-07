@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   Wallet, TrendingUp, AlertCircle, Mail, Search,
-  Banknote, MessageSquare, Download, Check,
+  Banknote, MessageSquare, Download, Check, Eye, Bell,
 } from "lucide-react";
 import { useStudentFeesSummary, type StudentFeeSummary } from "@/hooks/useStudentFeesSummary";
 import { useMadrasaFees } from "@/hooks/useMadrasaFees";
@@ -69,6 +69,8 @@ function StudentFeeDetailSheet({
   const { encaisser } = useMadrasaFees();
   const queryClient = useQueryClient();
   const [confirmFee, setConfirmFee] = useState<{ id: string; amount: number; due_date: string } | null>(null);
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
 
   const { data: fees, isLoading } = useQuery({
     queryKey: ["student-fees-detail", student?.student_id, orgId],
@@ -84,6 +86,11 @@ function StudentFeeDetailSheet({
       return data ?? [];
     },
   });
+
+  const pendingFees = useMemo(
+    () => (fees ?? []).filter((f) => f.status === "pending" || f.status === "overdue"),
+    [fees],
+  );
 
   const handleEncaisser = () => {
     if (!confirmFee || !student) return;
@@ -103,6 +110,35 @@ function StudentFeeDetailSheet({
       },
     );
     setConfirmFee(null);
+  };
+
+  const handleBulkEncaisser = async () => {
+    if (!student || pendingFees.length === 0) return;
+    setBulkProcessing(true);
+    try {
+      for (const fee of pendingFees) {
+        await new Promise<void>((resolve, reject) => {
+          encaisser.mutate(
+            {
+              feeId: fee.id,
+              amount: Number(fee.amount),
+              studentNom: student.nom,
+              studentPrenom: student.prenom,
+              dueDate: fee.due_date,
+            },
+            { onSuccess: () => resolve(), onError: (e) => reject(e) },
+          );
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["student-fees-detail", student.student_id] });
+      queryClient.invalidateQueries({ queryKey: ["student-fees-summary"] });
+      toast({ title: "Compte soldé ✓", description: `Toutes les échéances de ${student.prenom} ${student.nom} ont été encaissées.` });
+    } catch {
+      toast({ title: "Erreur", description: "Une erreur est survenue lors de l'encaissement groupé.", variant: "destructive" });
+    } finally {
+      setBulkProcessing(false);
+      setConfirmBulk(false);
+    }
   };
 
   if (!student) return null;
@@ -127,20 +163,35 @@ function StudentFeeDetailSheet({
           <div className="grid grid-cols-3 gap-3 py-4">
             <div className="rounded-lg border p-3 text-center">
               <p className="text-xs text-muted-foreground">Total annuel</p>
-              <p className="text-lg font-bold">{student.total_annuel.toLocaleString("fr-FR")} €</p>
+              <p className="text-lg font-semibold">{student.total_annuel.toLocaleString("fr-FR")} €</p>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <p className="text-xs text-muted-foreground">Déjà payé</p>
-              <p className="text-lg font-bold text-brand-emerald">{student.total_paye.toLocaleString("fr-FR")} €</p>
+              <p className="text-lg font-semibold text-brand-emerald">{student.total_paye.toLocaleString("fr-FR")} €</p>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <p className="text-xs text-muted-foreground">Solde</p>
-              <p className="text-lg font-bold">{student.solde_restant.toLocaleString("fr-FR")} €</p>
+              <p className="text-lg font-semibold">{student.solde_restant.toLocaleString("fr-FR")} €</p>
             </div>
           </div>
 
-          {/* Fee history */}
-          <h3 className="text-sm font-semibold mb-2">Historique des échéances</h3>
+          {/* Fee history header */}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold">Historique des échéances</h3>
+            {pendingFees.length > 1 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-7"
+                onClick={() => setConfirmBulk(true)}
+                disabled={bulkProcessing}
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Tout solder
+              </Button>
+            )}
+          </div>
+
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
@@ -166,7 +217,7 @@ function StudentFeeDetailSheet({
                         <TableCell className="py-2 text-sm">
                           {format(new Date(fee.due_date), "dd MMM yyyy", { locale: fr })}
                         </TableCell>
-                        <TableCell className="py-2 text-sm text-right font-medium">
+                        <TableCell className="py-2 text-sm text-right font-semibold">
                           {Number(fee.amount).toLocaleString("fr-FR")} €
                         </TableCell>
                         <TableCell className="py-2">
@@ -201,7 +252,7 @@ function StudentFeeDetailSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Confirm encaissement */}
+      {/* Confirm single encaissement */}
       <AlertDialog open={!!confirmFee} onOpenChange={(o) => !o && setConfirmFee(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -224,6 +275,29 @@ function StudentFeeDetailSheet({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Confirm bulk encaissement */}
+      <AlertDialog open={confirmBulk} onOpenChange={(o) => !o && setConfirmBulk(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Solder le compte</AlertDialogTitle>
+            <AlertDialogDescription>
+              Encaisser les <strong>{pendingFees.length} échéances</strong> restantes pour{" "}
+              <strong>{student.prenom} {student.nom}</strong> ?
+              <br />
+              <span className="text-xs text-muted-foreground">
+                Total : {pendingFees.reduce((s, f) => s + Number(f.amount), 0).toLocaleString("fr-FR")} € — {pendingFees.length} transactions seront créées.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkProcessing}>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkEncaisser} disabled={bulkProcessing}>
+              {bulkProcessing ? "Encaissement en cours…" : "Confirmer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -237,7 +311,15 @@ export default function FraisScolaritePage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeSummary | null>(null);
 
-  const rows = students ?? [];
+  /* Deduplicate by student_id (safety net if view returns duplicates) */
+  const rows = useMemo(() => {
+    const raw = students ?? [];
+    const seen = new Map<string, StudentFeeSummary>();
+    for (const r of raw) {
+      if (!seen.has(r.student_id)) seen.set(r.student_id, r);
+    }
+    return Array.from(seen.values());
+  }, [students]);
 
   const classes = useMemo(() => {
     const map = new Map<string, string>();
@@ -425,11 +507,11 @@ export default function FraisScolaritePage() {
                         <TableCell className="py-3 text-sm text-muted-foreground">
                           {row.classe_nom ?? "—"}
                         </TableCell>
-                        <TableCell className="py-3 text-right text-sm">
+                        <TableCell className="py-3 text-right text-sm font-semibold">
                           {row.total_annuel.toLocaleString("fr-FR")} €
                         </TableCell>
                         <TableCell className="py-3 text-right text-sm">
-                          <span className="text-brand-emerald font-medium">
+                          <span className="text-brand-emerald font-semibold">
                             {row.total_paye.toLocaleString("fr-FR")} €
                           </span>
                         </TableCell>
@@ -449,10 +531,23 @@ export default function FraisScolaritePage() {
                                   className="h-7 w-7"
                                   onClick={(e) => { e.stopPropagation(); setSelectedStudent(row); }}
                                 >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Voir le détail</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-brand-emerald"
+                                  onClick={(e) => { e.stopPropagation(); setSelectedStudent(row); }}
+                                >
                                   <Banknote className="h-3.5 w-3.5" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Détail & encaisser</TooltipContent>
+                              <TooltipContent>Encaisser</TooltipContent>
                             </Tooltip>
                             {row.nb_retards > 0 && (
                               <Tooltip>
@@ -469,7 +564,7 @@ export default function FraisScolaritePage() {
                                       });
                                     }}
                                   >
-                                    <MessageSquare className="h-3.5 w-3.5" />
+                                    <Bell className="h-3.5 w-3.5" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Relancer</TooltipContent>
