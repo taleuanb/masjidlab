@@ -782,6 +782,41 @@ export type Database = {
           },
         ]
       }
+      madrasa_evaluation_criteria: {
+        Row: {
+          created_at: string | null
+          evaluation_id: string
+          id: string
+          label: string
+          max_score: number
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          evaluation_id: string
+          id?: string
+          label: string
+          max_score: number
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          evaluation_id?: string
+          id?: string
+          label?: string
+          max_score?: number
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_evaluation_criteria_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       madrasa_evaluations: {
         Row: {
           class_id: string
@@ -1488,6 +1523,41 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      madrasa_subject_criteria: {
+        Row: {
+          created_at: string | null
+          default_max_score: number | null
+          id: string
+          label: string
+          org_id: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          default_max_score?: number | null
+          id?: string
+          label: string
+          org_id: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string | null
+          default_max_score?: number | null
+          id?: string
+          label?: string
+          org_id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_subject_criteria_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_subjects"
             referencedColumns: ["id"]
           },
         ]
