@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users, Plus, Pencil, Loader2, RefreshCw, Search, X, Shield,
   Trash2, MoreHorizontal, UserX, UserCheck2, Phone, UserPlus,
-  Building2, Ghost,
+  Building2, Ghost, Eye, MessageSquare, MoreVertical, Download,
+  UserCheck, Briefcase,
 } from "lucide-react";
+import { StatCards } from "@/components/shared/StatCards";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AddCollaboratorDialog } from "@/components/AddCollaboratorDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -265,34 +269,71 @@ export default function StructureMembresPage() {
   const isSelf = (m: MemberRow) => m.user_id === currentUser?.id;
   const initials = (name: string) => name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
-  const filtered = members.filter((m) => {
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterPole, setFilterPole] = useState("all");
+
+  const filtered = useMemo(() => members.filter((m) => {
     const q = search.toLowerCase();
-    return m.display_name.toLowerCase().includes(q) || (m.email || "").toLowerCase().includes(q) || (m.pole_nom || "").toLowerCase().includes(q);
-  });
+    if (q && !m.display_name.toLowerCase().includes(q) && !(m.email || "").toLowerCase().includes(q) && !(m.pole_nom || "").toLowerCase().includes(q)) return false;
+    if (filterRole !== "all" && !m.roles.includes(filterRole)) return false;
+    if (filterPole !== "all" && m.pole_id !== filterPole) return false;
+    return true;
+  }), [members, search, filterRole, filterPole]);
+
+  const activeMembers = members.filter(m => m.is_active).length;
+  const withAccount = members.filter(m => m.has_account).length;
+  const roleDistribution = useMemo(() => {
+    const map: Record<string, number> = {};
+    members.forEach(m => m.roles.forEach(r => { map[r] = (map[r] ?? 0) + 1; }));
+    return map;
+  }, [members]);
+
+  const handleExportMembers = () => {
+    const header = "Nom,Email,Téléphone,Rôle(s),Pôle,Tags,Statut";
+    const rows = filtered.map(m =>
+      `"${m.display_name}","${m.email ?? ""}","${m.phone ?? ""}","${m.roles.join(", ")}","${m.pole_nom ?? ""}","${(m.tags ?? []).join(", ")}","${m.is_active ? "Actif" : "Inactif"}"`
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "annuaire.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
+    <TooltipProvider>
     <main className="flex-1 overflow-y-auto">
-      <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <SidebarTrigger />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Ressources Humaines</h1>
-              <p className="text-sm text-muted-foreground">{poles.length} pôles · {members.length} collaborateurs</p>
-            </div>
+        <div className="flex items-center gap-3">
+          <SidebarTrigger />
+          <Users className="h-5 w-5 text-primary" />
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-foreground">Ressources Humaines</h1>
+            <p className="text-sm text-muted-foreground">{poles.length} pôles · {members.length} collaborateurs</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-[200px] pl-8 text-xs" />
-              {search && <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2"><X className="h-3.5 w-3.5 text-muted-foreground" /></button>}
-            </div>
+          <div className="ml-auto flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
+            {isAdmin && (
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setAddDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-1" /> Ajouter un collaborateur
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* KPI Cards */}
+        <StatCards items={[
+          { label: "Total Membres", value: loading ? "—" : members.length, icon: Users, subValue: `${filtered.length} affiché(s)` },
+          { label: "Membres Actifs", value: loading ? "—" : activeMembers, icon: UserCheck, subValue: `${members.length - activeMembers} inactif(s)` },
+          { label: "Avec Compte", value: loading ? "—" : withAccount, icon: Shield, subValue: `${members.length - withAccount} hors-ligne` },
+          { label: "Pôles", value: loading ? "—" : poles.length, icon: Building2, subValue: `${Object.keys(roleDistribution).length} rôle(s) distinct(s)` },
+        ]} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" />
 
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -339,92 +380,153 @@ export default function StructureMembresPage() {
             </TabsContent>
 
             {/* ── ANNUAIRE ── */}
-            <TabsContent value="annuaire" className="mt-4">
-              <div className="flex justify-end mb-3">
-                {isAdmin && (
-                  <Button size="sm" onClick={() => setAddDialogOpen(true)} className="gap-1.5">
-                    <UserPlus className="h-4 w-4" /> Ajouter un collaborateur
-                  </Button>
-                )}
+            <TabsContent value="annuaire" className="space-y-4 mt-4">
+              {/* Search & Filters */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Rechercher par nom, email ou pôle…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
+                  {search && <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2"><X className="h-3.5 w-3.5 text-muted-foreground" /></button>}
+                </div>
+                <Select value={filterRole} onValueChange={setFilterRole}>
+                  <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm"><SelectValue placeholder="Rôle" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les rôles</SelectItem>
+                    {ASSIGNABLE_ROLES.map(r => <SelectItem key={r} value={r}>{ROLE_LABELS[r] ?? r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={filterPole} onValueChange={setFilterPole}>
+                  <SelectTrigger className="w-full sm:w-[180px] h-9 text-sm"><SelectValue placeholder="Pôle" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les pôles</SelectItem>
+                    {polesRaw.map(p => <SelectItem key={p.id} value={p.id}>{p.nom}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={handleExportMembers} className="shrink-0">
+                  <Download className="h-4 w-4 mr-1" /> Exporter
+                </Button>
               </div>
-              <Card>
-                <CardContent className="p-0">
+
+              {filtered.length === 0 ? (
+                <EmptyState
+                  icon={Users}
+                  title={members.length === 0 ? "Aucun collaborateur enregistré" : "Aucun membre ne correspond à vos filtres"}
+                  description={members.length === 0 ? "Cliquez sur « Ajouter un collaborateur » pour commencer." : "Essayez d'élargir vos critères de recherche."}
+                />
+              ) : (
+                <div className="rounded-lg border overflow-hidden shadow-sm">
                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[240px]">Membre</TableHead>
-                        <TableHead>Rôle</TableHead>
-                        <TableHead>Pôle</TableHead>
-                        <TableHead>Tags</TableHead>
-                        <TableHead>Contact</TableHead>
-                        <TableHead className="w-[80px] text-right">Actions</TableHead>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                      <TableRow className="bg-muted/40">
+                        <TableHead className="text-xs uppercase text-muted-foreground">Membre</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Rôle</TableHead>
+                        <TableHead className="hidden md:table-cell text-xs uppercase text-muted-foreground">Pôle</TableHead>
+                        <TableHead className="hidden lg:table-cell text-xs uppercase text-muted-foreground">Tags</TableHead>
+                        <TableHead className="hidden xl:table-cell text-xs uppercase text-muted-foreground">Contact</TableHead>
+                        <TableHead className="text-xs uppercase text-muted-foreground">Statut</TableHead>
+                        <TableHead className="text-right w-[130px] text-xs uppercase text-muted-foreground">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filtered.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Aucun membre trouvé</TableCell></TableRow>
-                      ) : filtered.map((m) => (
-                        <TableRow key={m.user_id} className={!m.is_active ? "opacity-50" : ""}>
-                          <TableCell>
+                      {filtered.map((m) => (
+                        <TableRow key={m.user_id} className={`cursor-pointer hover:bg-muted/40 border-b ${!m.is_active ? "opacity-50" : ""}`}>
+                          <TableCell className="py-3">
                             <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8"><AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback></Avatar>
+                              <Avatar className="h-8 w-8 bg-primary/10 text-primary shrink-0">
+                                <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">{initials(m.display_name)}</AvatarFallback>
+                              </Avatar>
                               <div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-sm font-medium">{m.display_name}</span>
-                                  {!m.has_account && <Badge variant="outline" className="text-[9px] h-4 px-1">Hors-ligne</Badge>}
-                                  {!m.is_active && <Badge variant="outline" className="text-[9px] h-4 px-1 bg-destructive/10 text-destructive">Inactif</Badge>}
-                                </div>
+                                <span className="font-semibold text-sm">{m.display_name}</span>
                                 <p className="text-xs text-muted-foreground">{m.email || "—"}</p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-3">
                             <div className="flex flex-wrap gap-1">
                               {m.roles.map((r) => (
-                                <Badge key={r} variant="outline" className={`text-[11px] ${ROLE_STYLES[r] || ROLE_STYLES.benevole}`}>
+                                <Badge key={r} variant="outline" className={`text-[10px] ${ROLE_STYLES[r] || ROLE_STYLES.benevole}`}>
                                   {ROLE_LABELS[r] || r}
                                 </Badge>
                               ))}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">{m.pole_nom || "—"}</TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell py-3 text-sm text-muted-foreground">{m.pole_nom || "—"}</TableCell>
+                          <TableCell className="hidden lg:table-cell py-3">
                             <div className="flex flex-wrap gap-1">
                               {(m.tags ?? []).map((t) => (
                                 <Badge key={t} variant="outline" className={`text-[10px] ${TAG_STYLES[t as ProfileTag] || ""}`}>{t}</Badge>
                               ))}
                             </div>
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{m.phone || m.email || "—"}</TableCell>
-                          <TableCell className="text-right">
-                            {isAdmin && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openEditMember(m)}><Pencil className="h-3.5 w-3.5 mr-2" /> Modifier</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openEditMember(m)}><Shield className="h-3.5 w-3.5 mr-2" /> Gérer les accès</DropdownMenuItem>
-                                  {isSuperAdmin && !isSelf(m) && (
-                                    <DropdownMenuItem onClick={() => { startImpersonating({ id: m.user_id, name: m.display_name, roles: m.roles }); navigate("/"); }}>
-                                      <Ghost className="h-3.5 w-3.5 mr-2" /> Se connecter en tant que
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuSeparator />
-                                  {m.is_active ? (
-                                    <DropdownMenuItem onClick={() => setDeactivateTarget(m)} disabled={isSelf(m)}><UserX className="h-3.5 w-3.5 mr-2" /> Désactiver</DropdownMenuItem>
-                                  ) : (
-                                    <DropdownMenuItem onClick={() => handleReactivate(m)}><UserCheck2 className="h-3.5 w-3.5 mr-2" /> Réactiver</DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(m)} disabled={isSelf(m)}><Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
+                          <TableCell className="hidden xl:table-cell py-3 text-xs text-muted-foreground">{m.phone || "—"}</TableCell>
+                          <TableCell className="py-3">
+                            <Badge className={m.is_active
+                              ? m.has_account
+                                ? "bg-brand-emerald/15 text-brand-emerald border-brand-emerald/30 text-[10px]"
+                                : "bg-amber-100 text-amber-700 border-amber-300 text-[10px]"
+                              : "bg-destructive/15 text-destructive border-destructive/30 text-[10px]"
+                            }>
+                              {!m.is_active ? "Inactif" : m.has_account ? "Actif" : "Hors-ligne"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right py-3" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <Tooltip><TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => openEditMember(m)}>
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger><TooltipContent>Consulter</TooltipContent></Tooltip>
+                              {isAdmin && (
+                                <>
+                                  <Tooltip><TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => openEditMember(m)}>
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger><TooltipContent>Modifier</TooltipContent></Tooltip>
+                                  <Tooltip><TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => {
+                                      if (m.phone) {
+                                        const cleaned = m.phone.replace(/\s+/g, "").replace(/^0/, "33");
+                                        window.open(`https://wa.me/${cleaned}`, "_blank");
+                                      } else if (m.email) {
+                                        window.open(`mailto:${m.email}`);
+                                      } else {
+                                        import("sonner").then(s => s.toast.error("Aucun contact disponible"));
+                                      }
+                                    }}>
+                                      <MessageSquare className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger><TooltipContent>Contacter</TooltipContent></Tooltip>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><MoreVertical className="h-3.5 w-3.5" /></Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem onClick={() => openEditMember(m)}><Shield className="h-3.5 w-3.5 mr-2" /> Gérer les accès</DropdownMenuItem>
+                                      {isSuperAdmin && !isSelf(m) && (
+                                        <DropdownMenuItem onClick={() => { startImpersonating({ id: m.user_id, name: m.display_name, roles: m.roles }); navigate("/"); }}>
+                                          <Ghost className="h-3.5 w-3.5 mr-2" /> Se connecter en tant que
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuSeparator />
+                                      {m.is_active ? (
+                                        <DropdownMenuItem onClick={() => setDeactivateTarget(m)} disabled={isSelf(m)}><UserX className="h-3.5 w-3.5 mr-2" /> Désactiver</DropdownMenuItem>
+                                      ) : (
+                                        <DropdownMenuItem onClick={() => handleReactivate(m)}><UserCheck2 className="h-3.5 w-3.5 mr-2" /> Réactiver</DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(m)} disabled={isSelf(m)}><Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         )}
@@ -545,5 +647,6 @@ export default function StructureMembresPage() {
       {/* ── Smart Add Collaborator Dialog ── */}
       <AddCollaboratorDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} poles={polesRaw} onSuccess={fetchAll} />
     </main>
+    </TooltipProvider>
   );
 }
