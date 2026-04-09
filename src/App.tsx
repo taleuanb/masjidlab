@@ -41,6 +41,7 @@ import DocumentsPage from "./pages/Documents";
 import DonateursPage from "./pages/Donateurs";
 import RecusFiscauxPage from "./pages/RecusFiscaux";
 import FraisScolaritePage from "./pages/FraisScolarite";
+import InventairesPage from "./pages/Inventaires";
 import NotFound from "./pages/NotFound";
 import JoinPage from "./pages/JoinPage";
 import WelcomePage from "./pages/Welcome";
@@ -133,6 +134,8 @@ const AppLayout = () => {
             <Route path="/donateurs" element={<DonateursPage />} />
             <Route path="/recus-fiscaux" element={<RecusFiscauxPage />} />
             <Route path="/frais-scolarite" element={<FraisScolaritePage />} />
+            <Route path="/inventaire" element={<InventairesPage />} />
+            <Route path="/inventaires" element={<InventairesPage />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
