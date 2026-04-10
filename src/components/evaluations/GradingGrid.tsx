@@ -14,12 +14,15 @@ import {
   BarChart3,
   Loader2,
   CheckCircle,
-  BookOpen,
   Ban,
+  Lightbulb,
+  PlusCircle,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -55,16 +58,6 @@ interface Props {
 const DEBOUNCE_MS = 500;
 const ABSENT_MARKER = "ABS";
 
-// Distinct subject header colors for visual grouping
-const SUBJECT_COLORS = [
-  "bg-primary/10 text-primary",
-  "bg-secondary/20 text-secondary-foreground",
-  "bg-accent/15 text-accent-foreground",
-  "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-  "bg-violet-500/10 text-violet-700 dark:text-violet-400",
-  "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-];
-
 export function GradingGrid({
   evaluation,
   classId,
@@ -79,14 +72,12 @@ export function GradingGrid({
   const { data: students = [], isLoading: loadingStudents } = useClassStudents(classId);
   const { data: existingGrades = [] } = useEvalGrades(evaluation.id);
 
-  // grades[studentId][criterionId] = string value or "ABS"
   const [grades, setGrades] = useState<Record<string, Record<string, string>>>({});
   const [saving, setSaving] = useState(false);
   const [synced, setSynced] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const gridRef = useRef<HTMLTableElement>(null);
 
-  // Group criteria by subject
   const subjectGroups = useMemo(() => {
     const map = new Map<
       string,
@@ -112,13 +103,11 @@ export function GradingGrid({
     return Array.from(map.values());
   }, [criteria]);
 
-  // Flat list of criteria for keyboard navigation
   const flatCriteria = useMemo(
     () => subjectGroups.flatMap((sg) => sg.criteria),
     [subjectGroups]
   );
 
-  // Initialize grades from existing data
   useEffect(() => {
     if (students.length === 0 || criteria.length === 0) return;
     const map: Record<string, Record<string, string>> = {};
@@ -140,16 +129,13 @@ export function GradingGrid({
     setSynced(true);
   }, [students, criteria, existingGrades]);
 
-  // Weighted average /20 for a student
   const getWeightedAverage = useCallback(
     (studentId: string) => {
       const sg = grades[studentId];
       if (!sg) return null;
-
       let weightedSum = 0;
       let weightedMaxSum = 0;
       let hasAny = false;
-
       for (const group of subjectGroups) {
         const groupWeight = group.weight;
         for (const cr of group.criteria) {
@@ -163,32 +149,10 @@ export function GradingGrid({
           hasAny = true;
         }
       }
-
       if (!hasAny || weightedMaxSum === 0) return null;
       return (weightedSum / weightedMaxSum) * 20;
     },
     [grades, subjectGroups]
-  );
-
-  // Subject sub-total
-  const getSubjectTotal = useCallback(
-    (studentId: string, subjectCriteria: EvalCriterionWithSubject[]) => {
-      const sg = grades[studentId];
-      if (!sg) return null;
-      let total = 0;
-      let hasAny = false;
-      for (const cr of subjectCriteria) {
-        const val = sg[cr.id];
-        if (val === ABSENT_MARKER || val === "" || val === undefined) continue;
-        const num = Number(val);
-        if (!isNaN(num)) {
-          total += num;
-          hasAny = true;
-        }
-      }
-      return hasAny ? total : null;
-    },
-    [grades]
   );
 
   const classAverage = useMemo(() => {
@@ -199,14 +163,12 @@ export function GradingGrid({
     return scores.reduce((a, b) => a + b, 0) / scores.length;
   }, [students, getWeightedAverage]);
 
-  // Upsert save
   const doSave = useCallback(
     async (currentGrades: typeof grades) => {
       if (!orgId || criteria.length === 0) return;
       setSaving(true);
       setSynced(false);
       try {
-        // Delete all existing grades then insert — simulates upsert atomically
         await supabase
           .from("madrasa_grades")
           .delete()
@@ -329,7 +291,6 @@ export function GradingGrid({
     doSave(grades);
   };
 
-  // Focus helper
   const focusCell = (row: number, col: number) => {
     const el = gridRef.current?.querySelector(
       `[data-cell="${row}-${col}"]`
@@ -347,7 +308,6 @@ export function GradingGrid({
   ) => {
     const maxRow = students.length - 1;
     const maxCol = flatCriteria.length - 1;
-
     switch (e.key) {
       case "Enter":
         e.preventDefault();
@@ -382,10 +342,7 @@ export function GradingGrid({
         break;
       case "ArrowRight": {
         const inp = e.target as HTMLInputElement;
-        if (
-          inp.selectionStart === inp.value.length &&
-          criterionIdx < maxCol
-        ) {
+        if (inp.selectionStart === inp.value.length && criterionIdx < maxCol) {
           e.preventDefault();
           focusCell(studentIdx, criterionIdx + 1);
         }
@@ -409,26 +366,23 @@ export function GradingGrid({
       <div className="p-4 md:p-6 space-y-4 max-w-[95vw] mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 flex-wrap">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+          <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold text-foreground truncate">
               {evaluation.title}
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {clsName} •{" "}
-              {format(new Date(evaluation.date), "d MMMM yyyy", {
-                locale: fr,
-              })}{" "}
-              • {students.length} élèves
+              {format(new Date(evaluation.date), "d MMMM yyyy", { locale: fr })} •{" "}
+              {students.length} élèves
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {synced && !saving && (
               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-emerald-500" />{" "}
-                Synchronisé
+                <CheckCircle className="h-3 w-3 text-emerald-500" /> Synchronisé
               </span>
             )}
             {saving && (
@@ -436,98 +390,110 @@ export function GradingGrid({
                 <Loader2 className="h-3 w-3 animate-spin" /> Sauvegarde…
               </span>
             )}
-            <Button onClick={handleManualSave} disabled={saving} size="sm">
+            <Button onClick={handleManualSave} disabled={saving} size="sm" variant="outline">
               <Save className="h-4 w-4 mr-1" /> Enregistrer
             </Button>
           </div>
         </div>
 
-        {/* Average KPI */}
+        {/* Class average */}
         {classAverage !== null && (
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="py-3 px-4 flex items-center gap-3">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium text-foreground">
-                  Moyenne de la classe
-                </p>
-                <p className="text-2xl font-bold text-primary">
-                  {classAverage.toFixed(2)}{" "}
-                  <span className="text-sm font-normal text-muted-foreground">
-                    / 20
-                  </span>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border bg-muted/30">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Moyenne de classe</span>
+            <span className="text-lg font-bold text-foreground">
+              {classAverage.toFixed(2)}
+              <span className="text-xs font-normal text-muted-foreground ml-0.5">/20</span>
+            </span>
+          </div>
         )}
+
+        {/* Tip banner */}
+        <Alert className="border-border bg-muted/20">
+          <Lightbulb className="h-4 w-4 text-muted-foreground" />
+          <AlertDescription className="text-xs text-muted-foreground">
+            <strong>Astuce Pro :</strong> Utilisez les flèches du clavier pour naviguer et «Entrée» pour passer à l'élève suivant. Les notes sont sauvegardées instantanément.
+          </AlertDescription>
+        </Alert>
 
         {/* Grid */}
         {students.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Aucun élève inscrit dans cette classe.
-          </p>
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                <ClipboardList className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">Aucun élève inscrit</p>
+              <p className="text-xs text-muted-foreground">Aucun élève n'est inscrit dans cette classe.</p>
+            </CardContent>
+          </Card>
         ) : criteria.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Aucun critère défini pour cette évaluation.
-          </p>
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                <ClipboardList className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">Aucun critère défini</p>
+              <p className="text-xs text-muted-foreground">Ajoutez des critères pour commencer la saisie des notes.</p>
+              <Button variant="outline" size="sm" className="mt-2">
+                <PlusCircle className="h-4 w-4 mr-1" /> Ajouter des critères
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          <Card className="overflow-auto">
-            <Table ref={gridRef}>
-              <TableHeader className="sticky top-0 z-10 bg-background">
+          <Card className="overflow-auto border">
+            <Table ref={gridRef} className="text-sm">
+              <TableHeader className="sticky top-0 z-10">
                 {/* Level 1: Subject groups */}
-                <TableRow className="border-b-0">
-                  <TableHead className="w-[180px] sticky left-0 bg-background z-20 border-r" />
+                <TableRow className="border-b bg-muted/40">
+                  <TableHead className="w-[180px] sticky left-0 z-20 bg-muted/40 border-r" />
                   {subjectGroups.map((sg, sgIdx) => {
-                    const colorClass =
-                      SUBJECT_COLORS[sgIdx % SUBJECT_COLORS.length];
-                    const subMax = sg.criteria.reduce(
-                      (sum, c) => sum + c.max_score,
-                      0
-                    );
+                    const subMax = sg.criteria.reduce((sum, c) => sum + c.max_score, 0);
                     return (
                       <TableHead
                         key={sg.subject_id}
                         colSpan={sg.criteria.length}
                         className={cn(
-                          "text-center text-xs font-semibold border-l border-r py-1.5",
-                          colorClass
+                          "text-center text-xs font-semibold py-2 tracking-wide text-muted-foreground",
+                          sgIdx < subjectGroups.length - 1 && "border-r-2 border-border"
                         )}
                       >
-                        <span className="flex items-center justify-center gap-1.5">
-                          <BookOpen className="h-3 w-3" />
-                          {sg.subject_name}
-                          <span className="font-normal opacity-70">
-                            (coeff {sg.weight} • /{subMax})
-                          </span>
+                        {sg.subject_name}
+                        <span className="ml-1.5 font-normal opacity-60">
+                          coeff {sg.weight} • /{subMax}
                         </span>
                       </TableHead>
                     );
                   })}
-                  <TableHead className="w-[80px] text-center border-l" />
+                  <TableHead className="w-[80px] text-center border-l-2 border-border bg-muted/60 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Moy.
+                  </TableHead>
                 </TableRow>
 
                 {/* Level 2: Criteria */}
-                <TableRow className="bg-muted/40">
-                  <TableHead className="text-xs uppercase text-muted-foreground w-[180px] sticky left-0 bg-muted/40 z-20 border-r">
+                <TableRow className="bg-background border-b">
+                  <TableHead className="text-[11px] uppercase tracking-wider text-muted-foreground w-[180px] sticky left-0 bg-background z-20 border-r font-medium">
                     Élève
                   </TableHead>
-                  {subjectGroups.map((sg) =>
-                    sg.criteria.map((cr) => (
+                  {subjectGroups.map((sg, sgIdx) =>
+                    sg.criteria.map((cr, crLocalIdx) => (
                       <TableHead
                         key={cr.id}
-                        className="text-xs text-muted-foreground text-center w-[90px] py-1 border-l"
+                        className={cn(
+                          "text-[11px] uppercase tracking-wider text-muted-foreground text-center w-[80px] py-1.5 font-medium",
+                          crLocalIdx > 0 && "border-l border-border/50",
+                          crLocalIdx === sg.criteria.length - 1 &&
+                            sgIdx < subjectGroups.length - 1 &&
+                            "border-r-2 border-border"
+                        )}
                       >
                         <span className="block truncate">{cr.label}</span>
-                        <span className="text-[10px] font-normal">
-                          /{cr.max_score}
-                        </span>
+                        <span className="text-[10px] font-normal opacity-50">/{cr.max_score}</span>
                       </TableHead>
                     ))
                   )}
-                  <TableHead className="text-xs uppercase text-muted-foreground text-center w-[80px] font-bold border-l">
-                    Moy.
-                    <div className="text-[10px] font-normal">/20</div>
+                  <TableHead className="text-[11px] uppercase tracking-wider text-muted-foreground text-center w-[80px] font-bold border-l-2 border-border bg-muted/60">
+                    /20
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -545,15 +511,16 @@ export function GradingGrid({
                       <ContextMenuTrigger asChild>
                         <TableRow
                           className={cn(
-                            "hover:bg-muted/20",
-                            isAbsent && "bg-muted/10 opacity-60"
+                            "hover:bg-muted/20 transition-colors",
+                            isAbsent && "opacity-50",
+                            sIdx % 2 === 1 && "bg-muted/10"
                           )}
                         >
-                          <TableCell className="font-medium sticky left-0 bg-background z-10 text-sm py-1 border-r whitespace-nowrap">
+                          <TableCell className="font-medium sticky left-0 z-10 bg-background text-xs py-1.5 border-r whitespace-nowrap">
                             {s.prenom} {s.nom}
                           </TableCell>
-                          {subjectGroups.map((sg) =>
-                            sg.criteria.map((cr) => {
+                          {subjectGroups.map((sg, sgIdx) =>
+                            sg.criteria.map((cr, crLocalIdx) => {
                               const crIdx = globalCrIdx++;
                               const val = grades[s.id]?.[cr.id] ?? "";
                               const isAbs = val === ABSENT_MARKER;
@@ -561,19 +528,21 @@ export function GradingGrid({
                               const isInvalid =
                                 !isAbs &&
                                 val !== "" &&
-                                (isNaN(numVal) ||
-                                  numVal < 0 ||
-                                  numVal > cr.max_score);
-                              const isFilled =
-                                !isAbs && val !== "" && !isNaN(numVal);
+                                (isNaN(numVal) || numVal < 0 || numVal > cr.max_score);
 
                               return (
                                 <TableCell
                                   key={cr.id}
-                                  className="text-center p-0.5 border-l"
+                                  className={cn(
+                                    "text-center p-0",
+                                    crLocalIdx > 0 && "border-l border-border/30",
+                                    crLocalIdx === sg.criteria.length - 1 &&
+                                      sgIdx < subjectGroups.length - 1 &&
+                                      "border-r-2 border-border"
+                                  )}
                                 >
                                   {isAbs ? (
-                                    <span className="text-xs font-semibold text-destructive">
+                                    <span className="text-[11px] font-semibold text-destructive">
                                       ABS
                                     </span>
                                   ) : (
@@ -585,22 +554,12 @@ export function GradingGrid({
                                       step={0.5}
                                       value={val}
                                       onChange={(e) =>
-                                        handleGradeChange(
-                                          s.id,
-                                          cr.id,
-                                          e.target.value
-                                        )
+                                        handleGradeChange(s.id, cr.id, e.target.value)
                                       }
-                                      onKeyDown={(e) =>
-                                        handleKeyDown(e, sIdx, crIdx)
-                                      }
+                                      onKeyDown={(e) => handleKeyDown(e, sIdx, crIdx)}
                                       className={cn(
-                                        "h-7 w-14 text-center mx-auto text-sm border-transparent bg-transparent focus:border-primary focus:bg-background transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-                                        isInvalid &&
-                                          "border-destructive bg-destructive/5",
-                                        isFilled &&
-                                          !isInvalid &&
-                                          "text-foreground font-medium"
+                                        "h-7 w-full text-center text-xs rounded-none border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                                        isInvalid && "ring-1 ring-destructive bg-destructive/5"
                                       )}
                                       placeholder="—"
                                     />
@@ -609,38 +568,31 @@ export function GradingGrid({
                               );
                             })
                           )}
-                          <TableCell className="text-center font-bold text-foreground py-1 border-l">
+                          <TableCell className="text-center font-bold text-xs py-1.5 border-l-2 border-border bg-muted/30">
                             {isAbsent ? (
-                              <span className="text-xs text-destructive">
-                                ABS
-                              </span>
+                              <span className="text-[11px] text-destructive">ABS</span>
                             ) : avg !== null ? (
                               <span
                                 className={cn(
-                                  avg >= 10
-                                    ? "text-emerald-600 dark:text-emerald-400"
-                                    : "text-destructive"
+                                  "tabular-nums",
+                                  avg >= 10 ? "text-foreground" : "text-destructive"
                                 )}
                               >
                                 {avg.toFixed(2)}
                               </span>
                             ) : (
-                              "—"
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
                         </TableRow>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         {isAbsent ? (
-                          <ContextMenuItem
-                            onClick={() => handleClearAbsent(s.id)}
-                          >
+                          <ContextMenuItem onClick={() => handleClearAbsent(s.id)}>
                             Retirer l'absence
                           </ContextMenuItem>
                         ) : (
-                          <ContextMenuItem
-                            onClick={() => handleMarkAbsent(s.id)}
-                          >
+                          <ContextMenuItem onClick={() => handleMarkAbsent(s.id)}>
                             <Ban className="h-3.5 w-3.5 mr-2" />
                             Marquer absent
                           </ContextMenuItem>
@@ -653,14 +605,6 @@ export function GradingGrid({
             </Table>
           </Card>
         )}
-
-        {/* Keyboard shortcuts hint */}
-        <p className="text-[11px] text-muted-foreground text-center">
-          Navigation : <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Entrée</kbd> ↓ •{" "}
-          <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Tab</kbd> → •{" "}
-          <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Flèches</kbd> libre •{" "}
-          Clic droit pour marquer absent
-        </p>
       </div>
     </main>
   );
