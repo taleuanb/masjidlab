@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -32,6 +32,7 @@ interface SubjectDraft {
   selected: boolean;
   weight: number;
   criteria: CriterionDraft[];
+  criteriaLoaded: boolean;
 }
 
 interface Props {
@@ -42,6 +43,8 @@ interface Props {
   onCreated?: (evalId: string) => void;
 }
 
+const DEFAULT_CRITERION: CriterionDraft = { label: "Note Globale", max_score: 20, weight: 1 };
+
 export function CreateEvalWizard({ open, onOpenChange, classId, className: clsName, onCreated }: Props) {
   const { orgId } = useOrganization();
   const queryClient = useQueryClient();
@@ -51,50 +54,24 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date | undefined>();
   const [subjects, setSubjects] = useState<SubjectDraft[]>([]);
+  const [loadingCriteria, setLoadingCriteria] = useState<string | null>(null);
 
   const { data: classSubjects = [], isLoading: loadingSubjects } = useClassSubjects(classId);
 
-  // Fetch all template criteria for class subjects in one go
-  const subjectIds = classSubjects.map((s) => s.id);
-  const { data: allTemplateCriteria = [] } = useQuery({
-    queryKey: ["template_criteria_bulk", subjectIds.join(",")],
-    enabled: subjectIds.length > 0 && !!orgId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("madrasa_subject_criteria")
-        .select("id, subject_id, label, default_max_score, default_weight, order_index")
-        .eq("org_id", orgId!)
-        .in("subject_id", subjectIds)
-        .order("order_index");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  // Initialize subjects when data is ready
+  // Initialize subjects list (without criteria yet — loaded on toggle)
   useEffect(() => {
-    if (!open) return;
-    if (classSubjects.length > 0) {
-      setSubjects(
-        classSubjects.map((s) => {
-          const tplCriteria = allTemplateCriteria
-            .filter((c) => c.subject_id === s.id)
-            .map((c) => ({
-              label: c.label,
-              max_score: c.default_max_score ?? 10,
-              weight: c.default_weight ?? 1,
-            }));
-          return {
-            id: s.id,
-            name: s.name,
-            selected: false,
-            weight: 1,
-            criteria: tplCriteria,
-          };
-        })
-      );
-    }
-  }, [open, classSubjects, allTemplateCriteria]);
+    if (!open || classSubjects.length === 0) return;
+    setSubjects(
+      classSubjects.map((s) => ({
+        id: s.id,
+        name: s.name,
+        selected: false,
+        weight: 1,
+        criteria: [],
+        criteriaLoaded: false,
+      }))
+    );
+  }, [open, classSubjects]);
 
   // Reset on open
   useEffect(() => {
@@ -105,15 +82,53 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
     }
   }, [open]);
 
+  // Fetch criteria from DB when a subject is toggled ON
+  const toggleSubject = async (id: string) => {
+    const subj = subjects.find((s) => s.id === id);
+    if (!subj) return;
+
+    if (!subj.selected && !subj.criteriaLoaded && orgId) {
+      // Fetch criteria from madrasa_subject_criteria
+      setLoadingCriteria(id);
+      try {
+        const { data, error } = await supabase
+          .from("madrasa_subject_criteria")
+          .select("label, default_max_score, default_weight, order_index")
+          .eq("subject_id", id)
+          .eq("org_id", orgId)
+          .order("order_index");
+
+        if (error) throw error;
+
+        const fetched: CriterionDraft[] = (data && data.length > 0)
+          ? data.map((c) => ({
+              label: c.label,
+              max_score: c.default_max_score ?? 10,
+              weight: c.default_weight ?? 1,
+            }))
+          : [{ ...DEFAULT_CRITERION }]; // Fallback: "Note Globale" /20
+
+        setSubjects((prev) =>
+          prev.map((s) =>
+            s.id === id ? { ...s, selected: true, criteria: fetched, criteriaLoaded: true } : s
+          )
+        );
+      } catch (e: any) {
+        toast({ title: "Erreur", description: e.message, variant: "destructive" });
+      } finally {
+        setLoadingCriteria(null);
+      }
+    } else {
+      // Just toggle
+      setSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, selected: !s.selected } : s)));
+    }
+  };
+
   const selectedSubjects = subjects.filter((s) => s.selected);
   const totalPoints = selectedSubjects.reduce(
     (sum, s) => sum + s.criteria.reduce((cs, c) => cs + c.max_score, 0),
     0
   );
-
-  const toggleSubject = (id: string) => {
-    setSubjects((prev) => prev.map((s) => (s.id === id ? { ...s, selected: !s.selected } : s)));
-  };
 
   const updateCriterion = (subjectId: string, idx: number, field: keyof CriterionDraft, value: number | string) => {
     setSubjects((prev) =>
@@ -149,13 +164,15 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
   };
 
   const canGoStep2 = title.trim().length > 0 && !!date;
-  const canCreate = selectedSubjects.length > 0 && selectedSubjects.every((s) => s.criteria.length > 0 && s.criteria.every((c) => c.label.trim()));
+  const canCreate =
+    selectedSubjects.length > 0 &&
+    selectedSubjects.every((s) => s.criteria.length > 0 && s.criteria.every((c) => c.label.trim()));
 
   const createEval = useMutation({
     mutationFn: async () => {
       if (!orgId) throw new Error("Org manquante");
 
-      // 1. Create evaluation
+      // 1. madrasa_evaluations
       const { data: evalData, error: evalErr } = await supabase
         .from("madrasa_evaluations")
         .insert({
@@ -170,7 +187,7 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
         .single();
       if (evalErr) throw evalErr;
 
-      // 2. Create evaluation_subjects + criteria
+      // 2. madrasa_evaluation_subjects → 3. madrasa_evaluation_criteria
       for (const subj of selectedSubjects) {
         const { data: esData, error: esErr } = await supabase
           .from("madrasa_evaluation_subjects")
@@ -216,7 +233,9 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
         <DialogHeader>
           <DialogTitle>Nouvel examen multi-matières</DialogTitle>
           <DialogDescription>
-            {step === 0 ? "Étape 1/2 — Configuration de l'examen" : "Étape 2/2 — Composition des matières et critères"}
+            {step === 0
+              ? `Étape 1/2 — Configuration • ${clsName}`
+              : "Étape 2/2 — Composition des matières et critères"}
           </DialogDescription>
         </DialogHeader>
 
@@ -227,9 +246,7 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
               <div
                 className={cn(
                   "h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors",
-                  step >= s
-                    ? "bg-[hsl(var(--brand-navy))] text-white"
-                    : "bg-muted text-muted-foreground"
+                  step >= s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                 )}
               >
                 {step > s ? <CheckCircle2 className="h-4 w-4" /> : s + 1}
@@ -248,6 +265,7 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ex: Examen Trimestre 1"
                 className="h-9"
+                autoFocus
               />
             </div>
             <div className="space-y-1.5">
@@ -288,7 +306,7 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
             ) : (
               <>
                 <p className="text-xs text-muted-foreground">
-                  Cochez les matières à inclure dans l'examen. Les critères par défaut sont pré-remplis depuis le référentiel.
+                  Cochez les matières à inclure. Les critères sont récupérés automatiquement depuis le référentiel.
                 </p>
                 <div className="space-y-3">
                   {subjects.map((subj) => (
@@ -296,7 +314,7 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
                       key={subj.id}
                       className={cn(
                         "transition-colors",
-                        subj.selected && "border-[hsl(var(--brand-navy))]/40 bg-[hsl(var(--brand-navy))]/[0.02]"
+                        subj.selected && "border-primary/40 bg-primary/[0.02]"
                       )}
                     >
                       <CardHeader className="pb-2 pt-3 px-4">
@@ -304,17 +322,22 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
                           <Checkbox
                             checked={subj.selected}
                             onCheckedChange={() => toggleSubject(subj.id)}
+                            disabled={loadingCriteria === subj.id}
                             className="mt-0.5"
                           />
                           <div className="flex-1 min-w-0">
                             <CardTitle className="text-sm font-medium flex items-center gap-2">
                               <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
                               {subj.name}
+                              {loadingCriteria === subj.id && (
+                                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                              )}
                             </CardTitle>
                           </div>
                           {subj.selected && (
                             <Badge variant="secondary" className="text-[10px]">
-                              {subj.criteria.length} critère{subj.criteria.length !== 1 ? "s" : ""}
+                              {subj.criteria.length} critère{subj.criteria.length !== 1 ? "s" : ""} •{" "}
+                              {subj.criteria.reduce((s, c) => s + c.max_score, 0)} pts
                             </Badge>
                           )}
                         </div>
@@ -322,11 +345,6 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
 
                       {subj.selected && (
                         <CardContent className="px-4 pb-3 pt-0 space-y-2">
-                          {subj.criteria.length === 0 && (
-                            <p className="text-xs text-muted-foreground py-2 text-center border border-dashed rounded-md">
-                              Aucun critère. Ajoutez-en manuellement.
-                            </p>
-                          )}
                           {subj.criteria.map((c, i) => (
                             <div key={i} className="flex items-center gap-2">
                               <Input
@@ -397,18 +415,13 @@ export function CreateEvalWizard({ open, onOpenChange, classId, className: clsNa
             </Button>
           )}
           {step === 0 ? (
-            <Button
-              onClick={() => setStep(1)}
-              disabled={!canGoStep2}
-              className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90"
-            >
+            <Button onClick={() => setStep(1)} disabled={!canGoStep2}>
               Suivant <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (
             <Button
               onClick={() => createEval.mutate()}
               disabled={createEval.isPending || !canCreate}
-              className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90"
             >
               {createEval.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
               Créer l'examen
