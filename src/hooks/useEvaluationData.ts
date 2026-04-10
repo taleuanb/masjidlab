@@ -79,7 +79,7 @@ export function useEvalClasses() {
         .from("madrasa_enrollments")
         .select("class_id")
         .eq("org_id", orgId!)
-        .eq("statut", "Actif")
+        .eq("statut", "place")
         .in("class_id", classIds);
 
       const studentCountMap: Record<string, number> = {};
@@ -194,7 +194,7 @@ export function useClassStudents(classId: string | null) {
         .select("student_id, student:madrasa_students(id, nom, prenom)")
         .eq("class_id", classId!)
         .eq("org_id", orgId!)
-        .eq("statut", "Actif");
+        .eq("statut", "place");
       if (error) throw error;
       return (data ?? []).map((e: any) => e.student).filter(Boolean) as { id: string; nom: string; prenom: string }[];
     },
