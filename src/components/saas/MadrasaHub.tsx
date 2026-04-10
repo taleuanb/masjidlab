@@ -535,8 +535,9 @@ function CalendarSection() {
   );
 }
 
+
 /* ═══════════════════════════════════════════════════════════════════════════
-   Tracking — Form Preview & Builder (inlined from TrackingConfigTab)
+   Tracking — Form Preview & Builder + Eval Criteria (Sheet with 2 tabs)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function FormPreview({ fields }: { fields: FormField[] }) {
@@ -558,16 +559,17 @@ function FormPreview({ fields }: { fields: FormField[] }) {
   );
 }
 
-function FormBuilderDialog({ open, onOpenChange, subject, orgId }: { open: boolean; onOpenChange: (v: boolean) => void; subject: Tables<"madrasa_subjects">; orgId: string }) {
+/* ── Session Tracking Tab ── */
+function SessionTrackingTabContent({ subject, orgId }: { subject: Tables<"madrasa_subjects">; orgId: string }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: existingConfig, isLoading } = useQuery({
-    queryKey: ["session_config", subject.id, orgId], enabled: open && !!orgId,
+    queryKey: ["session_config", subject.id, orgId], enabled: !!orgId,
     queryFn: async () => { const { data, error } = await supabase.from("madrasa_session_configs").select("*").eq("subject_id", subject.id).eq("org_id", orgId).maybeSingle(); if (error) throw error; return data; },
   });
   const [fields, setFields] = React.useState<FormField[]>([]);
   const [initialized, setInitialized] = React.useState(false);
-  React.useEffect(() => { if (!open) { setInitialized(false); return; } if (isLoading || initialized) return; if (existingConfig?.form_schema_json) { try { const parsed = existingConfig.form_schema_json as unknown as FormField[]; setFields(Array.isArray(parsed) ? parsed : []); } catch { setFields([]); } } else { setFields([]); } setInitialized(true); }, [open, isLoading, existingConfig, initialized]);
+  React.useEffect(() => { if (isLoading || initialized) return; if (existingConfig?.form_schema_json) { try { const parsed = existingConfig.form_schema_json as unknown as FormField[]; setFields(Array.isArray(parsed) ? parsed : []); } catch { setFields([]); } } else { setFields([]); } setInitialized(true); }, [isLoading, existingConfig, initialized]);
   const addField = () => setFields((p) => [...p, { key: `field_${Date.now()}`, label: "", type: "text", required: false }]);
   const updateField = (idx: number, patch: Partial<FormField>) => setFields((p) => p.map((f, i) => i === idx ? { ...f, ...patch } : f));
   const removeField = (idx: number) => setFields((p) => p.filter((_, i) => i !== idx));
@@ -581,73 +583,180 @@ function FormBuilderDialog({ open, onOpenChange, subject, orgId }: { open: boole
       if (existingConfig?.id) { const { error } = await supabase.from("madrasa_session_configs").update({ form_schema_json: schemaJson }).eq("id", existingConfig.id); if (error) throw error; }
       else { const { error } = await supabase.from("madrasa_session_configs").insert({ subject_id: subject.id, org_id: orgId, form_schema_json: schemaJson }); if (error) throw error; }
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["session_config", subject.id, orgId] }); queryClient.invalidateQueries({ queryKey: ["session_configs_all", orgId] }); toast({ title: `Configuration enregistrée pour ${subject.name} ✓` }); onOpenChange(false); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["session_config", subject.id, orgId] }); queryClient.invalidateQueries({ queryKey: ["session_configs_all", orgId] }); toast({ title: `Configuration enregistrée pour ${subject.name} ✓` }); },
     onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
 
+  if (isLoading) return <Loader2 className="h-5 w-5 animate-spin mx-auto my-8 text-muted-foreground" />;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 flex flex-col gap-0 overflow-hidden">
-        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
-          <DialogTitle className="flex items-center gap-2 text-lg"><Settings2 className="h-5 w-5 text-primary" /> Formulaire de suivi — {subject.name}</DialogTitle>
-          <DialogDescription>Configurez les champs que l'Oustaz devra remplir après chaque séance.</DialogDescription>
-        </DialogHeader>
-        {isLoading ? <Loader2 className="h-6 w-6 animate-spin mx-auto my-12 text-muted-foreground" /> : (
-          <div className="flex-1 min-h-0 overflow-y-auto px-6">
-            <div className="grid md:grid-cols-2 gap-6 pb-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-sm">Champs du formulaire</h4>
-                  <Button size="sm" variant="outline" onClick={addField}><Plus className="h-4 w-4" /> Ajouter un champ</Button>
-                </div>
-                {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Aucun champ configuré.</p>}
-                <div className="space-y-2">
-                  {fields.map((field, idx) => (
-                    <Card key={field.key} className="rounded-lg border bg-card">
-                      <CardContent className="p-3 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <Input placeholder="Label du champ…" value={field.label} onChange={(e) => updateField(idx, { label: e.target.value })} className="flex-1 h-8 text-sm" />
-                          <div className="flex gap-0.5">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(idx, -1)} disabled={idx === 0}><ChevronUp className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(idx, 1)} disabled={idx === fields.length - 1}><ChevronDown className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeField(idx)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Select value={field.type} onValueChange={(v) => updateField(idx, { type: v as FormField["type"] })}>
-                            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
-                            <SelectContent>{Object.entries(FIELD_TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>)}</SelectContent>
-                          </Select>
-                          <div className="flex items-center gap-1.5 ml-auto"><Switch checked={field.required} onCheckedChange={(v) => updateField(idx, { required: v })} className="scale-75" /><span className="text-xs text-muted-foreground">Requis</span></div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-3"><Eye className="h-4 w-4 text-muted-foreground" /><h4 className="font-semibold text-sm">Prévisualisation Oustaz</h4></div>
-                <Card className="rounded-lg border-dashed bg-muted/20"><CardContent className="p-4"><FormPreview fields={fields} /></CardContent></Card>
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="shrink-0 border-t bg-background px-6 py-4">
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || fields.length === 0}>
-              {saveMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement...</> : "Enregistrer la configuration"}
-            </Button>
-          </div>
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-sm">Champs du formulaire</h4>
+          <Button size="sm" variant="outline" onClick={addField}><Plus className="h-4 w-4" /> Ajouter un champ</Button>
         </div>
-      </DialogContent>
-    </Dialog>
+        {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Aucun champ configuré.</p>}
+        <div className="space-y-2">
+          {fields.map((field, idx) => (
+            <Card key={field.key} className="rounded-lg border bg-card">
+              <CardContent className="p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input placeholder="Label du champ…" value={field.label} onChange={(e) => updateField(idx, { label: e.target.value })} className="flex-1 h-8 text-sm" />
+                  <div className="flex gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(idx, -1)} disabled={idx === 0}><ChevronUp className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(idx, 1)} disabled={idx === fields.length - 1}><ChevronDown className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeField(idx)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Select value={field.type} onValueChange={(v) => updateField(idx, { type: v as FormField["type"] })}>
+                    <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(FIELD_TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-1.5 ml-auto"><Switch checked={field.required} onCheckedChange={(v) => updateField(idx, { required: v })} className="scale-75" /><span className="text-xs text-muted-foreground">Requis</span></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="flex items-center gap-2 mb-3"><Eye className="h-4 w-4 text-muted-foreground" /><h4 className="font-semibold text-sm">Prévisualisation Oustaz</h4></div>
+        <Card className="rounded-lg border-dashed bg-muted/20"><CardContent className="p-4"><FormPreview fields={fields} /></CardContent></Card>
+      </div>
+      <div className="flex justify-end pt-2">
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || fields.length === 0} className="bg-brand-emerald hover:bg-brand-emerald/90 text-white gap-2">
+          {saveMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement...</> : "Enregistrer la configuration"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Eval Criteria Tab ── */
+interface CriterionRow { id?: string; label: string; default_max_score: number; default_weight: number; order_index: number; }
+
+function EvalCriteriaTabContent({ subject, orgId }: { subject: Tables<"madrasa_subjects">; orgId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: existing, isLoading } = useQuery({
+    queryKey: ["subject_criteria", subject.id, orgId], enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_subject_criteria").select("*").eq("subject_id", subject.id).eq("org_id", orgId).order("order_index");
+      if (error) throw error;
+      return data;
+    },
+  });
+  const [criteria, setCriteria] = React.useState<CriterionRow[]>([]);
+  const [init, setInit] = React.useState(false);
+  React.useEffect(() => {
+    if (isLoading || init) return;
+    if (existing && existing.length > 0) {
+      setCriteria(existing.map((c: any) => ({ id: c.id, label: c.label, default_max_score: Number(c.default_max_score ?? 10), default_weight: Number(c.default_weight ?? 1), order_index: Number(c.order_index ?? 0) })));
+    } else { setCriteria([]); }
+    setInit(true);
+  }, [isLoading, existing, init]);
+
+  const addCriterion = () => setCriteria((p) => [...p, { label: "", default_max_score: 10, default_weight: 1, order_index: p.length }]);
+  const updateCriterion = (idx: number, patch: Partial<CriterionRow>) => setCriteria((p) => p.map((c, i) => i === idx ? { ...c, ...patch } : c));
+  const removeCriterion = (idx: number) => setCriteria((p) => p.filter((_, i) => i !== idx).map((c, i) => ({ ...c, order_index: i })));
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const valid = criteria.filter((c) => c.label.trim());
+      if (valid.length === 0) throw new Error("Ajoutez au moins un critère.");
+      const { error: delErr } = await supabase.from("madrasa_subject_criteria").delete().eq("subject_id", subject.id).eq("org_id", orgId);
+      if (delErr) throw delErr;
+      const rows = valid.map((c, i) => ({ org_id: orgId, subject_id: subject.id, label: c.label.trim(), default_max_score: c.default_max_score, default_weight: c.default_weight, order_index: i }));
+      const { error: insErr } = await supabase.from("madrasa_subject_criteria").insert(rows);
+      if (insErr) throw insErr;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["subject_criteria", subject.id, orgId] }); queryClient.invalidateQueries({ queryKey: ["subject_criteria_counts", orgId] }); toast({ title: `Référentiel enregistré pour ${subject.name} ✓` }); },
+    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+
+  if (isLoading) return <Loader2 className="h-5 w-5 animate-spin mx-auto my-8 text-muted-foreground" />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Critères d'évaluation</h4>
+        <Button size="sm" variant="outline" onClick={addCriterion}><Plus className="h-4 w-4" /> Ajouter un critère</Button>
+      </div>
+      {criteria.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Aucun critère défini.</p>}
+      {criteria.length > 0 && (
+        <div className="grid grid-cols-[1fr_90px_90px_36px] gap-2 px-1 text-xs text-muted-foreground uppercase font-medium">
+          <span>Label</span><span>Barème</span><span>Coeff.</span><span />
+        </div>
+      )}
+      <div className="space-y-2">
+        {criteria.map((c, idx) => (
+          <div key={idx} className="grid grid-cols-[1fr_90px_90px_36px] gap-2 items-center">
+            <Input placeholder="Nom du critère…" value={c.label} onChange={(e) => updateCriterion(idx, { label: e.target.value })} className="h-9 text-sm" />
+            <Input type="number" min={1} value={c.default_max_score} onChange={(e) => updateCriterion(idx, { default_max_score: Number(e.target.value) || 1 })} className="h-9 text-sm" />
+            <Input type="number" min={0.1} step={0.1} value={c.default_weight} onChange={(e) => updateCriterion(idx, { default_weight: Number(e.target.value) || 1 })} className="h-9 text-sm" />
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeCriterion(idx)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+          </div>
+        ))}
+      </div>
+      <div>
+        <div className="flex items-center gap-2 mb-3"><Eye className="h-4 w-4 text-muted-foreground" /><h4 className="font-semibold text-sm">Aperçu Bulletin</h4></div>
+        <Card className="rounded-lg border-dashed bg-muted/20">
+          <CardContent className="p-4 space-y-2">
+            {criteria.filter((c) => c.label.trim()).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Ajoutez des critères pour voir l'aperçu.</p>
+            ) : (
+              <>
+                {criteria.filter((c) => c.label.trim()).map((c, i) => (
+                  <div key={i} className="flex items-center justify-between py-1.5 border-b border-dashed last:border-0">
+                    <span className="text-sm font-medium">{c.label}</span>
+                    <span className="text-sm text-muted-foreground font-mono">00 / {c.default_max_score}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <span className="text-sm font-semibold">Note Finale</span>
+                  <span className="text-sm font-mono font-semibold">00 / {criteria.filter((c) => c.label.trim()).reduce((s, c) => s + c.default_max_score, 0)}</span>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      <div className="flex justify-end pt-2">
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || criteria.length === 0} className="bg-brand-emerald hover:bg-brand-emerald/90 text-white gap-2">
+          {saveMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement...</> : "Enregistrer le référentiel"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Subject Config Sheet (2 tabs) ── */
+function SubjectConfigSheet({ open, onOpenChange, subject, orgId }: { open: boolean; onOpenChange: (v: boolean) => void; subject: Tables<"madrasa_subjects">; orgId: string }) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-2xl w-full overflow-y-auto">
+        <SheetHeader className="pb-4">
+          <SheetTitle className="flex items-center gap-2 text-lg"><Settings2 className="h-5 w-5 text-[hsl(var(--brand-cyan))]" /> Configuration Pédagogique — {subject.name}</SheetTitle>
+          <SheetDescription>Configurez le suivi de séance et le référentiel d'évaluation.</SheetDescription>
+        </SheetHeader>
+        <Tabs defaultValue="suivi" className="mt-2">
+          <TabsList className="w-full">
+            <TabsTrigger value="suivi" className="flex-1 gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> Suivi de séance</TabsTrigger>
+            <TabsTrigger value="evaluation" className="flex-1 gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Référentiel Évaluation</TabsTrigger>
+          </TabsList>
+          <TabsContent value="suivi" className="mt-4"><SessionTrackingTabContent subject={subject} orgId={orgId} /></TabsContent>
+          <TabsContent value="evaluation" className="mt-4"><EvalCriteriaTabContent subject={subject} orgId={orgId} /></TabsContent>
+        </Tabs>
+      </SheetContent>
+    </Sheet>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   2. CURSUS — Matières + Suivi intégré
+   2. CURSUS — Matières + Configuration Pédagogique intégrée
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function SubjectsSection() {
@@ -677,16 +786,24 @@ function SubjectsSection() {
       return data;
     },
   });
+
+  const { data: criteriaData = [] } = useQuery({
+    queryKey: ["subject_criteria_counts", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("madrasa_subject_criteria").select("subject_id").eq("org_id", orgId!);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const configuredSet = new Set(configs.map((c) => c.subject_id));
+  const criteriaBySubject = criteriaData.reduce<Record<string, number>>((acc, r) => { acc[r.subject_id] = (acc[r.subject_id] || 0) + 1; return acc; }, {});
 
   const addSubject = useMutation({
     mutationFn: async () => {
       if (!newName.trim()) throw new Error("Nom requis");
-      const { error } = await supabase.from("madrasa_subjects").insert({
-        name: newName.trim(),
-        category: newCategory || null,
-        org_id: orgId!,
-      });
+      const { error } = await supabase.from("madrasa_subjects").insert({ name: newName.trim(), category: newCategory || null, org_id: orgId! });
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["madrasa_subjects", orgId] }); setNewName(""); setNewCategory(""); toast({ title: "Matière ajoutée" }); },
@@ -701,14 +818,9 @@ function SubjectsSection() {
 
   const catLabel = (cat: string | null) => SUBJECT_CATEGORIES.find(c => c.value === cat)?.label ?? cat ?? "Sans catégorie";
 
-  // Group subjects by category
   const groupedSubjects = React.useMemo(() => {
     const map = new Map<string, Tables<"madrasa_subjects">[]>();
-    for (const s of subjects) {
-      const cat = s.category || "other";
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(s);
-    }
+    for (const s of subjects) { const cat = s.category || "other"; if (!map.has(cat)) map.set(cat, []); map.get(cat)!.push(s); }
     return Array.from(map.entries()).sort((a, b) => {
       const order: string[] = SUBJECT_CATEGORIES.map(c => c.value);
       return order.indexOf(a[0]) - order.indexOf(b[0]);
@@ -752,21 +864,26 @@ function SubjectsSection() {
                     <TableHeader>
                       <TableRow className="bg-muted/40">
                         <TableHead>Nom</TableHead>
-                        <TableHead>Suivi</TableHead>
+                        <TableHead>Configuration Pédagogique</TableHead>
                         <TableHead className="w-16" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {items.map((s) => {
-                        const configured = configuredSet.has(s.id);
-                        const fieldCount = configured ? ((configs.find((c) => c.subject_id === s.id)?.form_schema_json as unknown as FormField[])?.length ?? 0) : 0;
+                        const hasSessionConfig = configuredSet.has(s.id);
+                        const fieldCount = hasSessionConfig ? ((configs.find((c) => c.subject_id === s.id)?.form_schema_json as unknown as FormField[])?.length ?? 0) : 0;
+                        const critCount = criteriaBySubject[s.id] || 0;
+                        const configured = hasSessionConfig || critCount > 0;
+                        const summary: string[] = [];
+                        if (fieldCount > 0) summary.push(`${fieldCount} champ(s)`);
+                        if (critCount > 0) summary.push(`${critCount} critère(s)`);
                         return (
                           <TableRow key={s.id} className="hover:bg-muted/30">
                             <TableCell className="font-medium">{s.name}</TableCell>
                             <TableCell>
                               <Button size="sm" variant={configured ? "outline" : "secondary"} className="text-xs h-7" onClick={() => setSelectedSubject(s)}>
                                 <Settings2 className="h-3.5 w-3.5 mr-1" />
-                                {configured ? `${fieldCount} champ(s)` : "Configurer"}
+                                {configured ? summary.join(" · ") : "Configurer"}
                               </Button>
                             </TableCell>
                             <TableCell>
@@ -784,11 +901,12 @@ function SubjectsSection() {
         )}
       </div>
       {selectedSubject && orgId && (
-        <FormBuilderDialog open={!!selectedSubject} onOpenChange={(v) => !v && setSelectedSubject(null)} subject={selectedSubject} orgId={orgId} />
+        <SubjectConfigSheet open={!!selectedSubject} onOpenChange={(v) => !v && setSelectedSubject(null)} subject={selectedSubject} orgId={orgId} />
       )}
     </>
   );
 }
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    2. CURSUS — Niveaux groupés par Cycle
