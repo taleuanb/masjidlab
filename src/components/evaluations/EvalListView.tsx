@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { useClassSubjects, useClassStudents } from "@/hooks/useEvaluationData";
+import { useClassStudents } from "@/hooks/useEvaluationData";
 import { ClipboardCheck, Plus, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { CreateEvalDialog } from "./CreateEvalDialog";
+import { CreateEvalWizard } from "./CreateEvalWizard";
 
 interface Evaluation {
   id: string;
@@ -33,7 +33,6 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: students = [] } = useClassStudents(classId);
-  const { data: subjects = [], isLoading: loadingSubjects } = useClassSubjects(classId);
 
   const { data: evaluations = [], isLoading } = useQuery({
     queryKey: ["evaluations", classId],
@@ -50,6 +49,25 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
     },
   });
 
+  // Count subjects per evaluation
+  const { data: evalSubjectCounts = {} } = useQuery({
+    queryKey: ["eval_subject_counts", classId],
+    enabled: evaluations.length > 0,
+    queryFn: async () => {
+      const evalIds = evaluations.map((e) => e.id);
+      const { data } = await supabase
+        .from("madrasa_evaluation_subjects")
+        .select("evaluation_id, subject:madrasa_subjects(name)")
+        .in("evaluation_id", evalIds);
+      const map: Record<string, string[]> = {};
+      for (const row of data ?? []) {
+        if (!map[row.evaluation_id]) map[row.evaluation_id] = [];
+        if ((row.subject as any)?.name) map[row.evaluation_id].push((row.subject as any).name);
+      }
+      return map;
+    },
+  });
+
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
@@ -62,7 +80,7 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
             <h1 className="text-lg font-bold text-foreground">{clsName}</h1>
             <p className="text-sm text-muted-foreground">Évaluations • {students.length} élèves inscrits</p>
           </div>
-          <Button size="sm" onClick={() => setDialogOpen(true)} className="bg-[#1A2333] hover:bg-[#1A2333]/90">
+          <Button size="sm" onClick={() => setDialogOpen(true)} className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90">
             <Plus className="h-4 w-4" /> Nouvel examen
           </Button>
         </div>
@@ -76,31 +94,41 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
           </div>
         ) : (
           <div className="space-y-3">
-            {evaluations.map((ev) => (
-              <Card key={ev.id} className="cursor-pointer hover:border-primary/30 transition-colors" onClick={() => onSelectEval(ev.id)}>
-                <CardContent className="py-4 px-5 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground truncate">{ev.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(ev.date), "d MMM yyyy", { locale: fr })}
-                      {ev.subject?.name && ` • ${ev.subject.name}`}
-                    </p>
-                  </div>
-                  <Badge variant="outline">/{ev.total_points ?? ev.max_points ?? 20}</Badge>
-                </CardContent>
-              </Card>
-            ))}
+            {evaluations.map((ev) => {
+              const subjectNames = evalSubjectCounts[ev.id] ?? [];
+              return (
+                <Card key={ev.id} className="cursor-pointer hover:border-primary/30 transition-colors" onClick={() => onSelectEval(ev.id)}>
+                  <CardContent className="py-4 px-5 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">{ev.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(ev.date), "d MMM yyyy", { locale: fr })}
+                        {subjectNames.length > 0 && ` • ${subjectNames.join(", ")}`}
+                        {subjectNames.length === 0 && ev.subject?.name && ` • ${ev.subject.name}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {subjectNames.length > 0 && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {subjectNames.length} matière{subjectNames.length !== 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                      <Badge variant="outline">/{ev.total_points ?? ev.max_points ?? 20}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
 
-      <CreateEvalDialog
+      <CreateEvalWizard
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         classId={classId}
         className={clsName}
-        subjects={subjects}
-        loadingSubjects={loadingSubjects}
+        onCreated={(evalId) => onSelectEval(evalId)}
       />
     </main>
   );

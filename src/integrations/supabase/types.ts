@@ -785,7 +785,7 @@ export type Database = {
       madrasa_evaluation_criteria: {
         Row: {
           created_at: string | null
-          evaluation_id: string
+          evaluation_subject_id: string | null
           id: string
           label: string
           max_score: number
@@ -793,7 +793,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          evaluation_id: string
+          evaluation_subject_id?: string | null
           id?: string
           label: string
           max_score: number
@@ -801,7 +801,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          evaluation_id?: string
+          evaluation_subject_id?: string | null
           id?: string
           label?: string
           max_score?: number
@@ -809,10 +809,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "madrasa_evaluation_criteria_evaluation_id_fkey"
-            columns: ["evaluation_id"]
+            foreignKeyName: "madrasa_evaluation_criteria_evaluation_subject_id_fkey"
+            columns: ["evaluation_subject_id"]
             isOneToOne: false
-            referencedRelation: "madrasa_evaluations"
+            referencedRelation: "madrasa_evaluation_subjects"
             referencedColumns: ["id"]
           },
         ]
@@ -843,6 +843,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "madrasa_evaluations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluation_subjects_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "view_evaluation_results"
+            referencedColumns: ["evaluation_id"]
           },
           {
             foreignKeyName: "madrasa_evaluation_subjects_subject_id_fkey"
@@ -994,6 +1001,7 @@ export type Database = {
         Row: {
           comment: string | null
           created_at: string | null
+          criteria_id: string | null
           evaluation_id: string
           id: string
           org_id: string
@@ -1003,6 +1011,7 @@ export type Database = {
         Insert: {
           comment?: string | null
           created_at?: string | null
+          criteria_id?: string | null
           evaluation_id: string
           id?: string
           org_id: string
@@ -1012,6 +1021,7 @@ export type Database = {
         Update: {
           comment?: string | null
           created_at?: string | null
+          criteria_id?: string | null
           evaluation_id?: string
           id?: string
           org_id?: string
@@ -1020,11 +1030,25 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "madrasa_grades_criteria_id_fkey"
+            columns: ["criteria_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_evaluation_criteria"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "madrasa_grades_evaluation_id_fkey"
             columns: ["evaluation_id"]
             isOneToOne: false
             referencedRelation: "madrasa_evaluations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_grades_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "view_evaluation_results"
+            referencedColumns: ["evaluation_id"]
           },
           {
             foreignKeyName: "madrasa_grades_org_id_fkey"
@@ -2310,6 +2334,47 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_evaluation_results: {
+        Row: {
+          evaluation_id: string | null
+          grade_on_20: number | null
+          max_possible_weighted_sum: number | null
+          student_id: string | null
+          subject_id: string | null
+          subject_name: string | null
+          weighted_score_sum: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_evaluation_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_grades_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_grades_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_student_fees_summary"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "madrasa_grades_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["student_id"]
           },
         ]
       }
