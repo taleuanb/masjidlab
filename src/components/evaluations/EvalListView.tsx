@@ -80,8 +80,14 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
             <h1 className="text-lg font-bold text-foreground">{clsName}</h1>
             <p className="text-sm text-muted-foreground">Évaluations • {students.length} élèves inscrits</p>
           </div>
-          <Button size="sm" onClick={() => setDialogOpen(true)} className="bg-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/90">
-            <Plus className="h-4 w-4" /> Nouvel examen
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => setDialogOpen(true)}
+            className="shrink-0 shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Nouvel examen
           </Button>
         </div>
 
