@@ -869,6 +869,7 @@ export type Database = {
           id: string
           max_points: number | null
           org_id: string
+          status: string | null
           subject_id: string | null
           title: string
           total_points: number | null
@@ -881,6 +882,7 @@ export type Database = {
           id?: string
           max_points?: number | null
           org_id: string
+          status?: string | null
           subject_id?: string | null
           title: string
           total_points?: number | null
@@ -893,6 +895,7 @@ export type Database = {
           id?: string
           max_points?: number | null
           org_id?: string
+          status?: string | null
           subject_id?: string | null
           title?: string
           total_points?: number | null
