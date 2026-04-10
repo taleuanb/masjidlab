@@ -43,8 +43,6 @@ interface Evaluation {
   id: string;
   title: string;
   date: string;
-  max_points: number | null;
-  total_points: number | null;
 }
 
 interface Props {

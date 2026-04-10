@@ -23,7 +23,7 @@ const Evaluations = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("madrasa_evaluations")
-        .select("id, title, date, max_points, total_points")
+        .select("id, title, date")
         .eq("id", selectedEvalId!)
         .single();
       if (error) throw error;
