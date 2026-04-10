@@ -1,15 +1,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { useEvalCriteria, useClassStudents, useEvalGrades, useEvalResults, type EvalCriterionWithSubject } from "@/hooks/useEvaluationData";
+import { useEvalCriteria, useClassStudents, useEvalGrades, type EvalCriterionWithSubject } from "@/hooks/useEvaluationData";
 import { ArrowLeft, Save, BarChart3, Loader2, CheckCircle, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -40,15 +38,11 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
   const { data: criteria = [] } = useEvalCriteria(evaluation.id);
   const { data: students = [] } = useClassStudents(classId);
   const { data: existingGrades = [] } = useEvalGrades(evaluation.id);
-  const { data: evalResults = [] } = useEvalResults(evaluation.id);
 
-  // grades[studentId][criterionId] = score string
   const [grades, setGrades] = useState<Record<string, Record<string, string>>>({});
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
-  const [sheetStudentId, setSheetStudentId] = useState<string | null>(null);
-  const sheetStudent = students.find((s) => s.id === sheetStudentId);
 
   const totalPoints = evaluation.total_points ?? evaluation.max_points ?? 20;
 
@@ -96,11 +90,21 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
     return hasAny ? total : null;
   }, [grades, criteria]);
 
-  // Get subject average from view for a student
-  const getSubjectGradeOn20 = useCallback((studentId: string, subjectId: string) => {
-    const result = evalResults.find((r) => r.student_id === studentId && r.subject_id === subjectId);
-    return result?.grade_on_20 != null ? Number(result.grade_on_20) : null;
-  }, [evalResults]);
+  // Compute subject sub-total for a student
+  const getSubjectTotal = useCallback((studentId: string, subjectCriteria: EvalCriterionWithSubject[]) => {
+    const studentGrades = grades[studentId];
+    if (!studentGrades) return null;
+    let total = 0;
+    let hasAny = false;
+    for (const cr of subjectCriteria) {
+      const val = Number(studentGrades[cr.id]);
+      if (!isNaN(val) && studentGrades[cr.id] !== "") {
+        total += val;
+        hasAny = true;
+      }
+    }
+    return hasAny ? total : null;
+  }, [grades]);
 
   const classAverage = useMemo(() => {
     const scores = students.map((s) => getFinalScore(s.id)).filter((s) => s !== null) as number[];
@@ -108,7 +112,6 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
     return scores.reduce((a, b) => a + b, 0) / scores.length;
   }, [students, getFinalScore]);
 
-  // Save function
   const doSave = useCallback(async (currentGrades: typeof grades) => {
     if (!orgId || criteria.length === 0) return;
     setSaving(true);
@@ -136,7 +139,6 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
       }
       setLastSaved(new Date());
       queryClient.invalidateQueries({ queryKey: ["grades", evaluation.id] });
-      queryClient.invalidateQueries({ queryKey: ["eval_results", evaluation.id] });
     } catch (e: any) {
       toast({ title: "Erreur de sauvegarde", description: e.message, variant: "destructive" });
     } finally {
@@ -169,9 +171,6 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
     }
   };
 
-  // Flat criteria list for indexing
-  const flatCriteria = criteria;
-
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
@@ -189,7 +188,7 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
           <div className="flex items-center gap-2 shrink-0">
             {lastSaved && (
               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-[hsl(var(--brand-emerald))]" /> Sauvegardé
+                <CheckCircle className="h-3 w-3 text-secondary" /> Sauvegardé
               </span>
             )}
             {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
@@ -223,15 +222,15 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
           <Card className="overflow-auto">
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
-                {/* Subject group header */}
-                {subjectGroups.length > 1 && (
+                {/* Subject group header row */}
+                {subjectGroups.length > 0 && (
                   <TableRow className="bg-muted/20 border-b-0">
-                    <TableHead className="w-[180px]" />
+                    <TableHead className="w-[180px] sticky left-0 bg-muted/20 z-20" />
                     {subjectGroups.map((sg) => (
                       <TableHead
                         key={sg.subject_id}
                         colSpan={sg.criteria.length}
-                        className="text-center text-xs font-semibold border-l border-border/50"
+                        className="text-center text-xs font-semibold border-l border-border/50 py-1.5"
                       >
                         <span className="flex items-center justify-center gap-1.5">
                           <BookOpen className="h-3 w-3" />
@@ -239,23 +238,24 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
                         </span>
                       </TableHead>
                     ))}
-                    <TableHead className="w-[100px]" />
+                    <TableHead className="w-[80px]" />
                   </TableRow>
                 )}
+                {/* Criteria header row */}
                 <TableRow className="bg-muted/40">
                   <TableHead className="text-xs uppercase text-muted-foreground w-[180px] sticky left-0 bg-muted/40 z-20">
                     Élève
                   </TableHead>
                   {subjectGroups.map((sg) =>
                     sg.criteria.map((cr) => (
-                      <TableHead key={cr.id} className="text-xs uppercase text-muted-foreground text-center w-[100px]">
-                        {cr.label}
-                        <div className="text-[10px] font-normal">/{cr.max_score}</div>
+                      <TableHead key={cr.id} className="text-xs text-muted-foreground text-center w-[90px] py-1">
+                        <span className="block truncate">{cr.label}</span>
+                        <span className="text-[10px] font-normal">/{cr.max_score}</span>
                       </TableHead>
                     ))
                   )}
-                  <TableHead className="text-xs uppercase text-muted-foreground text-center w-[100px] font-bold">
-                    Total
+                  <TableHead className="text-xs uppercase text-muted-foreground text-center w-[80px] font-bold">
+                    Moy.
                     <div className="text-[10px] font-normal">/{totalPoints}</div>
                   </TableHead>
                 </TableRow>
@@ -265,11 +265,8 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
                   const finalScore = getFinalScore(s.id);
                   let globalCrIdx = 0;
                   return (
-                    <TableRow key={s.id}>
-                      <TableCell
-                        className="font-medium cursor-pointer hover:text-primary sticky left-0 bg-background z-10"
-                        onClick={() => setSheetStudentId(s.id)}
-                      >
+                    <TableRow key={s.id} className="hover:bg-muted/20">
+                      <TableCell className="font-medium sticky left-0 bg-background z-10 text-sm py-1">
                         {s.prenom} {s.nom}
                       </TableCell>
                       {subjectGroups.map((sg) =>
@@ -278,8 +275,9 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
                           const val = grades[s.id]?.[cr.id] ?? "";
                           const numVal = Number(val);
                           const isInvalid = val !== "" && (isNaN(numVal) || numVal < 0 || numVal > cr.max_score);
+                          const isFilled = val !== "" && !isNaN(numVal);
                           return (
-                            <TableCell key={cr.id} className="text-center p-1">
+                            <TableCell key={cr.id} className="text-center p-0.5">
                               <Input
                                 data-cell={`${sIdx}-${crIdx}`}
                                 type="number"
@@ -289,14 +287,18 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
                                 value={val}
                                 onChange={(e) => handleGradeChange(s.id, cr.id, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(e, sIdx, crIdx)}
-                                className={cn("h-8 w-16 text-center mx-auto text-sm", isInvalid && "border-destructive")}
+                                className={cn(
+                                  "h-7 w-14 text-center mx-auto text-sm border-transparent bg-transparent focus:border-primary focus:bg-background transition-colors",
+                                  isInvalid && "border-destructive bg-destructive/5",
+                                  isFilled && !isInvalid && "text-foreground font-medium"
+                                )}
                                 placeholder="—"
                               />
                             </TableCell>
                           );
                         })
                       )}
-                      <TableCell className="text-center font-bold text-foreground">
+                      <TableCell className="text-center font-bold text-foreground py-1">
                         {finalScore !== null ? finalScore.toFixed(1) : "—"}
                       </TableCell>
                     </TableRow>
@@ -307,65 +309,6 @@ export function GradingGrid({ evaluation, classId, className: clsName, onBack }:
           </Card>
         )}
       </div>
-
-      {/* Student detail sheet */}
-      <Sheet open={!!sheetStudentId} onOpenChange={(open) => !open && setSheetStudentId(null)}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{sheetStudent ? `${sheetStudent.prenom} ${sheetStudent.nom}` : ""}</SheetTitle>
-            <SheetDescription>Détail de l'évaluation</SheetDescription>
-          </SheetHeader>
-          {sheetStudent && (
-            <div className="mt-6 space-y-5">
-              {subjectGroups.map((sg) => {
-                const gradeOn20 = getSubjectGradeOn20(sheetStudent.id, sg.subject_id);
-                return (
-                  <div key={sg.subject_id}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                        <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                        {sg.subject_name}
-                      </h3>
-                      {gradeOn20 !== null && (
-                        <Badge variant="secondary" className="text-xs">
-                          {gradeOn20.toFixed(1)}/20
-                        </Badge>
-                      )}
-                    </div>
-                    {sg.criteria.map((cr) => {
-                      const val = grades[sheetStudent.id]?.[cr.id] ?? "";
-                      const numVal = Number(val);
-                      const pct = val !== "" && !isNaN(numVal) ? Math.round((numVal / cr.max_score) * 100) : null;
-                      return (
-                        <div key={cr.id} className="flex items-center justify-between py-2 border-b border-border/50">
-                          <div>
-                            <p className="text-sm font-medium">{cr.label}</p>
-                            <p className="text-xs text-muted-foreground">Barème : {cr.max_score} pts</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold">
-                              {val || "—"}
-                              <span className="text-sm font-normal text-muted-foreground">/{cr.max_score}</span>
-                            </p>
-                            {pct !== null && <p className="text-xs text-muted-foreground">{pct}%</p>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-              <div className="flex items-center justify-between pt-2">
-                <p className="font-semibold">Note finale</p>
-                <p className="text-xl font-bold text-primary">
-                  {getFinalScore(sheetStudent.id)?.toFixed(1) ?? "—"}
-                  <span className="text-sm font-normal text-muted-foreground">/{totalPoints}</span>
-                </p>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
     </main>
   );
 }
