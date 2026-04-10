@@ -19,7 +19,6 @@ export function useEvalClasses() {
     queryKey: ["eval_classes_v2", orgId],
     enabled: !!orgId,
     queryFn: async () => {
-      // Fetch classes
       const { data: classes, error } = await supabase
         .from("madrasa_classes")
         .select("id, nom, niveau")
@@ -30,7 +29,6 @@ export function useEvalClasses() {
       const classIds = list.map((c) => c.id);
       if (classIds.length === 0) return [] as ClassWithEvalStats[];
 
-      // Subjects
       const { data: links } = await supabase
         .from("madrasa_class_subjects")
         .select("class_id, subject:madrasa_subjects(id, name)")
@@ -42,7 +40,6 @@ export function useEvalClasses() {
         if (link.subject) subjectMap[link.class_id].push(link.subject as any);
       }
 
-      // Eval count per class
       const { data: evals } = await supabase
         .from("madrasa_evaluations")
         .select("id, class_id")
@@ -54,7 +51,6 @@ export function useEvalClasses() {
         evalCountMap[ev.class_id] = (evalCountMap[ev.class_id] || 0) + 1;
       }
 
-      // Grades for averages
       const evalIds = (evals ?? []).map((e) => e.id);
       let avgMap: Record<string, number | null> = {};
       if (evalIds.length > 0) {
@@ -64,7 +60,6 @@ export function useEvalClasses() {
           .eq("org_id", orgId!)
           .in("evaluation_id", evalIds);
 
-        // Map eval_id -> class_id
         const evalToClass: Record<string, string> = {};
         for (const ev of evals ?? []) evalToClass[ev.id] = ev.class_id;
 
@@ -80,7 +75,6 @@ export function useEvalClasses() {
         }
       }
 
-      // Student counts
       const { data: enrollments } = await supabase
         .from("madrasa_enrollments")
         .select("class_id")
@@ -137,17 +131,54 @@ export function useSubjectCriteria(subjectId: string | null) {
   });
 }
 
+export interface EvalCriterionWithSubject {
+  id: string;
+  label: string;
+  max_score: number;
+  weight: number | null;
+  subject_id: string;
+  subject_name: string;
+  evaluation_subject_id: string;
+}
+
+/**
+ * Fetches criteria for an evaluation via evaluation_subjects → evaluation_criteria
+ */
 export function useEvalCriteria(evaluationId: string | null) {
   return useQuery({
-    queryKey: ["eval_criteria", evaluationId],
+    queryKey: ["eval_criteria_v2", evaluationId],
     enabled: !!evaluationId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("madrasa_evaluation_criteria")
-        .select("id, label, max_score, weight")
+      // First get evaluation_subjects
+      const { data: evalSubjects, error: esErr } = await supabase
+        .from("madrasa_evaluation_subjects")
+        .select("id, subject_id, weight, subject:madrasa_subjects(name)")
         .eq("evaluation_id", evaluationId!);
-      if (error) throw error;
-      return (data ?? []) as { id: string; label: string; max_score: number; weight: number | null }[];
+      if (esErr) throw esErr;
+
+      if (!evalSubjects || evalSubjects.length === 0) return [] as EvalCriterionWithSubject[];
+
+      const esIds = evalSubjects.map((es) => es.id);
+      const { data: criteria, error: crErr } = await supabase
+        .from("madrasa_evaluation_criteria")
+        .select("id, label, max_score, weight, evaluation_subject_id")
+        .in("evaluation_subject_id", esIds);
+      if (crErr) throw crErr;
+
+      const esMap = new Map(evalSubjects.map((es) => [es.id, es]));
+
+      return (criteria ?? []).map((c) => {
+        const es = esMap.get(c.evaluation_subject_id!);
+        return {
+          id: c.id,
+          label: c.label,
+          max_score: Number(c.max_score),
+          weight: c.weight ? Number(c.weight) : null,
+          subject_id: es?.subject_id ?? "",
+          subject_name: (es?.subject as any)?.name ?? "",
+          evaluation_subject_id: c.evaluation_subject_id ?? "",
+        } as EvalCriterionWithSubject;
+      });
     },
   });
 }
@@ -181,6 +212,21 @@ export function useEvalGrades(evaluationId: string | null) {
         .select("*")
         .eq("evaluation_id", evaluationId!)
         .eq("org_id", orgId!);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useEvalResults(evaluationId: string | null) {
+  return useQuery({
+    queryKey: ["eval_results", evaluationId],
+    enabled: !!evaluationId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("view_evaluation_results")
+        .select("*")
+        .eq("evaluation_id", evaluationId!);
       if (error) throw error;
       return data ?? [];
     },
