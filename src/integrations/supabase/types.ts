@@ -817,6 +817,42 @@ export type Database = {
           },
         ]
       }
+      madrasa_evaluation_subjects: {
+        Row: {
+          evaluation_id: string
+          id: string
+          subject_id: string
+          weight: number | null
+        }
+        Insert: {
+          evaluation_id: string
+          id?: string
+          subject_id: string
+          weight?: number | null
+        }
+        Update: {
+          evaluation_id?: string
+          id?: string
+          subject_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_evaluation_subjects_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluation_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       madrasa_evaluations: {
         Row: {
           class_id: string
