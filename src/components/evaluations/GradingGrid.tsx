@@ -169,12 +169,6 @@ export function GradingGrid({
       setSaving(true);
       setSynced(false);
       try {
-        await supabase
-          .from("madrasa_grades")
-          .delete()
-          .eq("evaluation_id", evaluation.id)
-          .eq("org_id", orgId);
-
         const rows: {
           evaluation_id: string;
           student_id: string;
@@ -198,6 +192,9 @@ export function GradingGrid({
             } else {
               const numScore = scoreStr === "" ? null : Number(scoreStr);
               if (numScore === null || isNaN(numScore)) continue;
+              // Skip invalid scores
+              const cr = flatCriteria.find((c) => c.id === crId);
+              if (cr && numScore > cr.max_score) continue;
               rows.push({
                 evaluation_id: evaluation.id,
                 student_id: studentId,
@@ -211,24 +208,32 @@ export function GradingGrid({
         }
 
         if (rows.length > 0) {
-          const { error } = await supabase.from("madrasa_grades").insert(rows);
+          const { error } = await supabase
+            .from("madrasa_grades")
+            .upsert(rows, { onConflict: "student_id,criteria_id,evaluation_id" });
           if (error) throw error;
         }
 
         setSynced(true);
         queryClient.invalidateQueries({ queryKey: ["grades", evaluation.id] });
       } catch (e: unknown) {
+        console.error("Grade save error:", e);
         const msg = e instanceof Error ? e.message : "Erreur inconnue";
+        const userMsg = msg.includes("violates")
+          ? "Donnée invalide — vérifiez les notes saisies."
+          : msg.includes("network") || msg.includes("fetch")
+          ? "Erreur de connexion — réessayez."
+          : `Erreur de sauvegarde : ${msg}`;
         toast({
-          title: "Erreur de sauvegarde",
-          description: msg,
+          title: "Erreur",
+          description: userMsg,
           variant: "destructive",
         });
       } finally {
         setSaving(false);
       }
     },
-    [orgId, criteria, evaluation.id, queryClient, toast]
+    [orgId, criteria, flatCriteria, evaluation.id, queryClient, toast]
   );
 
   const scheduleSave = useCallback(
