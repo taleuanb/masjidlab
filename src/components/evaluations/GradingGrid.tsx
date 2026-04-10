@@ -396,7 +396,7 @@ export function GradingGrid({
               </span>
             )}
             <Button onClick={handleManualSave} disabled={saving} size="sm" variant="outline">
-              <Save className="h-4 w-4 mr-1" /> Enregistrer
+              <Save className="h-4 w-4 mr-1" /> Forcer la synchro
             </Button>
           </div>
         </div>
@@ -551,23 +551,30 @@ export function GradingGrid({
                                       ABS
                                     </span>
                                   ) : (
-                                    <Input
-                                      data-cell={`${sIdx}-${crIdx}`}
-                                      type="number"
-                                      min={0}
-                                      max={cr.max_score}
-                                      step={0.5}
-                                      value={val}
-                                      onChange={(e) =>
-                                        handleGradeChange(s.id, cr.id, e.target.value)
-                                      }
-                                      onKeyDown={(e) => handleKeyDown(e, sIdx, crIdx)}
-                                      className={cn(
-                                        "h-7 w-full text-center text-xs rounded-none border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-                                        isInvalid && "ring-1 ring-destructive bg-destructive/5"
+                                    <div className="relative">
+                                      <Input
+                                        data-cell={`${sIdx}-${crIdx}`}
+                                        type="number"
+                                        min={0}
+                                        max={cr.max_score}
+                                        step={0.5}
+                                        value={val}
+                                        onChange={(e) =>
+                                          handleGradeChange(s.id, cr.id, e.target.value)
+                                        }
+                                        onKeyDown={(e) => handleKeyDown(e, sIdx, crIdx)}
+                                        className={cn(
+                                          "h-7 w-full text-center text-xs rounded-none border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                                          isInvalid && "ring-1 ring-destructive bg-destructive/5"
+                                        )}
+                                        placeholder="—"
+                                      />
+                                      {isInvalid && (
+                                        <span className="absolute -bottom-4 left-0 right-0 text-[9px] text-destructive text-center whitespace-nowrap z-20">
+                                          Max {cr.max_score}
+                                        </span>
                                       )}
-                                      placeholder="—"
-                                    />
+                                    </div>
                                   )}
                                 </TableCell>
                               );
