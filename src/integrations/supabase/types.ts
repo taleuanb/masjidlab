@@ -1567,24 +1567,30 @@ export type Database = {
         Row: {
           created_at: string | null
           default_max_score: number | null
+          default_weight: number
           id: string
           label: string
+          order_index: number
           org_id: string
           subject_id: string
         }
         Insert: {
           created_at?: string | null
           default_max_score?: number | null
+          default_weight?: number
           id?: string
           label: string
+          order_index?: number
           org_id: string
           subject_id: string
         }
         Update: {
           created_at?: string | null
           default_max_score?: number | null
+          default_weight?: number
           id?: string
           label?: string
+          order_index?: number
           org_id?: string
           subject_id?: string
         }
