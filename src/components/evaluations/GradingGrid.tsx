@@ -574,7 +574,16 @@ export function GradingGrid({
                           )}
                         >
                           <TableCell className="font-medium sticky left-0 z-10 bg-background text-xs py-1.5 border-r whitespace-nowrap">
-                            {s.prenom} {s.nom}
+                            <div className="flex items-center gap-1.5">
+                              <span>{s.prenom} {s.nom}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setBulletinStudentId(s.id); }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
+                                title="Voir le bulletin"
+                              >
+                                <FileText className="h-3 w-3" />
+                              </button>
+                            </div>
                           </TableCell>
                           {subjectGroups.map((sg, sgIdx) =>
                             sg.criteria.map((cr, crLocalIdx) => {
