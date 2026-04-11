@@ -25,7 +25,7 @@ interface Props {
 
 type PeriodFilter = "all" | "trimestre1" | "trimestre2" | "trimestre3";
 
-export function EvalMonitoringWidgets({ classIds }: Props) {
+export function EvalMonitoringWidgets({ classIds, classNameMap = {} }: Props) {
   const { orgId } = useOrganization();
   const [period, setPeriod] = useState<PeriodFilter>("all");
 
