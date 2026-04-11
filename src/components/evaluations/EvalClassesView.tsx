@@ -62,8 +62,26 @@ export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
 
         <StatCards items={statItems} />
 
+        {/* Class filter for monitoring */}
+        {!loading && classes.length > 0 && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Filtrer par classe :</span>
+            <Select value={filterClassId} onValueChange={setFilterClassId}>
+              <SelectTrigger className="w-48 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes les classes</SelectItem>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Monitoring widgets */}
-        {!loading && classes.length > 0 && <EvalMonitoringWidgets classIds={classIds} />}
+        {!loading && classes.length > 0 && <EvalMonitoringWidgets classIds={filteredClassIds} classNameMap={classNameMap} />}
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
