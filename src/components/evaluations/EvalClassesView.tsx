@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ClipboardCheck, BarChart3, FileText, Users, Loader2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCards, type StatCardItem } from "@/components/shared/StatCards";
 import { useCurrentAcademicYear } from "@/hooks/useCurrentAcademicYear";
 import { EvalMonitoringWidgets } from "./EvalMonitoringWidgets";
@@ -16,6 +17,7 @@ interface Props {
 
 export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
   const { yearLabel } = useCurrentAcademicYear();
+  const [filterClassId, setFilterClassId] = useState<string>("all");
 
   const kpis = useMemo(() => {
     const totalExams = classes.reduce((s, c) => s + c.evalCount, 0);
@@ -25,7 +27,16 @@ export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
     return { totalExams, totalStudents, globalAvg, classCount: classes.length };
   }, [classes]);
 
-  const classIds = useMemo(() => classes.map((c) => c.id), [classes]);
+  const filteredClassIds = useMemo(() => {
+    if (filterClassId === "all") return classes.map((c) => c.id);
+    return [filterClassId];
+  }, [classes, filterClassId]);
+
+  const classNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of classes) map[c.id] = c.nom;
+    return map;
+  }, [classes]);
 
   const statItems: StatCardItem[] = [
     { label: "Classes", value: kpis.classCount, icon: Users, color: "hsl(var(--brand-navy))" },
@@ -51,8 +62,26 @@ export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
 
         <StatCards items={statItems} />
 
+        {/* Class filter for monitoring */}
+        {!loading && classes.length > 0 && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Filtrer par classe :</span>
+            <Select value={filterClassId} onValueChange={setFilterClassId}>
+              <SelectTrigger className="w-48 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes les classes</SelectItem>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.nom}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Monitoring widgets */}
-        {!loading && classes.length > 0 && <EvalMonitoringWidgets classIds={classIds} />}
+        {!loading && classes.length > 0 && <EvalMonitoringWidgets classIds={filteredClassIds} classNameMap={classNameMap} />}
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>

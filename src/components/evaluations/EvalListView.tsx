@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useClassStudents } from "@/hooks/useEvaluationData";
@@ -26,9 +26,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { toast } from "sonner";
 import { CreateEvalWizard } from "./CreateEvalWizard";
 
 interface Evaluation {
@@ -58,6 +69,8 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "secondary" | "def
 export function EvalListView({ classId, className: clsName, onBack, onSelectEval }: Props) {
   const { orgId } = useOrganization();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: students = [] } = useClassStudents(classId);
 
@@ -150,6 +163,33 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
     return "partial";
   };
 
+  const deleteMutation = useMutation({
+    mutationFn: async (evalId: string) => {
+      // Delete grades, criteria, subjects, results, then the evaluation
+      const { error: grErr } = await supabase.from("madrasa_grades").delete().eq("evaluation_id", evalId);
+      if (grErr) throw grErr;
+      // Get evaluation_subjects to delete criteria
+      const { data: esRows } = await supabase.from("madrasa_evaluation_subjects").select("id").eq("evaluation_id", evalId);
+      if (esRows && esRows.length > 0) {
+        const esIds = esRows.map((r) => r.id);
+        await supabase.from("madrasa_evaluation_criteria").delete().in("evaluation_subject_id", esIds);
+      }
+      await supabase.from("madrasa_evaluation_subjects").delete().eq("evaluation_id", evalId);
+      await supabase.from("madrasa_evaluation_results").delete().eq("evaluation_id", evalId);
+      const { error } = await supabase.from("madrasa_evaluations").delete().eq("id", evalId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Évaluation supprimée");
+      queryClient.invalidateQueries({ queryKey: ["evaluations", classId] });
+      queryClient.invalidateQueries({ queryKey: ["eval_grade_counts", classId] });
+    },
+    onError: (err: any) => {
+      console.error("Delete eval error:", err);
+      toast.error("Erreur lors de la suppression");
+    },
+  });
+
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
@@ -166,17 +206,6 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {evaluations.length > 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onSelectEval(evaluations[0].id)}
-                className="shrink-0"
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                Bulletins
-              </Button>
-            )}
             <Button
               size="sm"
               variant="default"
@@ -340,7 +369,10 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem
                                         className="text-destructive focus:text-destructive"
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeleteTarget({ id: ev.id, title: ev.title });
+                                        }}
                                       >
                                         <Trash2 className="h-3.5 w-3.5 mr-2" />
                                         Supprimer
@@ -369,6 +401,29 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
         className={clsName}
         onCreated={(evalId) => onSelectEval(evalId)}
       />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette évaluation ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L'évaluation « {deleteTarget?.title} » ainsi que toutes les notes associées seront définitivement supprimées. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) deleteMutation.mutate(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
