@@ -6,10 +6,14 @@ export interface ClassWithEvalStats {
   id: string;
   nom: string;
   niveau: string | null;
+  prof_id: string | null;
+  teacherName: string | null;
   subjects: { id: string; name: string }[];
   evalCount: number;
   classAverage: number | null;
   studentCount: number;
+  recentAverages: number[];
+  attendanceRate: number | null;
 }
 
 export function useEvalClasses() {
