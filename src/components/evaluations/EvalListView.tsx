@@ -163,6 +163,33 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
     return "partial";
   };
 
+  const deleteMutation = useMutation({
+    mutationFn: async (evalId: string) => {
+      // Delete grades, criteria, subjects, results, then the evaluation
+      const { error: grErr } = await supabase.from("madrasa_grades").delete().eq("evaluation_id", evalId);
+      if (grErr) throw grErr;
+      // Get evaluation_subjects to delete criteria
+      const { data: esRows } = await supabase.from("madrasa_evaluation_subjects").select("id").eq("evaluation_id", evalId);
+      if (esRows && esRows.length > 0) {
+        const esIds = esRows.map((r) => r.id);
+        await supabase.from("madrasa_evaluation_criteria").delete().in("evaluation_subject_id", esIds);
+      }
+      await supabase.from("madrasa_evaluation_subjects").delete().eq("evaluation_id", evalId);
+      await supabase.from("madrasa_evaluation_results").delete().eq("evaluation_id", evalId);
+      const { error } = await supabase.from("madrasa_evaluations").delete().eq("id", evalId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Évaluation supprimée");
+      queryClient.invalidateQueries({ queryKey: ["evaluations", classId] });
+      queryClient.invalidateQueries({ queryKey: ["eval_grade_counts", classId] });
+    },
+    onError: (err: any) => {
+      console.error("Delete eval error:", err);
+      toast.error("Erreur lors de la suppression");
+    },
+  });
+
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
