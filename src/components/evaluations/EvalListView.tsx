@@ -369,7 +369,10 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem
                                         className="text-destructive focus:text-destructive"
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeleteTarget({ id: ev.id, title: ev.title });
+                                        }}
                                       >
                                         <Trash2 className="h-3.5 w-3.5 mr-2" />
                                         Supprimer
