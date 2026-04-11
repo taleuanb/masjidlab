@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ClipboardCheck, BarChart3, FileText, Users, Loader2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatCards, type StatCardItem } from "@/components/shared/StatCards";
 import { useCurrentAcademicYear } from "@/hooks/useCurrentAcademicYear";
 import { EvalMonitoringWidgets } from "./EvalMonitoringWidgets";
