@@ -77,6 +77,7 @@ export function GradingGrid({
   const [grades, setGrades] = useState<Record<string, Record<string, string>>>({});
   const [saving, setSaving] = useState(false);
   const [synced, setSynced] = useState(false);
+  const [bulletinStudentId, setBulletinStudentId] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const gridRef = useRef<HTMLTableElement>(null);
 
