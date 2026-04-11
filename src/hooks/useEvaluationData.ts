@@ -25,7 +25,7 @@ export function useEvalClasses() {
     queryFn: async () => {
       const { data: classes, error } = await supabase
         .from("madrasa_classes")
-        .select("id, nom, niveau")
+        .select("id, nom, niveau, prof_id")
         .eq("org_id", orgId!)
         .order("nom");
       if (error) throw error;
@@ -33,6 +33,18 @@ export function useEvalClasses() {
       const classIds = list.map((c) => c.id);
       if (classIds.length === 0) return [] as ClassWithEvalStats[];
 
+      // Teacher names
+      const profIds = [...new Set(list.map((c) => c.prof_id).filter(Boolean))] as string[];
+      let teacherMap: Record<string, string> = {};
+      if (profIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, display_name")
+          .in("id", profIds);
+        for (const p of profiles ?? []) teacherMap[p.id] = p.display_name;
+      }
+
+      // Subjects
       const { data: links } = await supabase
         .from("madrasa_class_subjects")
         .select("class_id, subject:madrasa_subjects(id, name)")
@@ -44,11 +56,13 @@ export function useEvalClasses() {
         if (link.subject) subjectMap[link.class_id].push(link.subject as any);
       }
 
+      // Evaluations
       const { data: evals } = await supabase
         .from("madrasa_evaluations")
-        .select("id, class_id")
+        .select("id, class_id, date")
         .eq("org_id", orgId!)
-        .in("class_id", classIds);
+        .in("class_id", classIds)
+        .order("date", { ascending: true });
 
       const evalCountMap: Record<string, number> = {};
       for (const ev of evals ?? []) {
@@ -57,6 +71,8 @@ export function useEvalClasses() {
 
       const evalIds = (evals ?? []).map((e) => e.id);
       let avgMap: Record<string, number | null> = {};
+      let recentAvgsMap: Record<string, number[]> = {};
+
       if (evalIds.length > 0) {
         const { data: grades } = await supabase
           .from("madrasa_grades")
@@ -67,18 +83,37 @@ export function useEvalClasses() {
         const evalToClass: Record<string, string> = {};
         for (const ev of evals ?? []) evalToClass[ev.id] = ev.class_id;
 
+        const evalScores: Record<string, number[]> = {};
         const classScores: Record<string, number[]> = {};
         for (const g of grades ?? []) {
           if (g.score == null) continue;
           const cid = evalToClass[g.evaluation_id];
           if (!classScores[cid]) classScores[cid] = [];
           classScores[cid].push(Number(g.score));
+          if (!evalScores[g.evaluation_id]) evalScores[g.evaluation_id] = [];
+          evalScores[g.evaluation_id].push(Number(g.score));
         }
         for (const [cid, scores] of Object.entries(classScores)) {
           avgMap[cid] = scores.reduce((a, b) => a + b, 0) / scores.length;
         }
+
+        // Recent averages per class (last 5 evals)
+        const classEvals: Record<string, string[]> = {};
+        for (const ev of evals ?? []) {
+          if (!classEvals[ev.class_id]) classEvals[ev.class_id] = [];
+          classEvals[ev.class_id].push(ev.id);
+        }
+        for (const [cid, ids] of Object.entries(classEvals)) {
+          const last5 = ids.slice(-5);
+          recentAvgsMap[cid] = last5.map((eid) => {
+            const scores = evalScores[eid];
+            if (!scores || scores.length === 0) return 0;
+            return scores.reduce((a, b) => a + b, 0) / scores.length;
+          });
+        }
       }
 
+      // Student counts
       const { data: enrollments } = await supabase
         .from("madrasa_enrollments")
         .select("class_id")
@@ -91,12 +126,35 @@ export function useEvalClasses() {
         if (e.class_id) studentCountMap[e.class_id] = (studentCountMap[e.class_id] || 0) + 1;
       }
 
+      // Attendance rate (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const { data: attendance } = await supabase
+        .from("madrasa_attendance")
+        .select("class_id, status")
+        .eq("org_id", orgId!)
+        .in("class_id", classIds)
+        .gte("date", thirtyDaysAgo.toISOString().split("T")[0]);
+
+      const attendanceMap: Record<string, { total: number; present: number }> = {};
+      for (const a of attendance ?? []) {
+        if (!a.class_id) continue;
+        if (!attendanceMap[a.class_id]) attendanceMap[a.class_id] = { total: 0, present: 0 };
+        attendanceMap[a.class_id].total += 1;
+        if (a.status === "present" || a.status === "late") attendanceMap[a.class_id].present += 1;
+      }
+
       return list.map((c) => ({
         ...c,
+        teacherName: c.prof_id ? teacherMap[c.prof_id] ?? null : null,
         subjects: subjectMap[c.id] ?? [],
         evalCount: evalCountMap[c.id] ?? 0,
         classAverage: avgMap[c.id] ?? null,
         studentCount: studentCountMap[c.id] ?? 0,
+        recentAverages: recentAvgsMap[c.id] ?? [],
+        attendanceRate: attendanceMap[c.id]
+          ? Math.round((attendanceMap[c.id].present / attendanceMap[c.id].total) * 100)
+          : null,
       })) as ClassWithEvalStats[];
     },
   });
