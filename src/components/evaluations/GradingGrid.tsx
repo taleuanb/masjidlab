@@ -18,6 +18,7 @@ import {
   Lightbulb,
   PlusCircle,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { ReportCard } from "./ReportCard";
 
 interface Evaluation {
   id: string;
@@ -75,6 +77,7 @@ export function GradingGrid({
   const [grades, setGrades] = useState<Record<string, Record<string, string>>>({});
   const [saving, setSaving] = useState(false);
   const [synced, setSynced] = useState(false);
+  const [bulletinStudentId, setBulletinStudentId] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const gridRef = useRef<HTMLTableElement>(null);
 
@@ -358,6 +361,56 @@ export function GradingGrid({
 
   const isLoading = loadingCriteria || loadingStudents;
 
+  // Build subject scores for a student's bulletin
+  const getBulletinData = useCallback(
+    (studentId: string) => {
+      const sg = grades[studentId];
+      if (!sg) return [];
+      return subjectGroups.map((group) => {
+        let weightedSum = 0;
+        let weightedMax = 0;
+        for (const cr of group.criteria) {
+          const val = sg[cr.id];
+          if (!val || val === ABSENT_MARKER) continue;
+          const num = Number(val);
+          if (isNaN(num)) continue;
+          const w = cr.weight ?? 1;
+          weightedSum += num * w;
+          weightedMax += cr.max_score * w;
+        }
+        const normalized = weightedMax > 0 ? (weightedSum / weightedMax) * 20 : 0;
+        return {
+          subject_name: group.subject_name,
+          score: weightedSum,
+          max_score: weightedMax,
+          normalized,
+        };
+      });
+    },
+    [grades, subjectGroups]
+  );
+
+  // Bulletin view
+  const bulletinStudent = bulletinStudentId
+    ? students.find((s) => s.id === bulletinStudentId)
+    : null;
+
+  if (bulletinStudent && bulletinStudentId) {
+    const subjectScores = getBulletinData(bulletinStudentId);
+    const avg = getWeightedAverage(bulletinStudentId);
+    return (
+      <ReportCard
+        student={bulletinStudent}
+        className={clsName}
+        evaluationTitle={evaluation.title}
+        evaluationDate={format(new Date(evaluation.date), "d MMMM yyyy", { locale: fr })}
+        subjectScores={subjectScores}
+        overallAverage={avg}
+        onBack={() => setBulletinStudentId(null)}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <main className="flex-1 flex items-center justify-center">
@@ -368,8 +421,7 @@ export function GradingGrid({
 
   return (
     <main className="flex-1 overflow-y-auto">
-      <div className="p-4 md:p-6 space-y-4 max-w-[95vw] mx-auto">
-        {/* Header */}
+      <div className="p-4 md:p-6 space-y-4 max-w-[95vw] mx-auto">{/* Header */}
         <div className="flex items-center gap-3 flex-wrap">
           <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
             <ArrowLeft className="h-4 w-4" />
@@ -522,7 +574,16 @@ export function GradingGrid({
                           )}
                         >
                           <TableCell className="font-medium sticky left-0 z-10 bg-background text-xs py-1.5 border-r whitespace-nowrap">
-                            {s.prenom} {s.nom}
+                            <div className="flex items-center gap-1.5">
+                              <span>{s.prenom} {s.nom}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setBulletinStudentId(s.id); }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
+                                title="Voir le bulletin"
+                              >
+                                <FileText className="h-3 w-3" />
+                              </button>
+                            </div>
                           </TableCell>
                           {subjectGroups.map((sg, sgIdx) =>
                             sg.criteria.map((cr, crLocalIdx) => {
