@@ -21,11 +21,12 @@ import { fr } from "date-fns/locale";
 interface Props {
   classIds: string[];
   classNameMap?: Record<string, string>;
+  maxAlerts?: number;
 }
 
 type PeriodFilter = "all" | "trimestre1" | "trimestre2" | "trimestre3";
 
-export function EvalMonitoringWidgets({ classIds, classNameMap = {} }: Props) {
+export function EvalMonitoringWidgets({ classIds, classNameMap = {}, maxAlerts = 8 }: Props) {
   const { orgId } = useOrganization();
   const [period, setPeriod] = useState<PeriodFilter>("all");
 
@@ -126,7 +127,7 @@ export function EvalMonitoringWidgets({ classIds, classNameMap = {} }: Props) {
       return struggling
         .map((s) => ({ name: nameMap.get(s.studentId) ?? "Inconnu", avg: s.avg, classId: s.classId }))
         .sort((a, b) => a.avg - b.avg)
-        .slice(0, 8);
+        .slice(0, maxAlerts);
     },
   });
 
