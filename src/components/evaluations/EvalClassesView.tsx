@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { StatCards, type StatCardItem } from "@/components/shared/StatCards";
 import { useCurrentAcademicYear } from "@/hooks/useCurrentAcademicYear";
+import { EvalMonitoringWidgets } from "./EvalMonitoringWidgets";
 import type { ClassWithEvalStats } from "@/hooks/useEvaluationData";
 
 interface Props {
@@ -23,6 +24,8 @@ export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
     const globalAvg = avgs.length > 0 ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
     return { totalExams, totalStudents, globalAvg, classCount: classes.length };
   }, [classes]);
+
+  const classIds = useMemo(() => classes.map((c) => c.id), [classes]);
 
   const statItems: StatCardItem[] = [
     { label: "Classes", value: kpis.classCount, icon: Users, color: "hsl(var(--brand-navy))" },
@@ -47,6 +50,9 @@ export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
         </div>
 
         <StatCards items={statItems} />
+
+        {/* Monitoring widgets */}
+        {!loading && classes.length > 0 && <EvalMonitoringWidgets classIds={classIds} />}
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
