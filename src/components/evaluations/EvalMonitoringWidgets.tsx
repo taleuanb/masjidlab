@@ -93,22 +93,23 @@ export function EvalMonitoringWidgets({ classIds, classNameMap = {} }: Props) {
         .eq("org_id", orgId!)
         .in("evaluation_id", latestEvalIds);
 
-      // Compute avg per student per eval
-      const studentAvgs: Record<string, { total: number; count: number; evalId: string }> = {};
+      // Compute avg per student per eval, track classId
+      const evalClassMap = new Map(Array.from(latestByClass.entries()).map(([cId, e]) => [e.id, cId]));
+      const studentAvgs: Record<string, { total: number; count: number; evalId: string; classId: string }> = {};
       for (const g of grades ?? []) {
         if (g.score == null) continue;
         const key = `${g.student_id}_${g.evaluation_id}`;
-        if (!studentAvgs[key]) studentAvgs[key] = { total: 0, count: 0, evalId: g.evaluation_id };
+        if (!studentAvgs[key]) studentAvgs[key] = { total: 0, count: 0, evalId: g.evaluation_id, classId: evalClassMap.get(g.evaluation_id) ?? "" };
         studentAvgs[key].total += Number(g.score);
         studentAvgs[key].count += 1;
       }
 
-      // Filter < 10/20 (assuming scores are raw, we use a simple heuristic)
-      const struggling: { studentId: string; avg: number }[] = [];
+      // Filter < 10/20
+      const struggling: { studentId: string; avg: number; classId: string }[] = [];
       for (const [key, v] of Object.entries(studentAvgs)) {
         const avg = v.total / v.count;
         if (avg < 10) {
-          struggling.push({ studentId: key.split("_")[0], avg });
+          struggling.push({ studentId: key.split("_")[0], avg, classId: v.classId });
         }
       }
 
@@ -123,7 +124,7 @@ export function EvalMonitoringWidgets({ classIds, classNameMap = {} }: Props) {
 
       const nameMap = new Map((students ?? []).map((s) => [s.id, `${s.prenom} ${s.nom}`]));
       return struggling
-        .map((s) => ({ name: nameMap.get(s.studentId) ?? "Inconnu", avg: s.avg }))
+        .map((s) => ({ name: nameMap.get(s.studentId) ?? "Inconnu", avg: s.avg, classId: s.classId }))
         .sort((a, b) => a.avg - b.avg)
         .slice(0, 8);
     },
