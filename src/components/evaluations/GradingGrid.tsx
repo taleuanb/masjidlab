@@ -525,6 +525,7 @@ export function GradingGrid({
                   <TableHead className="w-[80px] text-center border-l-2 border-border bg-muted/60 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Moy.
                   </TableHead>
+                  <TableHead className="w-[90px] border-l border-border" />
                 </TableRow>
 
                 {/* Level 2: Criteria */}
@@ -552,6 +553,9 @@ export function GradingGrid({
                   <TableHead className="text-[11px] uppercase tracking-wider text-muted-foreground text-center w-[80px] font-bold border-l-2 border-border bg-muted/60">
                     /20
                   </TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wider text-muted-foreground text-center w-[90px] border-l border-border">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -574,16 +578,7 @@ export function GradingGrid({
                           )}
                         >
                           <TableCell className="font-medium sticky left-0 z-10 bg-background text-xs py-1.5 border-r whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <span>{s.prenom} {s.nom}</span>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setBulletinStudentId(s.id); }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
-                                title="Voir le bulletin"
-                              >
-                                <FileText className="h-3 w-3" />
-                              </button>
-                            </div>
+                            {s.prenom} {s.nom}
                           </TableCell>
                           {subjectGroups.map((sg, sgIdx) =>
                             sg.criteria.map((cr, crLocalIdx) => {
@@ -656,6 +651,17 @@ export function GradingGrid({
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
+                          </TableCell>
+                          <TableCell className="text-center py-1.5 border-l border-border">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-[11px] text-muted-foreground hover:text-primary"
+                              onClick={(e) => { e.stopPropagation(); setBulletinStudentId(s.id); }}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              Bulletin
+                            </Button>
                           </TableCell>
                         </TableRow>
                       </ContextMenuTrigger>

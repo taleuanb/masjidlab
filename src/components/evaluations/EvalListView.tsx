@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useClassStudents } from "@/hooks/useEvaluationData";
-import { ClipboardCheck, Plus, Loader2, ArrowLeft } from "lucide-react";
+import { ClipboardCheck, Plus, Loader2, ArrowLeft, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,15 +80,30 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
             <h1 className="text-lg font-bold text-foreground">{clsName}</h1>
             <p className="text-sm text-muted-foreground">Évaluations • {students.length} élèves inscrits</p>
           </div>
-          <Button
-            size="sm"
-            variant="default"
-            onClick={() => setDialogOpen(true)}
-            className="shrink-0 shadow-sm"
-          >
-            <Plus className="h-4 w-4" />
-            Nouvel examen
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            {evaluations.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (evaluations.length > 0) onSelectEval(evaluations[0].id);
+                }}
+                className="shrink-0"
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                Bulletins
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setDialogOpen(true)}
+              className="shrink-0 shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              Nouvel examen
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
