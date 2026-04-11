@@ -127,7 +127,7 @@ export function EvalMonitoringWidgets({ classIds, classNameMap = {}, maxAlerts =
       return struggling
         .map((s) => ({ name: nameMap.get(s.studentId) ?? "Inconnu", avg: s.avg, classId: s.classId }))
         .sort((a, b) => a.avg - b.avg)
-        .slice(0, 8);
+        .slice(0, maxAlerts);
     },
   });
 
