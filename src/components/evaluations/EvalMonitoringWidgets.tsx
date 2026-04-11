@@ -227,8 +227,13 @@ export function EvalMonitoringWidgets({ classIds, classNameMap = {} }: Props) {
           ) : (
             <div className="space-y-2">
               {strugglingStudents.map((s, i) => (
-                <div key={i} className="flex items-center justify-between text-sm py-1">
-                  <span className="truncate text-foreground">{s.name}</span>
+                <div key={i} className="flex items-center justify-between text-sm py-1 gap-2">
+                  <div className="flex-1 min-w-0">
+                    <span className="truncate text-foreground block">{s.name}</span>
+                    {classNameMap[s.classId] && (
+                      <span className="text-[10px] text-muted-foreground">{classNameMap[s.classId]}</span>
+                    )}
+                  </div>
                   <Badge variant="destructive" className="text-[10px] shrink-0">
                     {s.avg.toFixed(1)}/20
                   </Badge>
