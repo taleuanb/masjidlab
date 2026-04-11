@@ -20,6 +20,7 @@ import { fr } from "date-fns/locale";
 
 interface Props {
   classIds: string[];
+  classNameMap?: Record<string, string>;
 }
 
 type PeriodFilter = "all" | "trimestre1" | "trimestre2" | "trimestre3";
