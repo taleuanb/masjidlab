@@ -69,6 +69,8 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "secondary" | "def
 export function EvalListView({ classId, className: clsName, onBack, onSelectEval }: Props) {
   const { orgId } = useOrganization();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: students = [] } = useClassStudents(classId);
 
