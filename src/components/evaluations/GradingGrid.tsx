@@ -525,6 +525,7 @@ export function GradingGrid({
                   <TableHead className="w-[80px] text-center border-l-2 border-border bg-muted/60 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Moy.
                   </TableHead>
+                  <TableHead className="w-[90px] border-l border-border" />
                 </TableRow>
 
                 {/* Level 2: Criteria */}
