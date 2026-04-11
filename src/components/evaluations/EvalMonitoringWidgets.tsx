@@ -21,11 +21,12 @@ import { fr } from "date-fns/locale";
 interface Props {
   classIds: string[];
   classNameMap?: Record<string, string>;
+  maxAlerts?: number;
 }
 
 type PeriodFilter = "all" | "trimestre1" | "trimestre2" | "trimestre3";
 
-export function EvalMonitoringWidgets({ classIds, classNameMap = {} }: Props) {
+export function EvalMonitoringWidgets({ classIds, classNameMap = {}, maxAlerts = 8 }: Props) {
   const { orgId } = useOrganization();
   const [period, setPeriod] = useState<PeriodFilter>("all");
 
