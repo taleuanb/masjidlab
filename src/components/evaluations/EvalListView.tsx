@@ -206,17 +206,6 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {evaluations.length > 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onSelectEval(evaluations[0].id)}
-                className="shrink-0"
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                Bulletins
-              </Button>
-            )}
             <Button
               size="sm"
               variant="default"
