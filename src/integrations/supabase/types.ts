@@ -817,6 +817,79 @@ export type Database = {
           },
         ]
       }
+      madrasa_evaluation_results: {
+        Row: {
+          created_at: string | null
+          evaluation_id: string | null
+          id: string
+          is_validated: boolean | null
+          org_id: string | null
+          student_id: string | null
+          teacher_comment: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          evaluation_id?: string | null
+          id?: string
+          is_validated?: boolean | null
+          org_id?: string | null
+          student_id?: string | null
+          teacher_comment?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          evaluation_id?: string | null
+          id?: string
+          is_validated?: boolean | null
+          org_id?: string | null
+          student_id?: string | null
+          teacher_comment?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "madrasa_evaluation_results_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluation_results_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "view_evaluation_results"
+            referencedColumns: ["evaluation_id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluation_results_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluation_results_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "madrasa_students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluation_results_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_student_fees_summary"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "madrasa_evaluation_results_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "view_unplaced_students"
+            referencedColumns: ["student_id"]
+          },
+        ]
+      }
       madrasa_evaluation_subjects: {
         Row: {
           evaluation_id: string
