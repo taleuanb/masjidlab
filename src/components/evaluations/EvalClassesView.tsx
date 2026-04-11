@@ -17,6 +17,7 @@ interface Props {
 
 export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
   const { yearLabel } = useCurrentAcademicYear();
+  const [filterClassId, setFilterClassId] = useState<string>("all");
 
   const kpis = useMemo(() => {
     const totalExams = classes.reduce((s, c) => s + c.evalCount, 0);
@@ -26,7 +27,16 @@ export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
     return { totalExams, totalStudents, globalAvg, classCount: classes.length };
   }, [classes]);
 
-  const classIds = useMemo(() => classes.map((c) => c.id), [classes]);
+  const filteredClassIds = useMemo(() => {
+    if (filterClassId === "all") return classes.map((c) => c.id);
+    return [filterClassId];
+  }, [classes, filterClassId]);
+
+  const classNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of classes) map[c.id] = c.nom;
+    return map;
+  }, [classes]);
 
   const statItems: StatCardItem[] = [
     { label: "Classes", value: kpis.classCount, icon: Users, color: "hsl(var(--brand-navy))" },
