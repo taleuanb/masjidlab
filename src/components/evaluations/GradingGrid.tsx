@@ -18,6 +18,7 @@ import {
   Lightbulb,
   PlusCircle,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { ReportCard } from "./ReportCard";
 
 interface Evaluation {
   id: string;
