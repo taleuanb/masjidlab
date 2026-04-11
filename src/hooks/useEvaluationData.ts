@@ -33,7 +33,7 @@ export function useEvalClasses() {
       const classIds = list.map((c) => c.id);
       if (classIds.length === 0) return [] as ClassWithEvalStats[];
 
-      // Fetch teacher names
+      // Teacher names
       const profIds = [...new Set(list.map((c) => c.prof_id).filter(Boolean))] as string[];
       let teacherMap: Record<string, string> = {};
       if (profIds.length > 0) {
@@ -44,6 +44,7 @@ export function useEvalClasses() {
         for (const p of profiles ?? []) teacherMap[p.id] = p.display_name;
       }
 
+      // Subjects
       const { data: links } = await supabase
         .from("madrasa_class_subjects")
         .select("class_id, subject:madrasa_subjects(id, name)")
@@ -55,6 +56,7 @@ export function useEvalClasses() {
         if (link.subject) subjectMap[link.class_id].push(link.subject as any);
       }
 
+      // Evaluations
       const { data: evals } = await supabase
         .from("madrasa_evaluations")
         .select("id, class_id, date")
@@ -81,7 +83,6 @@ export function useEvalClasses() {
         const evalToClass: Record<string, string> = {};
         for (const ev of evals ?? []) evalToClass[ev.id] = ev.class_id;
 
-        // Per-eval averages for sparkline
         const evalScores: Record<string, number[]> = {};
         const classScores: Record<string, number[]> = {};
         for (const g of grades ?? []) {
@@ -96,22 +97,23 @@ export function useEvalClasses() {
           avgMap[cid] = scores.reduce((a, b) => a + b, 0) / scores.length;
         }
 
-        // Build recent averages per class (last 5 evals)
-        const classEvals: Record<string, { evalId: string; date: string }[]> = {};
+        // Recent averages per class (last 5 evals)
+        const classEvals: Record<string, string[]> = {};
         for (const ev of evals ?? []) {
           if (!classEvals[ev.class_id]) classEvals[ev.class_id] = [];
-          classEvals[ev.class_id].push({ evalId: ev.id, date: ev.date });
+          classEvals[ev.class_id].push(ev.id);
         }
-        for (const [cid, ces] of Object.entries(classEvals)) {
-          const last5 = ces.slice(-5);
-          recentAvgsMap[cid] = last5.map((ce) => {
-            const scores = evalScores[ce.evalId];
+        for (const [cid, ids] of Object.entries(classEvals)) {
+          const last5 = ids.slice(-5);
+          recentAvgsMap[cid] = last5.map((eid) => {
+            const scores = evalScores[eid];
             if (!scores || scores.length === 0) return 0;
             return scores.reduce((a, b) => a + b, 0) / scores.length;
           });
         }
       }
 
+      // Student counts
       const { data: enrollments } = await supabase
         .from("madrasa_enrollments")
         .select("class_id")
@@ -124,7 +126,7 @@ export function useEvalClasses() {
         if (e.class_id) studentCountMap[e.class_id] = (studentCountMap[e.class_id] || 0) + 1;
       }
 
-      // Attendance rate per class (last 30 days)
+      // Attendance rate (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const { data: attendance } = await supabase

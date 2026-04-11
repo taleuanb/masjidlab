@@ -18,26 +18,28 @@ export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
   const { yearLabel } = useCurrentAcademicYear();
   const [filterClassId, setFilterClassId] = useState<string>("all");
 
+  const isFiltered = filterClassId !== "all";
+
+  // KPIs filtered by selected class
   const kpis = useMemo(() => {
-    const totalExams = classes.reduce((s, c) => s + c.evalCount, 0);
-    const totalStudents = classes.reduce((s, c) => s + c.studentCount, 0);
-    const avgs = classes.filter((c) => c.classAverage !== null).map((c) => c.classAverage!);
+    const scope = isFiltered ? classes.filter((c) => c.id === filterClassId) : classes;
+    const totalExams = scope.reduce((s, c) => s + c.evalCount, 0);
+    const totalStudents = scope.reduce((s, c) => s + c.studentCount, 0);
+    const avgs = scope.filter((c) => c.classAverage !== null).map((c) => c.classAverage!);
     const globalAvg = avgs.length > 0 ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
-    return { totalExams, totalStudents, globalAvg, classCount: classes.length };
-  }, [classes]);
+    return { totalExams, totalStudents, globalAvg, classCount: scope.length };
+  }, [classes, filterClassId, isFiltered]);
 
   const filteredClassIds = useMemo(() => {
-    if (filterClassId === "all") return classes.map((c) => c.id);
+    if (!isFiltered) return classes.map((c) => c.id);
     return [filterClassId];
-  }, [classes, filterClassId]);
+  }, [classes, filterClassId, isFiltered]);
 
   const classNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const c of classes) map[c.id] = c.nom;
     return map;
   }, [classes]);
-
-  const isFiltered = filterClassId !== "all";
 
   const statItems: StatCardItem[] = [
     { label: "Classes", value: kpis.classCount, icon: Users, color: "hsl(var(--brand-navy))" },
@@ -101,7 +103,13 @@ export function EvalClassesView({ classes, loading, onSelectClass }: Props) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {classes.map((c) => (
-              <ClassEvalCard key={c.id} cls={c} onClick={() => onSelectClass(c.id)} />
+              <ClassEvalCard
+                key={c.id}
+                cls={c}
+                onClick={() => onSelectClass(c.id)}
+                focused={isFiltered && c.id === filterClassId}
+                dimmed={isFiltered && c.id !== filterClassId}
+              />
             ))}
           </div>
         )}

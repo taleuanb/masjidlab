@@ -1,5 +1,6 @@
 import { User, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import type { ClassWithEvalStats } from "@/hooks/useEvaluationData";
@@ -7,6 +8,8 @@ import type { ClassWithEvalStats } from "@/hooks/useEvaluationData";
 interface Props {
   cls: ClassWithEvalStats;
   onClick: () => void;
+  focused?: boolean;
+  dimmed?: boolean;
 }
 
 function getBorderColor(avg: number | null): string {
@@ -23,17 +26,29 @@ function getAvgColor(avg: number | null): string {
   return "text-destructive";
 }
 
-export function ClassEvalCard({ cls, onClick }: Props) {
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+export function ClassEvalCard({ cls, onClick, focused, dimmed }: Props) {
   const sparkData = cls.recentAverages.map((v, i) => ({ i, v }));
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        "group relative rounded-xl border bg-card shadow-sm cursor-pointer",
-        "border-l-4 transition-all duration-200",
+        "group relative rounded-xl border bg-card cursor-pointer",
+        "border-l-4 transition-all duration-300",
         "hover:-translate-y-1 hover:shadow-lg",
-        getBorderColor(cls.classAverage)
+        getBorderColor(cls.classAverage),
+        focused && "shadow-lg ring-2 ring-primary/30 scale-[1.01]",
+        dimmed && "opacity-40 grayscale-[30%] hover:opacity-70 hover:grayscale-0",
+        !focused && !dimmed && "shadow-sm"
       )}
     >
       <div className="p-4 space-y-3">
@@ -86,20 +101,40 @@ export function ClassEvalCard({ cls, onClick }: Props) {
           )}
         </div>
 
+        {/* Subject badges */}
+        {cls.subjects.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {cls.subjects.map((s) => (
+              <Badge key={s.id} variant="secondary" className="text-[10px] font-normal">
+                {s.name}
+              </Badge>
+            ))}
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/50">
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/50">
           <div className="flex items-center gap-3">
-            {cls.teacherName && (
-              <span className="flex items-center gap-1 truncate">
-                <User className="h-3 w-3 shrink-0" />
-                <span className="truncate max-w-[100px]">{cls.teacherName}</span>
+            {cls.teacherName ? (
+              <span className="flex items-center gap-1.5 truncate">
+                <Avatar className="h-5 w-5">
+                  <AvatarFallback className="text-[8px] bg-primary/10 text-primary">
+                    {getInitials(cls.teacherName)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="truncate max-w-[90px]">{cls.teacherName}</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-muted-foreground/50">
+                <User className="h-3 w-3" />
+                Non assigné
               </span>
             )}
             <span>{cls.studentCount} élèves</span>
           </div>
           {cls.attendanceRate !== null && (
             <span className="flex items-center gap-1 shrink-0">
-              <CheckCircle2 className="h-3 w-3" />
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
               {cls.attendanceRate}%
             </span>
           )}
