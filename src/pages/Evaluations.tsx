@@ -6,6 +6,9 @@ import { useEvalClasses } from "@/hooks/useEvaluationData";
 import { EvalClassesView } from "@/components/evaluations/EvalClassesView";
 import { EvalListView } from "@/components/evaluations/EvalListView";
 import { GradingGrid } from "@/components/evaluations/GradingGrid";
+import { ReportCardPreviewList } from "@/components/evaluations/ReportCardPreviewList";
+
+type ViewMode = "grading" | "bulletins";
 
 const Evaluations = () => {
   const { orgId } = useOrganization();
@@ -13,10 +16,10 @@ const Evaluations = () => {
 
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedEvalId, setSelectedEvalId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grading");
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
-  // Fetch selected evaluation details
   const { data: selectedEval } = useQuery({
     queryKey: ["evaluation_detail", selectedEvalId],
     enabled: !!selectedEvalId && !!orgId,
@@ -30,6 +33,19 @@ const Evaluations = () => {
       return data;
     },
   });
+
+  // Report card preview list
+  if (selectedEvalId && selectedEval && selectedClassId && selectedClass && viewMode === "bulletins") {
+    return (
+      <ReportCardPreviewList
+        evalId={selectedEvalId}
+        evalTitle={selectedEval.title}
+        classId={selectedClassId}
+        className={selectedClass.nom}
+        onBack={() => { setSelectedEvalId(null); setViewMode("grading"); }}
+      />
+    );
+  }
 
   // Grade entry view
   if (selectedEvalId && selectedEval && selectedClassId && selectedClass) {
@@ -51,12 +67,12 @@ const Evaluations = () => {
         classId={selectedClassId}
         className={selectedClass.nom}
         onBack={() => setSelectedClassId(null)}
-        onSelectEval={setSelectedEvalId}
+        onSelectEval={(evalId) => { setSelectedEvalId(evalId); setViewMode("grading"); }}
+        onSelectBulletins={(evalId) => { setSelectedEvalId(evalId); setViewMode("bulletins"); }}
       />
     );
   }
 
-  // Class selection
   return (
     <EvalClassesView
       classes={classes}

@@ -59,6 +59,7 @@ interface Props {
   className: string;
   onBack: () => void;
   onSelectEval: (evalId: string) => void;
+  onSelectBulletins?: (evalId: string) => void;
 }
 
 // Status reference: draft | published | archived
@@ -69,7 +70,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "secondary" | "def
   archived: { label: "Archivé", variant: "secondary", className: "bg-muted/60 text-muted-foreground/60" },
 };
 
-export function EvalListView({ classId, className: clsName, onBack, onSelectEval }: Props) {
+export function EvalListView({ classId, className: clsName, onBack, onSelectEval, onSelectBulletins }: Props) {
   const { orgId } = useOrganization();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
@@ -377,26 +378,58 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                      <DropdownMenuItem
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onSelectEval(ev.id);
-                                        }}
-                                      >
-                                        <Pencil className="h-3.5 w-3.5 mr-2" />
-                                        {isArchived ? "Consulter les notes" : "Saisir les notes"}
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onSelectEval(ev.id);
-                                        }}
-                                      >
-                                        <FileText className="h-3.5 w-3.5 mr-2" />
-                                        Générer les bulletins
-                                      </DropdownMenuItem>
-                                      {!isArchived && (
+                                      {isArchived ? (
                                         <>
+                                          <DropdownMenuItem
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onSelectEval(ev.id);
+                                            }}
+                                          >
+                                            <Pencil className="h-3.5 w-3.5 mr-2" />
+                                            Consulter les notes
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onSelectBulletins?.(ev.id);
+                                            }}
+                                          >
+                                            <FileText className="h-3.5 w-3.5 mr-2" />
+                                            Générer les bulletins
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                            className="text-destructive focus:text-destructive"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setDeleteTarget({ id: ev.id, title: ev.title });
+                                            }}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                            Supprimer
+                                          </DropdownMenuItem>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <DropdownMenuItem
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onSelectEval(ev.id);
+                                            }}
+                                          >
+                                            <Pencil className="h-3.5 w-3.5 mr-2" />
+                                            Saisir les notes
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onSelectBulletins?.(ev.id);
+                                            }}
+                                          >
+                                            <FileText className="h-3.5 w-3.5 mr-2" />
+                                            Générer les bulletins
+                                          </DropdownMenuItem>
                                           <DropdownMenuSeparator />
                                           <DropdownMenuItem
                                             onClick={(e) => {
@@ -407,19 +440,19 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
                                             <Archive className="h-3.5 w-3.5 mr-2" />
                                             Archiver
                                           </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                            className="text-destructive focus:text-destructive"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setDeleteTarget({ id: ev.id, title: ev.title });
+                                            }}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                            Supprimer
+                                          </DropdownMenuItem>
                                         </>
                                       )}
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDeleteTarget({ id: ev.id, title: ev.title });
-                                        }}
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                        Supprimer
-                                      </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </div>
