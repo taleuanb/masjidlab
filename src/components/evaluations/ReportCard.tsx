@@ -287,19 +287,21 @@ export function ReportCard({
               <Separator />
 
               {/* Global appreciation — editable */}
-              <div className="rounded-lg border p-4 bg-muted/10">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Appréciation Générale
-                </p>
+              <div className="rounded-lg border p-4 bg-muted/10 group/appr relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Appréciation Générale
+                  </p>
+                  <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover/appr:text-muted-foreground/60 transition-opacity no-print" />
+                </div>
                 <Textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   onBlur={handleBlur}
-                  placeholder={appreciation.text}
                   rows={3}
                   className={cn(
                     "border-none shadow-none resize-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0",
-                    !hasManualEdit && !comment ? appreciation.color : "text-foreground"
+                    appreciation.color
                   )}
                 />
               </div>
