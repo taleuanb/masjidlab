@@ -85,14 +85,20 @@ export function ReportCard({
   });
 
   const [comment, setComment] = useState("");
-  const [hasManualEdit, setHasManualEdit] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const autoText = appreciation.text;
+  const initialValueRef = useRef("");
 
+  // Initialize: use saved comment if exists, otherwise use auto-generated text
   useEffect(() => {
-    if (existingResult?.teacher_comment) {
-      setComment(existingResult.teacher_comment);
-      setHasManualEdit(true);
-    }
-  }, [existingResult]);
+    if (initialized) return;
+    if (existingResult === undefined) return; // still loading
+    const saved = existingResult?.teacher_comment;
+    const value = saved && saved.trim().length > 0 ? saved : autoText;
+    setComment(value);
+    initialValueRef.current = value;
+    setInitialized(true);
+  }, [existingResult, autoText, initialized]);
 
   const saveMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -111,6 +117,7 @@ export function ReportCard({
     },
     onSuccess: () => {
       toast.success("Appréciation sauvegardée");
+      initialValueRef.current = comment.trim();
       queryClient.invalidateQueries({ queryKey: ["eval_result_comment", evaluationId, student.id] });
     },
     onError: () => {
@@ -120,10 +127,8 @@ export function ReportCard({
 
   const handleBlur = () => {
     const trimmed = comment.trim();
-    const existing = existingResult?.teacher_comment ?? "";
-    if (trimmed !== existing) {
+    if (trimmed !== initialValueRef.current) {
       saveMutation.mutate(trimmed);
-      setHasManualEdit(trimmed.length > 0);
     }
   };
 
