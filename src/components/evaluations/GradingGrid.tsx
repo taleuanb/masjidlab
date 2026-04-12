@@ -55,6 +55,7 @@ interface Props {
   classId: string;
   className: string;
   onBack: () => void;
+  readOnly?: boolean;
 }
 
 const DEBOUNCE_MS = 500;
@@ -65,6 +66,7 @@ export function GradingGrid({
   classId,
   className: clsName,
   onBack,
+  readOnly = false,
 }: Props) {
   const { orgId } = useOrganization();
   const queryClient = useQueryClient();
@@ -429,6 +431,7 @@ export function GradingGrid({
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold text-foreground truncate">
               {evaluation.title}
+              {readOnly && <span className="ml-2 text-xs font-normal text-muted-foreground">(Archivé — lecture seule)</span>}
             </h1>
             <p className="text-xs text-muted-foreground">
               {clsName} •{" "}
@@ -436,21 +439,23 @@ export function GradingGrid({
               {students.length} élèves
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {synced && !saving && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-emerald-500" /> Synchronisé
-              </span>
-            )}
-            {saving && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Sauvegarde…
-              </span>
-            )}
-            <Button onClick={handleManualSave} disabled={saving} size="sm" variant="outline">
-              <Save className="h-4 w-4 mr-1" /> Forcer la synchro
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="flex items-center gap-2 shrink-0">
+              {synced && !saving && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3 text-emerald-500" /> Synchronisé
+                </span>
+              )}
+              {saving && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Sauvegarde…
+                </span>
+              )}
+              <Button onClick={handleManualSave} disabled={saving} size="sm" variant="outline">
+                <Save className="h-4 w-4 mr-1" /> Forcer la synchro
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Class average */}
@@ -615,13 +620,16 @@ export function GradingGrid({
                                         max={cr.max_score}
                                         step={0.5}
                                         value={val}
+                                        readOnly={readOnly}
+                                        disabled={readOnly}
                                         onChange={(e) =>
-                                          handleGradeChange(s.id, cr.id, e.target.value)
+                                          !readOnly && handleGradeChange(s.id, cr.id, e.target.value)
                                         }
-                                        onKeyDown={(e) => handleKeyDown(e, sIdx, crIdx)}
+                                        onKeyDown={(e) => !readOnly && handleKeyDown(e, sIdx, crIdx)}
                                         className={cn(
                                           "h-7 w-full text-center text-xs rounded-none border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-                                          isInvalid && "ring-1 ring-destructive bg-destructive/5"
+                                          isInvalid && "ring-1 ring-destructive bg-destructive/5",
+                                          readOnly && "cursor-default opacity-80"
                                         )}
                                         placeholder="—"
                                       />
@@ -665,18 +673,20 @@ export function GradingGrid({
                           </TableCell>
                         </TableRow>
                       </ContextMenuTrigger>
-                      <ContextMenuContent>
-                        {isAbsent ? (
-                          <ContextMenuItem onClick={() => handleClearAbsent(s.id)}>
-                            Retirer l'absence
-                          </ContextMenuItem>
-                        ) : (
-                          <ContextMenuItem onClick={() => handleMarkAbsent(s.id)}>
-                            <Ban className="h-3.5 w-3.5 mr-2" />
-                            Marquer absent
-                          </ContextMenuItem>
-                        )}
-                      </ContextMenuContent>
+                      {!readOnly && (
+                        <ContextMenuContent>
+                          {isAbsent ? (
+                            <ContextMenuItem onClick={() => handleClearAbsent(s.id)}>
+                              Retirer l'absence
+                            </ContextMenuItem>
+                          ) : (
+                            <ContextMenuItem onClick={() => handleMarkAbsent(s.id)}>
+                              <Ban className="h-3.5 w-3.5 mr-2" />
+                              Marquer absent
+                            </ContextMenuItem>
+                          )}
+                        </ContextMenuContent>
+                      )}
                     </ContextMenu>
                   );
                 })}
