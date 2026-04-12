@@ -632,6 +632,7 @@ export function GradingGrid({
                                 !isAbs &&
                                 val !== "" &&
                                 (isNaN(numVal) || numVal < 0 || numVal > cr.max_score);
+                              const isFlashing = flashCells.has(`${s.id}_${cr.id}`);
 
                               return (
                                 <TableCell
@@ -666,6 +667,7 @@ export function GradingGrid({
                                         className={cn(
                                           "h-7 w-full text-center text-xs rounded-none border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                                           isInvalid && "ring-1 ring-destructive bg-destructive/5",
+                                          isFlashing && "text-emerald-600 bg-emerald-50",
                                           readOnly && "cursor-default opacity-80"
                                         )}
                                         placeholder=""
