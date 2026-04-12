@@ -94,6 +94,7 @@ export function ReportCardPreviewList({ evalId, evalTitle, classId, className: c
         className={clsName}
         evaluationTitle={reportData.evaluationTitle}
         evaluationDate={reportData.evaluationDate}
+        evaluationId={evalId}
         subjectScores={reportData.subjectScores}
         overallAverage={reportData.overallAverage}
         onBack={() => setPreviewStudent(null)}

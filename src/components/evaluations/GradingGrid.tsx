@@ -420,6 +420,7 @@ export function GradingGrid({
         className={clsName}
         evaluationTitle={evaluation.title}
         evaluationDate={format(new Date(evaluation.date), "d MMMM yyyy", { locale: fr })}
+        evaluationId={evaluation.id}
         subjectScores={subjectScores}
         overallAverage={avg}
         onBack={() => setBulletinStudentId(null)}
