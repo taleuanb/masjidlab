@@ -67,6 +67,7 @@ interface Props {
   className: string;
   onBack: () => void;
   readOnly?: boolean;
+  onEditStructure?: () => void;
 }
 
 const DEBOUNCE_MS = 500;
