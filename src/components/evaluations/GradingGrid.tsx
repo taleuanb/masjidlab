@@ -453,6 +453,22 @@ export function GradingGrid({
               {students.length} élèves
             </p>
           </div>
+          {!readOnly && onEditStructure && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const hasGrades = existingGrades.length > 0;
+                if (hasGrades) {
+                  setStructureDialogOpen(true);
+                } else {
+                  onEditStructure();
+                }
+              }}
+            >
+              <Settings2 className="h-4 w-4 mr-1" /> Modifier la structure
+            </Button>
+          )}
           {!readOnly && (
             <div className="flex items-center gap-2 shrink-0">
               {synced && !saving && (
