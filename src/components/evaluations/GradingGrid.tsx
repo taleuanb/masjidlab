@@ -55,6 +55,7 @@ interface Props {
   classId: string;
   className: string;
   onBack: () => void;
+  readOnly?: boolean;
 }
 
 const DEBOUNCE_MS = 500;
@@ -65,6 +66,7 @@ export function GradingGrid({
   classId,
   className: clsName,
   onBack,
+  readOnly = false,
 }: Props) {
   const { orgId } = useOrganization();
   const queryClient = useQueryClient();
