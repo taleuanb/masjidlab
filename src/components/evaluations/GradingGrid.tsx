@@ -234,6 +234,11 @@ export function GradingGrid({
           if (error) throw error;
         }
 
+        // Flash saved cells
+        const savedKeys = new Set(rows.map((r) => `${r.student_id}_${r.criteria_id}`));
+        setFlashCells(savedKeys);
+        setTimeout(() => setFlashCells(new Set()), 1200);
+
         setSynced(true);
         queryClient.invalidateQueries({ queryKey: ["grades", evaluation.id] });
       } catch (e: unknown) {
