@@ -92,6 +92,7 @@ export function GradingGrid({
   const [grades, setGrades] = useState<Record<string, Record<string, string>>>({});
   const [saving, setSaving] = useState(false);
   const [synced, setSynced] = useState(false);
+  const [flashCells, setFlashCells] = useState<Set<string>>(new Set());
   const [bulletinStudentId, setBulletinStudentId] = useState<string | null>(null);
   const [structureDialogOpen, setStructureDialogOpen] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
