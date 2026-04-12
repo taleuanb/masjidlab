@@ -19,11 +19,22 @@ import {
   PlusCircle,
   ClipboardList,
   FileText,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -56,6 +67,7 @@ interface Props {
   className: string;
   onBack: () => void;
   readOnly?: boolean;
+  onEditStructure?: () => void;
 }
 
 const DEBOUNCE_MS = 500;
@@ -67,6 +79,7 @@ export function GradingGrid({
   className: clsName,
   onBack,
   readOnly = false,
+  onEditStructure,
 }: Props) {
   const { orgId } = useOrganization();
   const queryClient = useQueryClient();
@@ -80,6 +93,7 @@ export function GradingGrid({
   const [saving, setSaving] = useState(false);
   const [synced, setSynced] = useState(false);
   const [bulletinStudentId, setBulletinStudentId] = useState<string | null>(null);
+  const [structureDialogOpen, setStructureDialogOpen] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const gridRef = useRef<HTMLTableElement>(null);
 
@@ -439,6 +453,22 @@ export function GradingGrid({
               {students.length} élèves
             </p>
           </div>
+          {!readOnly && onEditStructure && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const hasGrades = existingGrades.length > 0;
+                if (hasGrades) {
+                  setStructureDialogOpen(true);
+                } else {
+                  onEditStructure();
+                }
+              }}
+            >
+              <Settings2 className="h-4 w-4 mr-1" /> Modifier la structure
+            </Button>
+          )}
           {!readOnly && (
             <div className="flex items-center gap-2 shrink-0">
               {synced && !saving && (
@@ -474,7 +504,7 @@ export function GradingGrid({
         <Alert className="border-border bg-muted/20">
           <Lightbulb className="h-4 w-4 text-muted-foreground" />
           <AlertDescription className="text-xs text-muted-foreground">
-            <strong>Astuce Pro :</strong> Utilisez les flèches du clavier pour naviguer et «Entrée» pour passer à l'élève suivant. Les notes sont sauvegardées instantanément.
+            <strong>Astuce Pro :</strong> Utilisez les flèches du clavier pour naviguer. Les notes sont sauvegardées instantanément.
           </AlertDescription>
         </Alert>
 
@@ -631,7 +661,7 @@ export function GradingGrid({
                                           isInvalid && "ring-1 ring-destructive bg-destructive/5",
                                           readOnly && "cursor-default opacity-80"
                                         )}
-                                        placeholder="—"
+                                        placeholder=""
                                       />
                                       {isInvalid && (
                                         <span className="absolute -bottom-4 left-0 right-0 text-[9px] text-destructive text-center whitespace-nowrap z-20">
@@ -695,6 +725,29 @@ export function GradingGrid({
           </Card>
         )}
       </div>
+
+      {/* AlertDialog for structure edit warning */}
+      <AlertDialog open={structureDialogOpen} onOpenChange={setStructureDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Modifier la structure</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>ATTENTION :</strong> Modifier les critères de cet examen alors que des notes existent peut entraîner la suppression de données. Procéder ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setStructureDialogOpen(false);
+                onEditStructure?.();
+              }}
+            >
+              Confirmer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
