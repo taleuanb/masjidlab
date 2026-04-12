@@ -59,6 +59,7 @@ interface Props {
   className: string;
   onBack: () => void;
   onSelectEval: (evalId: string) => void;
+  onSelectBulletins?: (evalId: string) => void;
 }
 
 // Status reference: draft | published | archived
