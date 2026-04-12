@@ -23,7 +23,7 @@ const Evaluations = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("madrasa_evaluations")
-        .select("id, title, date")
+        .select("id, title, date, status")
         .eq("id", selectedEvalId!)
         .single();
       if (error) throw error;
@@ -39,6 +39,7 @@ const Evaluations = () => {
         classId={selectedClassId}
         className={selectedClass.nom}
         onBack={() => setSelectedEvalId(null)}
+        readOnly={selectedEval.status === "archived"}
       />
     );
   }
