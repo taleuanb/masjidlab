@@ -661,7 +661,7 @@ export function GradingGrid({
                                           isInvalid && "ring-1 ring-destructive bg-destructive/5",
                                           readOnly && "cursor-default opacity-80"
                                         )}
-                                        placeholder="—"
+                                        placeholder=""
                                       />
                                       {isInvalid && (
                                         <span className="absolute -bottom-4 left-0 right-0 text-[9px] text-destructive text-center whitespace-nowrap z-20">
