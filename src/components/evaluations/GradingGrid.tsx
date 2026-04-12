@@ -79,6 +79,7 @@ export function GradingGrid({
   className: clsName,
   onBack,
   readOnly = false,
+  onEditStructure,
 }: Props) {
   const { orgId } = useOrganization();
   const queryClient = useQueryClient();
