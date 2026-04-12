@@ -431,6 +431,7 @@ export function GradingGrid({
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold text-foreground truncate">
               {evaluation.title}
+              {readOnly && <span className="ml-2 text-xs font-normal text-muted-foreground">(Archivé — lecture seule)</span>}
             </h1>
             <p className="text-xs text-muted-foreground">
               {clsName} •{" "}
@@ -438,21 +439,23 @@ export function GradingGrid({
               {students.length} élèves
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {synced && !saving && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-emerald-500" /> Synchronisé
-              </span>
-            )}
-            {saving && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Sauvegarde…
-              </span>
-            )}
-            <Button onClick={handleManualSave} disabled={saving} size="sm" variant="outline">
-              <Save className="h-4 w-4 mr-1" /> Forcer la synchro
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="flex items-center gap-2 shrink-0">
+              {synced && !saving && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3 text-emerald-500" /> Synchronisé
+                </span>
+              )}
+              {saving && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Sauvegarde…
+                </span>
+              )}
+              <Button onClick={handleManualSave} disabled={saving} size="sm" variant="outline">
+                <Save className="h-4 w-4 mr-1" /> Forcer la synchro
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Class average */}
