@@ -673,18 +673,20 @@ export function GradingGrid({
                           </TableCell>
                         </TableRow>
                       </ContextMenuTrigger>
-                      <ContextMenuContent>
-                        {isAbsent ? (
-                          <ContextMenuItem onClick={() => handleClearAbsent(s.id)}>
-                            Retirer l'absence
-                          </ContextMenuItem>
-                        ) : (
-                          <ContextMenuItem onClick={() => handleMarkAbsent(s.id)}>
-                            <Ban className="h-3.5 w-3.5 mr-2" />
-                            Marquer absent
-                          </ContextMenuItem>
-                        )}
-                      </ContextMenuContent>
+                      {!readOnly && (
+                        <ContextMenuContent>
+                          {isAbsent ? (
+                            <ContextMenuItem onClick={() => handleClearAbsent(s.id)}>
+                              Retirer l'absence
+                            </ContextMenuItem>
+                          ) : (
+                            <ContextMenuItem onClick={() => handleMarkAbsent(s.id)}>
+                              <Ban className="h-3.5 w-3.5 mr-2" />
+                              Marquer absent
+                            </ContextMenuItem>
+                          )}
+                        </ContextMenuContent>
+                      )}
                     </ContextMenu>
                   );
                 })}
