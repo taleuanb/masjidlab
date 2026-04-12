@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -85,14 +85,20 @@ export function ReportCard({
   });
 
   const [comment, setComment] = useState("");
-  const [hasManualEdit, setHasManualEdit] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const autoText = appreciation.text;
+  const initialValueRef = useRef("");
 
+  // Initialize: use saved comment if exists, otherwise use auto-generated text
   useEffect(() => {
-    if (existingResult?.teacher_comment) {
-      setComment(existingResult.teacher_comment);
-      setHasManualEdit(true);
-    }
-  }, [existingResult]);
+    if (initialized) return;
+    if (existingResult === undefined) return; // still loading
+    const saved = existingResult?.teacher_comment;
+    const value = saved && saved.trim().length > 0 ? saved : autoText;
+    setComment(value);
+    initialValueRef.current = value;
+    setInitialized(true);
+  }, [existingResult, autoText, initialized]);
 
   const saveMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -111,6 +117,7 @@ export function ReportCard({
     },
     onSuccess: () => {
       toast.success("Appréciation sauvegardée");
+      initialValueRef.current = comment.trim();
       queryClient.invalidateQueries({ queryKey: ["eval_result_comment", evaluationId, student.id] });
     },
     onError: () => {
@@ -120,10 +127,8 @@ export function ReportCard({
 
   const handleBlur = () => {
     const trimmed = comment.trim();
-    const existing = existingResult?.teacher_comment ?? "";
-    if (trimmed !== existing) {
+    if (trimmed !== initialValueRef.current) {
       saveMutation.mutate(trimmed);
-      setHasManualEdit(trimmed.length > 0);
     }
   };
 
@@ -282,19 +287,21 @@ export function ReportCard({
               <Separator />
 
               {/* Global appreciation — editable */}
-              <div className="rounded-lg border p-4 bg-muted/10">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Appréciation Générale
-                </p>
+              <div className="rounded-lg border p-4 bg-muted/10 group/appr relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Appréciation Générale
+                  </p>
+                  <Pencil className="h-3 w-3 text-muted-foreground/0 group-hover/appr:text-muted-foreground/60 transition-opacity no-print" />
+                </div>
                 <Textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   onBlur={handleBlur}
-                  placeholder={appreciation.text}
                   rows={3}
                   className={cn(
                     "border-none shadow-none resize-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0",
-                    !hasManualEdit && !comment ? appreciation.color : "text-foreground"
+                    appreciation.color
                   )}
                 />
               </div>
