@@ -725,6 +725,29 @@ export function GradingGrid({
           </Card>
         )}
       </div>
+
+      {/* AlertDialog for structure edit warning */}
+      <AlertDialog open={structureDialogOpen} onOpenChange={setStructureDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Modifier la structure</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>ATTENTION :</strong> Modifier les critères de cet examen alors que des notes existent peut entraîner la suppression de données. Procéder ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setStructureDialogOpen(false);
+                onEditStructure?.();
+              }}
+            >
+              Confirmer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
