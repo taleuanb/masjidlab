@@ -92,6 +92,7 @@ export function GradingGrid({
   const [grades, setGrades] = useState<Record<string, Record<string, string>>>({});
   const [saving, setSaving] = useState(false);
   const [synced, setSynced] = useState(false);
+  const [flashCells, setFlashCells] = useState<Set<string>>(new Set());
   const [bulletinStudentId, setBulletinStudentId] = useState<string | null>(null);
   const [structureDialogOpen, setStructureDialogOpen] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -232,6 +233,11 @@ export function GradingGrid({
             .upsert(rows, { onConflict: "student_id,criteria_id,evaluation_id" });
           if (error) throw error;
         }
+
+        // Flash saved cells
+        const savedKeys = new Set(rows.map((r) => `${r.student_id}_${r.criteria_id}`));
+        setFlashCells(savedKeys);
+        setTimeout(() => setFlashCells(new Set()), 1200);
 
         setSynced(true);
         queryClient.invalidateQueries({ queryKey: ["grades", evaluation.id] });
@@ -626,6 +632,7 @@ export function GradingGrid({
                                 !isAbs &&
                                 val !== "" &&
                                 (isNaN(numVal) || numVal < 0 || numVal > cr.max_score);
+                              const isFlashing = flashCells.has(`${s.id}_${cr.id}`);
 
                               return (
                                 <TableCell
@@ -660,6 +667,7 @@ export function GradingGrid({
                                         className={cn(
                                           "h-7 w-full text-center text-xs rounded-none border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                                           isInvalid && "ring-1 ring-destructive bg-destructive/5",
+                                          isFlashing && "text-emerald-600 bg-emerald-50",
                                           readOnly && "cursor-default opacity-80"
                                         )}
                                         placeholder=""
