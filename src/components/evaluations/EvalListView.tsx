@@ -15,6 +15,7 @@ import {
   Pencil,
   Trash2,
   Users,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,16 +61,19 @@ interface Props {
   onSelectEval: (evalId: string) => void;
 }
 
+// Status reference: draft | published | archived
 const STATUS_CONFIG: Record<string, { label: string; variant: "secondary" | "default" | "outline"; className: string }> = {
   draft: { label: "Brouillon", variant: "secondary", className: "bg-muted text-muted-foreground" },
-  partial: { label: "Partiel", variant: "outline", className: "border-primary/40 text-primary" },
-  validated: { label: "Validé", variant: "default", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+  "in_progress": { label: "En cours", variant: "outline", className: "border-amber-500/40 text-amber-600 bg-amber-500/10" },
+  published: { label: "Publié", variant: "default", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+  archived: { label: "Archivé", variant: "secondary", className: "bg-muted/60 text-muted-foreground/60" },
 };
 
 export function EvalListView({ classId, className: clsName, onBack, onSelectEval }: Props) {
   const { orgId } = useOrganization();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<{ id: string; title: string } | null>(null);
   const queryClient = useQueryClient();
 
   const { data: students = [] } = useClassStudents(classId);
@@ -119,7 +123,6 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
         .select("evaluation_id, student_id, score")
         .eq("org_id", orgId!)
         .in("evaluation_id", evalIds);
-      // Count distinct students with at least one score per eval
       const map: Record<string, { evaluated: number; avg: number | null }> = {};
       const evalStudents: Record<string, Map<string, number[]>> = {};
       for (const g of data ?? []) {
@@ -156,19 +159,29 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
     return groups;
   }, [evaluations]);
 
-  const getStatus = (ev: Evaluation): string => {
+  // Smart status: draft/published uses dynamic badge based on grade count
+  const getSmartStatus = (ev: Evaluation): string => {
+    const dbStatus = ev.status ?? "draft";
+    if (dbStatus === "archived") return "archived";
+    if (dbStatus === "draft") return "draft";
+    // published → check completion
+    if (dbStatus === "published") {
+      const gc = gradeCounts[ev.id];
+      if (!gc || gc.evaluated === 0) return "draft";
+      if (gc.evaluated >= students.length && students.length > 0) return "published";
+      return "in_progress";
+    }
+    // Legacy statuses fallback
     const gc = gradeCounts[ev.id];
     if (!gc || gc.evaluated === 0) return "draft";
-    if (gc.evaluated >= students.length && students.length > 0) return "validated";
-    return "partial";
+    if (gc.evaluated >= students.length && students.length > 0) return "published";
+    return "in_progress";
   };
 
   const deleteMutation = useMutation({
     mutationFn: async (evalId: string) => {
-      // Delete grades, criteria, subjects, results, then the evaluation
       const { error: grErr } = await supabase.from("madrasa_grades").delete().eq("evaluation_id", evalId);
       if (grErr) throw grErr;
-      // Get evaluation_subjects to delete criteria
       const { data: esRows } = await supabase.from("madrasa_evaluation_subjects").select("id").eq("evaluation_id", evalId);
       if (esRows && esRows.length > 0) {
         const esIds = esRows.map((r) => r.id);
@@ -187,6 +200,23 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
     onError: (err: any) => {
       console.error("Delete eval error:", err);
       toast.error("Erreur lors de la suppression");
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async (evalId: string) => {
+      const { error } = await supabase
+        .from("madrasa_evaluations")
+        .update({ status: "archived" })
+        .eq("id", evalId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Évaluation archivée");
+      queryClient.invalidateQueries({ queryKey: ["evaluations", classId] });
+    },
+    onError: () => {
+      toast.error("Erreur lors de l'archivage");
     },
   });
 
@@ -235,7 +265,6 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
           <div className="space-y-8">
             {groupedByMonth.map((group) => (
               <section key={group.key}>
-                {/* Month header */}
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-2 w-2 rounded-full bg-primary" />
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -247,11 +276,8 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
                   </Badge>
                 </div>
 
-                {/* Timeline rail */}
                 <div className="relative pl-6">
-                  {/* Vertical rail */}
                   <div className="absolute left-[7px] top-0 bottom-0 w-px bg-border" />
-
                   <div className="space-y-3">
                     {group.evals.map((ev) => {
                       const subjectNames = evalSubjectCounts[ev.id] ?? [];
@@ -261,35 +287,39 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
                           : ev.subject?.name
                           ? [ev.subject.name]
                           : [];
-                      const status = getStatus(ev);
+                      const status = getSmartStatus(ev);
                       const statusCfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.draft;
                       const gc = gradeCounts[ev.id];
                       const evaluatedCount = gc?.evaluated ?? 0;
+                      const isArchived = status === "archived";
 
                       return (
                         <div key={ev.id} className="relative">
-                          {/* Timeline dot */}
                           <div
                             className={cn(
                               "absolute -left-6 top-5 h-3 w-3 rounded-full border-2 border-background z-10",
-                              status === "validated"
+                              status === "published"
                                 ? "bg-emerald-500"
-                                : status === "partial"
-                                ? "bg-primary"
+                                : status === "in_progress"
+                                ? "bg-amber-500"
+                                : status === "archived"
+                                ? "bg-muted-foreground/30"
                                 : "bg-muted-foreground/40"
                             )}
                           />
 
                           <Card
-                            className="cursor-pointer transition-all hover:shadow-md hover:border-primary/20 rounded-xl shadow-sm"
+                            className={cn(
+                              "cursor-pointer transition-all hover:shadow-md hover:border-primary/20 rounded-xl shadow-sm",
+                              isArchived && "opacity-60"
+                            )}
                             onClick={() => onSelectEval(ev.id)}
                           >
                             <CardContent className="py-4 px-5">
                               <div className="flex items-start justify-between gap-3">
-                                {/* Left content */}
                                 <div className="flex-1 min-w-0 space-y-1.5">
                                   <div className="flex items-center gap-2">
-                                    <p className="font-semibold text-foreground truncate">
+                                    <p className={cn("font-semibold text-foreground truncate", isArchived && "line-through opacity-70")}>
                                       {ev.title}
                                     </p>
                                     <Badge
@@ -318,9 +348,8 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
                                   </div>
                                 </div>
 
-                                {/* Right: avg + actions */}
                                 <div className="flex items-center gap-2 shrink-0">
-                                  {status === "validated" && gc?.avg != null && (
+                                  {(status === "published" || status === "in_progress") && gc?.avg != null && (
                                     <div className="text-right">
                                       <p
                                         className={cn(
@@ -355,7 +384,7 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
                                         }}
                                       >
                                         <Pencil className="h-3.5 w-3.5 mr-2" />
-                                        Saisir les notes
+                                        {isArchived ? "Consulter les notes" : "Saisir les notes"}
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
                                         onClick={(e) => {
@@ -366,6 +395,20 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
                                         <FileText className="h-3.5 w-3.5 mr-2" />
                                         Générer les bulletins
                                       </DropdownMenuItem>
+                                      {!isArchived && (
+                                        <>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setArchiveTarget({ id: ev.id, title: ev.title });
+                                            }}
+                                          >
+                                            <Archive className="h-3.5 w-3.5 mr-2" />
+                                            Archiver
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem
                                         className="text-destructive focus:text-destructive"
@@ -402,6 +445,7 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
         onCreated={(evalId) => onSelectEval(evalId)}
       />
 
+      {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -420,6 +464,29 @@ export function EvalListView({ classId, className: clsName, onBack, onSelectEval
               }}
             >
               Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Archive confirmation */}
+      <AlertDialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archiver cette évaluation ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L'évaluation « {archiveTarget?.title} » sera archivée. Les notes ne pourront plus être modifiées mais resteront consultables.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (archiveTarget) archiveMutation.mutate(archiveTarget.id);
+                setArchiveTarget(null);
+              }}
+            >
+              Archiver
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

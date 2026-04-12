@@ -36,7 +36,7 @@ function getInitials(name: string): string {
 }
 
 export function ClassEvalCard({ cls, onClick, focused, dimmed }: Props) {
-  const sparkData = cls.recentAverages.map((v, i) => ({ i, v }));
+  const sparkData = (cls.recentAverages ?? []).map((v, i) => ({ i, v }));
 
   return (
     <div
@@ -102,7 +102,7 @@ export function ClassEvalCard({ cls, onClick, focused, dimmed }: Props) {
         </div>
 
         {/* Subject badges */}
-        {cls.subjects.length > 0 && (
+        {(cls.subjects ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {cls.subjects.map((s) => (
               <Badge key={s.id} variant="secondary" className="text-[10px] font-normal">
