@@ -1,8 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -20,20 +22,24 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { toast } from "sonner";
 import masjidLabLogo from "@/assets/masjidlab-logo.png";
 
 interface SubjectScore {
   subject_name: string;
   score: number;
   max_score: number;
-  normalized: number; // /20
+  normalized: number;
 }
 
-interface ReportCardProps {
+export interface ReportCardProps {
   student: { id: string; nom: string; prenom: string };
   className: string;
   evaluationTitle: string;
   evaluationDate: string;
+  evaluationId: string;
   subjectScores: SubjectScore[];
   overallAverage: number | null;
   onBack: () => void;
@@ -53,11 +59,73 @@ export function ReportCard({
   className: clsName,
   evaluationTitle,
   evaluationDate,
+  evaluationId,
   subjectScores,
   overallAverage,
   onBack,
 }: ReportCardProps) {
+  const { orgId } = useOrganization();
+  const queryClient = useQueryClient();
   const appreciation = getAppreciation(overallAverage);
+
+  // Fetch existing teacher comment
+  const { data: existingResult } = useQuery({
+    queryKey: ["eval_result_comment", evaluationId, student.id],
+    enabled: !!evaluationId && !!student.id && !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("madrasa_evaluation_results")
+        .select("id, teacher_comment")
+        .eq("evaluation_id", evaluationId)
+        .eq("student_id", student.id)
+        .eq("org_id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const [comment, setComment] = useState("");
+  const [hasManualEdit, setHasManualEdit] = useState(false);
+
+  useEffect(() => {
+    if (existingResult?.teacher_comment) {
+      setComment(existingResult.teacher_comment);
+      setHasManualEdit(true);
+    }
+  }, [existingResult]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const { error } = await supabase
+        .from("madrasa_evaluation_results")
+        .upsert(
+          {
+            evaluation_id: evaluationId,
+            student_id: student.id,
+            org_id: orgId!,
+            teacher_comment: text || null,
+          },
+          { onConflict: "evaluation_id,student_id" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Appréciation sauvegardée");
+      queryClient.invalidateQueries({ queryKey: ["eval_result_comment", evaluationId, student.id] });
+    },
+    onError: () => {
+      toast.error("Erreur lors de la sauvegarde");
+    },
+  });
+
+  const handleBlur = () => {
+    const trimmed = comment.trim();
+    const existing = existingResult?.teacher_comment ?? "";
+    if (trimmed !== existing) {
+      saveMutation.mutate(trimmed);
+      setHasManualEdit(trimmed.length > 0);
+    }
+  };
 
   const radarData = useMemo(
     () =>
@@ -73,7 +141,6 @@ export function ReportCard({
 
   return (
     <>
-      {/* Print styles */}
       <style>{`
         @media print {
           body * { visibility: hidden; }
@@ -86,7 +153,6 @@ export function ReportCard({
 
       <main className="flex-1 overflow-y-auto">
         <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
-          {/* Action bar */}
           <div className="flex items-center gap-3 no-print">
             <Button variant="ghost" size="icon" onClick={onBack}>
               <ArrowLeft className="h-4 w-4" />
@@ -102,7 +168,6 @@ export function ReportCard({
             </Button>
           </div>
 
-          {/* Printable bulletin */}
           <Card className="report-card-printable border shadow-sm">
             <CardContent className="p-6 md:p-8 space-y-6">
               {/* Header */}
@@ -171,7 +236,6 @@ export function ReportCard({
                       </TableCell>
                     </TableRow>
                   ))}
-                  {/* Average row */}
                   <TableRow className="bg-muted/30 font-bold">
                     <TableCell className="text-sm">Moyenne Générale</TableCell>
                     <TableCell className="text-center text-sm">
@@ -217,12 +281,22 @@ export function ReportCard({
 
               <Separator />
 
-              {/* Global appreciation */}
+              {/* Global appreciation — editable */}
               <div className="rounded-lg border p-4 bg-muted/10">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                   Appréciation Générale
                 </p>
-                <p className={cn("text-sm", appreciation.color)}>{appreciation.text}</p>
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  onBlur={handleBlur}
+                  placeholder={appreciation.text}
+                  rows={3}
+                  className={cn(
+                    "border-none shadow-none resize-none bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0",
+                    !hasManualEdit && !comment ? appreciation.color : "text-foreground"
+                  )}
+                />
               </div>
 
               {/* Footer */}
