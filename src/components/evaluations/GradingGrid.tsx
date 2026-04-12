@@ -93,6 +93,7 @@ export function GradingGrid({
   const [saving, setSaving] = useState(false);
   const [synced, setSynced] = useState(false);
   const [bulletinStudentId, setBulletinStudentId] = useState<string | null>(null);
+  const [structureDialogOpen, setStructureDialogOpen] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const gridRef = useRef<HTMLTableElement>(null);
 
