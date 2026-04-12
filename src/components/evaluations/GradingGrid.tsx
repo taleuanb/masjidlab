@@ -504,7 +504,7 @@ export function GradingGrid({
         <Alert className="border-border bg-muted/20">
           <Lightbulb className="h-4 w-4 text-muted-foreground" />
           <AlertDescription className="text-xs text-muted-foreground">
-            <strong>Astuce Pro :</strong> Utilisez les flèches du clavier pour naviguer et «Entrée» pour passer à l'élève suivant. Les notes sont sauvegardées instantanément.
+            <strong>Astuce Pro :</strong> Utilisez les flèches du clavier pour naviguer. Les notes sont sauvegardées instantanément.
           </AlertDescription>
         </Alert>
 
