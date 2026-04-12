@@ -1,8 +1,10 @@
 import { ArrowLeft, FileText, Eye, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useClassStudents } from "@/hooks/useEvaluationData";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { useState } from "react";
 import { ReportCard } from "./ReportCard";
 
@@ -15,15 +17,86 @@ interface Props {
 }
 
 export function ReportCardPreviewList({ evalId, evalTitle, classId, className: clsName, onBack }: Props) {
+  const { orgId } = useOrganization();
   const { data: students = [], isLoading } = useClassStudents(classId);
-  const [previewStudentId, setPreviewStudentId] = useState<string | null>(null);
+  const [previewStudent, setPreviewStudent] = useState<{ id: string; nom: string; prenom: string } | null>(null);
 
-  if (previewStudentId) {
+  // Fetch grades & subjects for the selected student's report card
+  const { data: reportData } = useQuery({
+    queryKey: ["report_card_data", evalId, previewStudent?.id],
+    enabled: !!previewStudent && !!orgId,
+    queryFn: async () => {
+      const studentId = previewStudent!.id;
+
+      // Get evaluation details
+      const { data: evalData } = await supabase
+        .from("madrasa_evaluations")
+        .select("title, date")
+        .eq("id", evalId)
+        .single();
+
+      // Get evaluation subjects with criteria
+      const { data: evalSubjects } = await supabase
+        .from("madrasa_evaluation_subjects")
+        .select("id, subject_id, subject:madrasa_subjects(name), weight")
+        .eq("evaluation_id", evalId);
+
+      // Get grades for this student
+      const { data: grades } = await supabase
+        .from("madrasa_grades")
+        .select("criteria_id, score")
+        .eq("evaluation_id", evalId)
+        .eq("student_id", studentId)
+        .eq("org_id", orgId!);
+
+      // Get criteria for evaluation subjects
+      const esIds = (evalSubjects ?? []).map((es) => es.id);
+      const { data: criteria } = await supabase
+        .from("madrasa_evaluation_criteria")
+        .select("id, evaluation_subject_id, max_score, weight")
+        .in("evaluation_subject_id", esIds.length > 0 ? esIds : ["__none__"]);
+
+      // Build subject scores
+      const subjectScores: { subject_name: string; score: number; max_score: number; normalized: number }[] = [];
+      for (const es of evalSubjects ?? []) {
+        const subjectCriteria = (criteria ?? []).filter((c) => c.evaluation_subject_id === es.id);
+        const maxScore = subjectCriteria.reduce((s, c) => s + c.max_score, 0);
+        const studentScore = subjectCriteria.reduce((s, c) => {
+          const g = (grades ?? []).find((g) => g.criteria_id === c.id);
+          return s + (g?.score ?? 0);
+        }, 0);
+        const normalized = maxScore > 0 ? (studentScore / maxScore) * 20 : 0;
+        subjectScores.push({
+          subject_name: (es.subject as any)?.name ?? "—",
+          score: studentScore,
+          max_score: maxScore,
+          normalized: Math.round(normalized * 100) / 100,
+        });
+      }
+
+      const avg = subjectScores.length > 0
+        ? subjectScores.reduce((s, ss) => s + ss.normalized, 0) / subjectScores.length
+        : null;
+
+      return {
+        evaluationTitle: evalData?.title ?? evalTitle,
+        evaluationDate: evalData?.date ?? "",
+        subjectScores,
+        overallAverage: avg != null ? Math.round(avg * 100) / 100 : null,
+      };
+    },
+  });
+
+  if (previewStudent && reportData) {
     return (
       <ReportCard
-        studentId={previewStudentId}
-        evaluationId={evalId}
-        onBack={() => setPreviewStudentId(null)}
+        student={previewStudent}
+        className={clsName}
+        evaluationTitle={reportData.evaluationTitle}
+        evaluationDate={reportData.evaluationDate}
+        subjectScores={reportData.subjectScores}
+        overallAverage={reportData.overallAverage}
+        onBack={() => setPreviewStudent(null)}
       />
     );
   }
@@ -68,22 +141,11 @@ export function ReportCardPreviewList({ evalId, evalTitle, classId, className: c
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setPreviewStudentId(s.id)}
+                      onClick={() => setPreviewStudent({ id: s.id, nom: s.nom, prenom: s.prenom })}
                       className="text-muted-foreground hover:text-foreground"
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       Aperçu
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setPreviewStudentId(s.id);
-                        setTimeout(() => window.print(), 500);
-                      }}
-                    >
-                      <FileText className="h-4 w-4 mr-1" />
-                      PDF
                     </Button>
                   </div>
                 </CardContent>
