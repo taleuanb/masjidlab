@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { useTeacherFilter } from "@/contexts/TeacherFilterContext";
+import { useRole } from "@/contexts/RoleContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,31 +22,37 @@ interface EvalAlert {
 export function EvalVigilanceWidget() {
   const { orgId } = useOrganization();
   const { isTeacher, teacherClassIds } = useTeacherScope();
+  const { isSuperAdmin } = useRole();
   const { selectedClassId } = useTeacherFilter();
   const navigate = useNavigate();
 
-  const filterClassIds = selectedClassId ? [selectedClassId] : teacherClassIds;
+  const isAdmin = isSuperAdmin;
+  const canShow = isTeacher || isAdmin;
+
+  const filterClassIds = selectedClassId ? [selectedClassId] : (isTeacher ? teacherClassIds : []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["edu-eval-vigilance", orgId, filterClassIds],
-    enabled: !!orgId && isTeacher && filterClassIds.length > 0,
+    queryKey: ["edu-eval-vigilance", orgId, filterClassIds, isAdmin],
+    enabled: !!orgId && canShow && (isAdmin || filterClassIds.length > 0),
     staleTime: 2 * 60_000,
     queryFn: async () => {
-      // Get published evaluations for teacher's classes
-      const { data: evals, error: evalErr } = await supabase
+      let evalQuery = supabase
         .from("madrasa_evaluations")
         .select("id, title, class_id, madrasa_classes(nom)")
         .eq("org_id", orgId!)
-        .eq("status", "published")
-        .in("class_id", filterClassIds);
+        .eq("status", "published");
 
+      if (filterClassIds.length > 0) {
+        evalQuery = evalQuery.in("class_id", filterClassIds);
+      }
+
+      const { data: evals, error: evalErr } = await evalQuery;
       if (evalErr) throw evalErr;
       if (!evals || evals.length === 0) return [];
 
       const evalIds = evals.map((e) => e.id);
       const classIds = [...new Set(evals.map((e) => e.class_id))];
 
-      // Get grade counts per evaluation
       const { data: grades } = await supabase
         .from("madrasa_grades")
         .select("evaluation_id, student_id")
@@ -58,7 +65,6 @@ export function EvalVigilanceWidget() {
         gradeCountMap[g.evaluation_id].add(g.student_id);
       }
 
-      // Get enrollment counts per class
       const { data: enrollments } = await supabase
         .from("madrasa_enrollments")
         .select("class_id")
@@ -90,7 +96,7 @@ export function EvalVigilanceWidget() {
     },
   });
 
-  if (!isTeacher) return null;
+  if (!canShow) return null;
   if (isLoading) return <Skeleton className="h-48 rounded-xl" />;
 
   const alerts = data ?? [];
