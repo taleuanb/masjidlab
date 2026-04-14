@@ -26,6 +26,8 @@ const EducationInscriptionsWidget = lazy(() => import("@/components/dashboard/Ed
 const EducationAlertesWidget = lazy(() => import("@/components/dashboard/EducationAlertesWidget").then((m) => ({ default: m.EducationAlertesWidget })));
 const EducationFinanceWidget = lazy(() => import("@/components/dashboard/EducationFinanceWidget").then((m) => ({ default: m.EducationFinanceWidget })));
 const EducationVigilanceWidget = lazy(() => import("@/components/dashboard/EducationVigilanceWidget").then((m) => ({ default: m.EducationVigilanceWidget })));
+const SessionVigilanceWidget = lazy(() => import("@/components/dashboard/SessionVigilanceWidget").then((m) => ({ default: m.SessionVigilanceWidget })));
+const EvalVigilanceWidget = lazy(() => import("@/components/dashboard/EvalVigilanceWidget").then((m) => ({ default: m.EvalVigilanceWidget })));
 const StudentProgressWidget = lazy(() => import("@/components/dashboard/StudentProgressWidget").then((m) => ({ default: m.StudentProgressWidget })));
 const ParentInvoicesWidget = lazy(() => import("@/components/dashboard/ParentInvoicesWidget").then((m) => ({ default: m.ParentInvoicesWidget })));
 const SchoolAgendaWidget = lazy(() => import("@/components/dashboard/SchoolAgendaWidget").then((m) => ({ default: m.SchoolAgendaWidget })));
@@ -52,6 +54,8 @@ export const WIDGET_ICON_MAP: Record<string, string> = {
   "events-timeline": "calendar-clock",
   "finance-overview": "landmark",
   "assets-inventory": "package",
+  "edu-session-vigilance": "clipboard-edit",
+  "edu-eval-vigilance": "file-warning",
 };
 
 // ─── Registry (1 ID = 1 composant physique) ─────────────────────────
