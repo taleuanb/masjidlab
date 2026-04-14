@@ -132,6 +132,32 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     component: EducationVigilanceWidget,
   },
 
+  // ── Session Vigilance (Teacher) ──
+  {
+    id: "edu-session-vigilance",
+    label: "Vigilance Sessions",
+    section: "École Madrassa",
+    sectionEmoji: "📚",
+    requiredPole: "education",
+    allowedRoles: ["enseignant"],
+    defaultWeight: 855,
+    colSpan: 6,
+    component: SessionVigilanceWidget,
+  },
+
+  // ── Eval Vigilance (Teacher) ──
+  {
+    id: "edu-eval-vigilance",
+    label: "Examens à Finaliser",
+    section: "École Madrassa",
+    sectionEmoji: "📚",
+    requiredPole: "education",
+    allowedRoles: ["enseignant"],
+    defaultWeight: 854,
+    colSpan: 6,
+    component: EvalVigilanceWidget,
+  },
+
   // ── Activité des Classes / Journal des Cours (polymorphe) ──
   {
     id: "recent-sessions",
