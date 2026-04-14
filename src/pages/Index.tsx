@@ -10,6 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardErrorState } from "@/components/dashboard/DashboardShell";
 import { useDashboardWidgets } from "@/hooks/useDashboardWidgets";
+import { TeacherFilterProvider } from "@/contexts/TeacherFilterContext";
+import { TeacherClassFilter } from "@/components/dashboard/TeacherClassFilter";
 import type { WidgetDef } from "@/config/widget-registry";
 
 // ── Section header ───────────────────────────────────────────────────
@@ -61,6 +63,7 @@ export default function Dashboard() {
   }
 
   return (
+    <TeacherFilterProvider>
     <div className="flex-1 overflow-auto">
       {/* ── Header ── */}
       <header className="sticky top-0 z-10 border-b bg-card/90 backdrop-blur-sm">
@@ -111,6 +114,8 @@ export default function Dashboard() {
       {/* ── Widget Grid ── */}
       <main className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
+        {/* Teacher class filter */}
+        <TeacherClassFilter />
         {sections.map((section) => (
           <section key={section.name} className="space-y-4">
             {section.name !== "Vue d'ensemble" && (
@@ -135,5 +140,6 @@ export default function Dashboard() {
 
       <QuickActions />
     </div>
+    </TeacherFilterProvider>
   );
 }
