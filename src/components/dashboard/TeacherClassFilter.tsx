@@ -3,30 +3,39 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { useTeacherFilter } from "@/contexts/TeacherFilterContext";
+import { useRole } from "@/contexts/RoleContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Filter } from "lucide-react";
 
 export function TeacherClassFilter() {
   const { orgId } = useOrganization();
   const { isTeacher, teacherClassIds } = useTeacherScope();
+  const { isSuperAdmin } = useRole();
   const { selectedClassId, setSelectedClassId } = useTeacherFilter();
 
+  const canShow = isTeacher || isSuperAdmin;
+
   const { data: classes } = useQuery({
-    queryKey: ["teacher-classes-filter", orgId, teacherClassIds],
-    enabled: isTeacher && teacherClassIds.length > 0 && !!orgId,
+    queryKey: ["teacher-classes-filter", orgId, isTeacher, teacherClassIds],
+    enabled: canShow && !!orgId,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("madrasa_classes")
         .select("id, nom")
         .eq("org_id", orgId!)
-        .in("id", teacherClassIds)
         .order("nom");
+
+      if (isTeacher) {
+        query = query.in("id", teacherClassIds);
+      }
+
+      const { data } = await query;
       return data ?? [];
     },
   });
 
-  if (!isTeacher || !classes || classes.length === 0) return null;
+  if (!canShow || !classes || classes.length === 0) return null;
 
   return (
     <div className="flex items-center gap-2">
@@ -39,7 +48,7 @@ export function TeacherClassFilter() {
           <SelectValue placeholder="Toutes mes classes" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Toutes mes classes</SelectItem>
+          <SelectItem value="all">{isTeacher ? "Toutes mes classes" : "Toutes les classes"}</SelectItem>
           {classes.map((c) => (
             <SelectItem key={c.id} value={c.id}>
               {c.nom}

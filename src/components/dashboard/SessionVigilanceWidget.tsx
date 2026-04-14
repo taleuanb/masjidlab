@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useTeacherScope } from "@/hooks/useTeacherScope";
 import { useTeacherFilter } from "@/contexts/TeacherFilterContext";
+import { useRole } from "@/contexts/RoleContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,30 +25,44 @@ interface VigilanceSession {
 export function SessionVigilanceWidget() {
   const { orgId } = useOrganization();
   const { isTeacher, profileId, teacherClassIds } = useTeacherScope();
+  const { isSuperAdmin } = useRole();
   const { selectedClassId } = useTeacherFilter();
   const navigate = useNavigate();
 
-  const filterClassIds = selectedClassId ? [selectedClassId] : teacherClassIds;
+  const isAdmin = isSuperAdmin;
+  const canShow = isTeacher || isAdmin;
+
+  // For teachers: filter by their classes. For admins: show all (or selected class).
+  const filterClassIds = selectedClassId ? [selectedClassId] : (isTeacher ? teacherClassIds : []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["edu-session-vigilance", orgId, profileId, filterClassIds],
-    enabled: !!orgId && !!profileId && filterClassIds.length > 0,
+    queryKey: ["edu-session-vigilance", orgId, profileId, filterClassIds, isAdmin],
+    enabled: !!orgId && canShow && (isAdmin || (!!profileId && filterClassIds.length > 0)),
     staleTime: 60_000,
     refetchInterval: 60_000,
     queryFn: async () => {
       const today = format(new Date(), "yyyy-MM-dd");
 
-      // Past sessions by this teacher with missing summary or zero attendance
-      const { data: sessions, error } = await supabase
+      let query = supabase
         .from("madrasa_sessions")
         .select("id, class_id, date, summary_note, attendance_count, status, madrasa_classes(nom)")
         .eq("org_id", orgId!)
-        .eq("actual_teacher_id", profileId!)
         .lt("date", today)
-        .in("class_id", filterClassIds)
         .order("date", { ascending: false })
         .limit(20);
 
+      // Teacher: filter by their profile + classes
+      if (isTeacher && profileId) {
+        query = query.eq("actual_teacher_id", profileId);
+        if (filterClassIds.length > 0) {
+          query = query.in("class_id", filterClassIds);
+        }
+      } else if (filterClassIds.length > 0) {
+        // Admin with a class selected
+        query = query.in("class_id", filterClassIds);
+      }
+
+      const { data: sessions, error } = await query;
       if (error) throw error;
 
       const alerts: Array<VigilanceSession & { reason: string }> = [];
@@ -62,7 +77,7 @@ export function SessionVigilanceWidget() {
     },
   });
 
-  if (!isTeacher) return null;
+  if (!canShow) return null;
   if (isLoading) return <Skeleton className="h-48 rounded-xl" />;
 
   const alerts = data ?? [];
@@ -72,7 +87,7 @@ export function SessionVigilanceWidget() {
       <CardHeader className="pb-2 px-5">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-500" />
-          Points de Vigilance — Sessions
+          {isTeacher ? "Vigilance — Mes Sessions" : "Vigilance — Sessions"}
           {alerts.length > 0 && (
             <Badge variant="destructive" className="text-[10px] h-4 px-1.5 ml-auto">
               {alerts.length}
